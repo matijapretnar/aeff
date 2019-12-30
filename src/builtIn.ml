@@ -1,0 +1,48 @@
+open Utils
+
+let binary_function f expr =
+  match expr.it with
+  | Ast.Tuple [expr1; expr2] -> f expr1 expr2
+  | _ -> Error.runtime ~loc:expr.at "A pair expected but got %t." (Ast.print_expression expr)
+
+let get_int expr =
+  match expr.it with
+  | Ast.Const (Const.Integer n) -> n
+  | _ -> Error.runtime ~loc:expr.at "An integer expected but got %t." (Ast.print_expression expr)
+
+let int_to f expr =
+  let n = get_int expr in
+  f n
+
+let int_int_to f expr =
+  binary_function (fun expr1 expr2 ->
+    let n1 = get_int expr1 in
+    let n2 = get_int expr2 in
+    f n1 n2
+  ) expr
+
+let int_to_int f expr =
+  int_to (fun n -> Ast.return (add_loc ~loc:expr.at (Ast.Const (Const.Integer (f n))))) expr
+
+let int_int_to_int f expr =
+  int_int_to (fun n1 n2 -> Ast.return (add_loc ~loc:expr.at (Ast.Const (Const.Integer (f n1 n2))))) expr
+let int_int_to_bool f expr =
+  int_int_to (fun n1 n2 -> Ast.return (add_loc ~loc:expr.at (Ast.Const (Const.Boolean (f n1 n2))))) expr
+
+let functions = [
+    ("(=)", int_int_to_bool (=));
+    ("(<)", int_int_to_bool (<));
+    ("(~-)", int_to_int (~-));
+    ("(+)", int_int_to_int (+));
+    ("(*)", int_int_to_int ( * ));
+    ("(-)", int_int_to_int (-));
+    ("(mod)", int_int_to_int (mod));
+    ("(/)", int_int_to_int (/))
+] 
+
+let constants = [
+    ("infinity", " float");
+    ("neg_infinity", " float");
+    ("nan", " float");
+]
+

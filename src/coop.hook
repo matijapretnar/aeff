@@ -1,0 +1,10 @@
+operation stop
+operation go
+
+let rec preempt () =
+  with stop _ ->
+    with go _ -> () as y in match y with () -> preempt ()
+  as _ in ()
+
+do
+  preempt (); 1 + 1 + 1 + 1 + 1
