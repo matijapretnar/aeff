@@ -280,9 +280,9 @@ let desugar_command state = function
       let state' = add_fresh_variables state vars in
       let comp = desugar_computation state' term in
       state', Ast.TopLet (pat', comp)
-  | Syntax.TopDo term ->
-      let comp = desugar_computation state term in
-      state, Ast.TopDo comp
+  | Syntax.TopDo terms ->
+      let comps = List.map (desugar_computation state) terms in
+      state, Ast.TopDo comps
   | Syntax.TopLetRec (f, term) ->
       let state', pat, comp = desugar_let_rec_def state (f, term) in
       state', Ast.TopLet (pat, comp)

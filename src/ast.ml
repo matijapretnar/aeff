@@ -114,7 +114,7 @@ type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
   | Operation of variable * operation
   | TopLet of pattern * computation
-  | TopDo of computation
+  | TopDo of computation list
 
 
 let rec print_pattern ?max_level p ppf =
@@ -158,6 +158,10 @@ and print_computation ?max_level c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
   match c with
   | Return e -> print ~at_level:1 "return %t" (print_expression ~max_level:0 e)
+  | Do (c1, (PNonbinding, c2)) ->
+      print "@[<hov>%t;@ %t@]"
+        (print_computation c1)
+        (print_computation c2)
   | Do (c1, (pat, c2)) ->
       print "@[<hov>do@[<hov>@ %t ←@ %t@] in@ %t@]"
         (print_pattern pat)

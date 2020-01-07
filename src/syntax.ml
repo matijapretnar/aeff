@@ -21,6 +21,7 @@ type ty_param = string
 type ty = plain_ty located
 
 and plain_ty =
+  | TyConst of Const.ty
   | TyApply of ty_name * ty list  (** [(ty1, ty2, ..., tyn) type_name] *)
   | TyParam of ty_param  (** ['a] *)
   | TyArrow of ty * ty  (** [ty1 -> ty2] *)
@@ -84,5 +85,5 @@ type command =
       (** [let p = t] *)
   | TopLetRec of variable * term
       (** [let rec f = t] *)
-  | TopDo of term
-      (** [do t] *)
+  | TopDo of term list
+      (** [do t1 and ... and tn] *)

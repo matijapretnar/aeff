@@ -62,7 +62,7 @@ command:
     { let (p, t) = def in TopLet (p, t) }
   | LET REC def = let_rec_def
     { let (f, t) = def in TopLetRec (f, t) }
-  | DO trm = term
+  | DO trm = separated_nonempty_list(AND, term)
     { TopDo trm }
   | OPERATION op = operation
     { Operation op }

@@ -5,18 +5,6 @@ let parse_commands lexbuf =
     | Failure failmsg when failmsg = "lexing: empty token" ->
         Error.syntax ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "unrecognised symbol."
 
-let rec incoming_operation () =
-    let str = print_string "OP? "; read_line () in
-    let lexbuf = Lexing.from_string str in
-    try Parser.incoming_operation Lexer.token lexbuf with
-    | Parser.Error ->
-        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
-        incoming_operation ())
-    | Failure failmsg when failmsg = "lexing: empty token" ->
-        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
-        incoming_operation ())
-
-
 type state = {
     desugarer : Desugarer.state;
     interpreter : Interpreter.state;
@@ -34,6 +22,26 @@ let initial_state () =
     }
     |> fun state -> Utils.fold load_function state BuiltIn.functions
 
+let rec incoming_operation state =
+    let str = print_string "OP? "; read_line () in
+    let lexbuf = Lexing.from_string str in
+    try
+        match
+            Parser.incoming_operation Lexer.token lexbuf
+        with
+        | None -> None
+        | Some (op, term) ->
+            let op' = Desugarer.lookup_operation ~loc:term.at state.desugarer op in
+            let comp' = Desugarer.desugar_computation state.desugarer term in
+            Some (op', comp')
+    with
+    | Parser.Error ->
+        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
+        incoming_operation state)
+    | Failure failmsg when failmsg = "lexing: empty token" ->
+        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
+        incoming_operation state)
+
 let rec run state comp =
     Format.printf "%t@." (Ast.print_computation comp);
     try
@@ -44,13 +52,11 @@ let rec run state comp =
             Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
             run state (Interpreter.step state.interpreter comp)
         | comp ->
-            begin match incoming_operation () with
-            | Some (op, term) ->
-                let op' = Desugarer.lookup_operation ~loc:term.at state.desugarer op in
-                let comp' = Desugarer.desugar_computation state.desugarer term in
+            begin match incoming_operation state with
+            | Some (op, comp') ->
                 let expr = Interpreter.eval_expr state.interpreter comp' in
-                Format.printf "  ~~[↓%t %t]~~>@." (Ast.Operation.print op') (Ast.print_expression expr);
-                run state (Ast.In (op', expr, comp))
+                Format.printf "  ~~[↓%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
+                run state (Ast.In (op, expr, comp))
             | None ->
                 Format.printf "  ~~>@.";
                 run state (Interpreter.step state.interpreter comp)
@@ -60,19 +66,42 @@ let rec run state comp =
             Format.printf "STUCK! @.";
             run state comp
 
+let rec run2 state comp1 comp2 =
+    Format.printf "@[<hv>%t@ |||@ %t@]@." (Ast.print_computation comp1) (Ast.print_computation comp2);
+    try
+        match comp1, comp2 with
+        | Ast.Return expr1, Ast.Return expr2 ->
+            Format.printf "FINAL VALUES: %t ||| %t@." (Ast.print_expression expr1) (Ast.print_expression expr2)
+        | Ast.Out (op, expr, comp1), comp2 ->
+            Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
+            run2 state comp1 (Ast.In (op, expr, comp2))
+        | comp1, Ast.Out (op, expr, comp2) ->
+            Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
+            run2 state (Ast.In (op, expr, comp1)) comp2
+        | comp1, comp2 ->
+            let _ = read_line () in
+            Format.printf "  ~~>@.";
+            let comp1', comp2' = Interpreter.step2 state.interpreter comp1 comp2 in
+            run2 state comp1' comp2'
+    with
+        Interpreter.Stuck ->
+            Format.printf "STUCK! @.";
+            run2 state comp1 comp2
+
 
 let execute_command state = function
 | Ast.TyDef _ -> state
 | Ast.TopLet (pat, comp) ->
     let interpreter_state' = Interpreter.eval_top_let state.interpreter pat comp in
-    Format.printf "val %t@." (Ast.print_pattern pat);
     {state with interpreter = interpreter_state'}
-| Ast.TopDo comp ->
+| Ast.TopDo [comp] ->
     run state comp;
+    state
+| Ast.TopDo [comp1; comp2] ->
+    run2 state comp1 comp2;
     state
 | Ast.Operation (x, op) ->
     let interpreter_state' = Interpreter.add_operation x op state.interpreter in
-    Format.printf "operation %t@." (Ast.Operation.print op);
     {state with interpreter = interpreter_state'}
 
 let main () =

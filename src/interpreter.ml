@@ -10,8 +10,7 @@ let initial_state =
     builtin_functions = Ast.VariableMap.empty;
   }
 
-
-exception PatternMatchFailed
+exception Stuck
 
 let rec eval_tuple state = function
     | Ast.Tuple exprs -> exprs
@@ -47,11 +46,11 @@ let rec match_pattern_with_expression state pat expr =
             Ast.VariableMap.empty
         | Some pat, (label', Some expr) when label = label' ->
             match_pattern_with_expression state pat expr
-        | _, _ -> raise PatternMatchFailed
+        | _, _ -> raise Stuck
         end
     | Ast.PConst c when Const.equal c (eval_const state expr) -> Ast.VariableMap.empty
     | Ast.PNonbinding ->  Ast.VariableMap.empty
-    | _ -> raise PatternMatchFailed
+    | _ -> raise Stuck
 
 let rec eval_function state = function
     | Ast.Lambda (pat, comp) ->
@@ -71,8 +70,6 @@ let rec eval_function state = function
         | None -> Ast.VariableMap.find x state.builtin_functions
         end
     | expr -> Error.runtime "Function expected but got %t" (Ast.print_expression expr)
-
-exception Stuck
 
 let rec step state comp =
     try
@@ -98,8 +95,8 @@ and step_plain state = function
         let rec find_case = function
         | (pat, comp) :: cases ->
             begin match match_pattern_with_expression state pat expr with
-            | subst -> (Ast.substitute_computation subst comp)
-            | exception PatternMatchFailed -> find_case cases
+            | subst -> Ast.substitute_computation subst comp
+            | exception Stuck -> find_case cases
             end
         | [] -> raise Stuck
         in
@@ -118,6 +115,9 @@ and step_plain state = function
         Ast.Do (step state comp1, cont2)
 and step_abs state (pat, comp) =
     (pat, step state comp)
+
+let step2 state comp1 comp2 =
+    try (step state comp1, comp2) with Stuck -> (comp1, step state comp2)
 
 let rec eval_expr state = function
     | Ast.Return expr -> expr
