@@ -38,19 +38,19 @@ let rec run state comp =
     Format.printf "%t@." (Ast.print_computation comp);
     try
         match comp with
-        | {it=Ast.Return expr} ->
+        | Ast.Return expr ->
             Format.printf "FINAL VALUE: %t@." (Ast.print_expression expr)
-        | {it=Ast.Out (op, expr, comp)} ->
+        | Ast.Out (op, expr, comp) ->
             Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
             run state (Interpreter.step state.interpreter comp)
         | comp ->
             begin match incoming_operation () with
             | Some (op, term) ->
-                let op' = Desugarer.lookup_operation ~loc:comp.at state.desugarer op in
+                let op' = Desugarer.lookup_operation ~loc:term.at state.desugarer op in
                 let comp' = Desugarer.desugar_computation state.desugarer term in
                 let expr = Interpreter.eval_expr state.interpreter comp' in
                 Format.printf "  ~~[↓%t %t]~~>@." (Ast.Operation.print op') (Ast.print_expression expr);
-                run state (Utils.add_loc ~loc:comp.at (Ast.In (op', expr, comp)))
+                run state (Ast.In (op', expr, comp))
             | None ->
                 Format.printf "  ~~>@.";
                 run state (Interpreter.step state.interpreter comp)

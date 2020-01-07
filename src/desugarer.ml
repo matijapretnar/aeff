@@ -62,7 +62,7 @@ and desugar_plain_ty ~loc state = function
 
 let rec desugar_pattern state {it=pat; at=loc} =
   let vars, pat' = desugar_plain_pattern ~loc state pat in
-  vars, add_loc ~loc pat'
+  vars, pat'
 and desugar_plain_pattern ~loc state = function
   | S.PVar x ->
       let x' = Ast.Variable.fresh x in
@@ -105,7 +105,7 @@ let add_operation state op =
 
 let rec desugar_expression state {it= term; at= loc} =
   let binds, expr = desugar_plain_expression ~loc state term in
-  binds, add_loc ~loc expr
+  binds, expr
 and desugar_plain_expression ~loc state = function
   | S.Var x ->
       let x' = lookup_variable ~loc state x in
@@ -123,8 +123,8 @@ and desugar_plain_expression ~loc state = function
       let cases' = List.map (desugar_abstraction state) cases in
       ( []
       , Ast.Lambda
-          ( add_loc ~loc (Ast.PVar x)
-          , add_loc ~loc (Ast.Match (add_loc ~loc (Ast.Var x), cases')) )
+          ( Ast.PVar x
+          , Ast.Match (Ast.Var x, cases') )
       )
   | S.Tuple ts ->
       let binds, es = desugar_expressions state ts in
@@ -140,16 +140,16 @@ and desugar_plain_expression ~loc state = function
     | S.Conditional _ | S.Hook _ as term ->
       let x = Ast.Variable.fresh "bind" in
       let comp = desugar_computation state (add_loc ~loc term) in
-      let hoist = (add_loc ~loc (Ast.PVar x), comp) in
+      let hoist = (Ast.PVar x, comp) in
       ([hoist], Ast.Var x)
 
 and desugar_computation state {it= term; at= loc} =
   let binds, comp = desugar_plain_computation ~loc state term in
-  List.fold_right (fun (p, c1) c2 -> add_loc ~loc (Ast.Do (c1, (p, c2)))) binds (add_loc ~loc comp)
+  List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds comp
 and desugar_plain_computation ~loc state =
   let if_then_else e c1 c2 =
-    let true_p = add_loc ~loc:c1.at (Ast.PConst Const.of_true) in
-    let false_p = add_loc ~loc: c2.at (Ast.PConst Const.of_false) in
+    let true_p = Ast.PConst Const.of_true in
+    let false_p = Ast.PConst Const.of_false in
     Ast.Match (e, [(true_p, c1); (false_p, c2)])
   in
 function
@@ -158,13 +158,13 @@ function
         , {it= S.Tuple [t1; t2]}) ->
         let binds1, e1 = desugar_expression state t1 in
         let c1 = desugar_computation state t2 in
-        let c2 = Ast.return (Ast.boolean ~loc false) in
+        let c2 = Ast.Return (Ast.Const (Const.Boolean false)) in
         (binds1, if_then_else e1 c1 c2)
     | S.Apply
         ( {it= S.Var "(||)"}
         , {it= S.Tuple [t1; t2]}) ->
         let binds1, e1 = desugar_expression state t1 in
-        let c1 = Ast.return (Ast.boolean ~loc true) in
+        let c1 = Ast.Return (Ast.Const (Const.Boolean true)) in
         let c2 = desugar_computation state t2 in
         (binds1, if_then_else e1 c1 c2)
     | S.Apply (t1, t2) ->
@@ -215,14 +215,14 @@ and desugar_let_rec_def state (f, {it= exp; at= loc}) =
     | S.Function cs ->
         let x = Ast.Variable.fresh "$let_rec_function" in
         let cs = List.map (desugar_abstraction state') cs in
-        let new_match = Ast.Match (add_loc ~loc (Ast.Var x), cs) in
-        (add_loc ~loc (Ast.PVar x), add_loc ~loc new_match)
+        let new_match = Ast.Match (Ast.Var x, cs) in
+        (Ast.PVar x, new_match)
     | _ ->
         Error.syntax ~loc
           "This kind of expression is not allowed in a recursive definition"
   in
-  let pat = add_loc ~loc (Ast.PVar f')
-  and comp = Ast.return (add_loc ~loc (Ast.RecLambda (f', abs'))) in
+  let pat = Ast.PVar f'
+  and comp = Ast.Return (Ast.RecLambda (f', abs')) in
   state', pat, comp
 
 and desugar_expressions state = function

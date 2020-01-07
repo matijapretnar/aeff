@@ -38,9 +38,7 @@ type operation = Operation.t
 let nil_label = Label.fresh Syntax.nil_label
 let cons_label = Label.fresh Syntax.cons_label
 
-type pattern = plain_pattern Utils.located
-
-and plain_pattern =
+type pattern =
   | PVar of variable
   | PAnnotated of pattern * ty
   | PAs of pattern * variable
@@ -49,9 +47,7 @@ and plain_pattern =
   | PConst of Const.t
   | PNonbinding
 
-type expression = plain_expression Utils.located
-
-and plain_expression =
+type expression =
   | Var of variable
   | Const of Const.t
   | Annotated of expression * ty
@@ -60,9 +56,7 @@ and plain_expression =
   | Lambda of abstraction
   | RecLambda of variable * abstraction
 
-and computation = plain_computation Utils.located
-
-and plain_computation =
+and computation =
   | Return of expression
   | Do of computation * abstraction
   | Match of expression * abstraction list
@@ -73,14 +67,9 @@ and plain_computation =
 
 and abstraction = pattern * computation
 
-let boolean ~loc b : expression = add_loc ~loc (Const (Const.Boolean b))
-let return expr = add_loc ~loc:expr.at (Return expr)
-
 module VariableMap = Map.Make(Variable)
 
-let rec remove_pattern_bound_variables subst {it=pat; at=loc} =
-  remove_plain_pattern_bound_variables subst pat
-and remove_plain_pattern_bound_variables subst = function
+let rec remove_pattern_bound_variables subst = function
   | PVar x -> VariableMap.remove x subst
   | PAnnotated (pat, _) -> remove_pattern_bound_variables subst pat
   | PAs (pat, x) ->
@@ -93,14 +82,11 @@ and remove_plain_pattern_bound_variables subst = function
   | PConst c -> subst
   | PNonbinding -> subst
 
-let rec substitute_expression subst {it=expr; at=loc} =
-  let expr' = substitute_plain_expression subst expr in
-  add_loc ~loc expr'
-and substitute_plain_expression subst = function
+let rec substitute_expression subst = function
   | Var x as expr ->
       begin match VariableMap.find_opt x subst with
       | None -> expr
-      | Some expr -> expr.it
+      | Some expr -> expr
       end
   | Const _ as expr -> expr
   | Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
@@ -108,10 +94,7 @@ and substitute_plain_expression subst = function
   | Variant (label, expr) -> Variant (label, Option.map (substitute_expression subst) expr)
   | Lambda abs -> Lambda (substitute_abstraction subst abs)
   | RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
-and substitute_computation subst {it=comp; at=loc} =
-  let comp' = substitute_plain_computation subst comp in
-  add_loc ~loc comp'
-and substitute_plain_computation subst = function
+and substitute_computation subst = function
   | Return expr -> Return (substitute_expression subst expr)
   | Do (comp, abs) -> Do (substitute_computation subst comp, substitute_abstraction subst abs)
   | Match (expr, cases) -> Match (substitute_expression subst expr, List.map (substitute_abstraction subst) cases)
@@ -136,7 +119,7 @@ type command =
 
 let rec print_pattern ?max_level p ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  match p.it with
+  match p with
   | PVar x -> print "%t" (Variable.print x)
   | PAs (p, x) ->
       print "%t as %t" (print_pattern p) (Variable.print x)
@@ -145,7 +128,7 @@ let rec print_pattern ?max_level p ppf =
   | PTuple lst -> Utils.print_tuple print_pattern lst ppf
   | PVariant (lbl, None) when lbl = nil_label -> print "[]"
   | PVariant (lbl, None) -> print "%t" (Label.print lbl)
-  | PVariant (lbl, Some {it= PTuple [v1; v2]}) when lbl = cons_label ->
+  | PVariant (lbl, Some (PTuple [v1; v2])) when lbl = cons_label ->
       print "%t::%t" (print_pattern v1) (print_pattern v2)
   | PVariant (lbl, Some p) ->
       print ~at_level:1 "%t @[<hov>%t@]"
@@ -155,14 +138,14 @@ let rec print_pattern ?max_level p ppf =
 
 let rec print_expression ?max_level e ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  match e.it with
+  match e with
   | Var x -> print "%t" (Variable.print x)
   | Const c -> print "%t" (Const.print c)
   | Annotated (t, ty) -> print_expression ?max_level t ppf
   | Tuple lst -> Utils.print_tuple print_expression lst ppf
   | Variant (lbl, None) when lbl = nil_label -> print "[]"
   | Variant (lbl, None) -> print "%t" (Label.print lbl)
-  | Variant (lbl, Some {it= Tuple [v1; v2]}) when lbl = cons_label ->
+  | Variant (lbl, Some (Tuple [v1; v2])) when lbl = cons_label ->
       print ~at_level:1 "%t::%t" (print_expression ~max_level:0 v1) (print_expression ~max_level:1 v2)
   | Variant (lbl, Some e) ->
       print ~at_level:1 "%t @[<hov>%t@]"
@@ -173,7 +156,7 @@ let rec print_expression ?max_level e ppf =
 
 and print_computation ?max_level c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  match c.it with
+  match c with
   | Return e -> print ~at_level:1 "return %t" (print_expression ~max_level:0 e)
   | Do (c1, (pat, c2)) ->
       print "@[<hov>do@[<hov>@ %t ←@ %t@] in@ %t@]"
