@@ -2,12 +2,14 @@ open Utils
 
 type state =
   { variables: Ast.expression Ast.VariableMap.t;
-    builtin_functions: (Ast.expression -> Ast.computation) Ast.VariableMap.t }
+    builtin_functions: (Ast.expression -> Ast.computation) Ast.VariableMap.t;
+    top_computations: Ast.computation list }
 
 let initial_state =
   { variables =
       Ast.VariableMap.empty;
     builtin_functions = Ast.VariableMap.empty;
+    top_computations = []
   }
 
 exception Stuck
@@ -134,3 +136,6 @@ let add_external_function x def state =
 
 let add_operation x op state =
   {state with builtin_functions = Ast.VariableMap.add x (fun expr -> Ast.Out (op, expr, Ast.Return (Ast.Tuple []))) state.builtin_functions}
+
+let top_do state comp =
+  {state with top_computations = comp :: state.top_computations}

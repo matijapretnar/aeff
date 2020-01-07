@@ -85,5 +85,5 @@ type command =
       (** [let p = t] *)
   | TopLetRec of variable * term
       (** [let rec f = t] *)
-  | TopDo of term list
-      (** [do t1 and ... and tn] *)
+  | TopDo of term
+      (** [do t] *)

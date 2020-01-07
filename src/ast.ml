@@ -114,7 +114,7 @@ type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
   | Operation of variable * operation
   | TopLet of pattern * computation
-  | TopDo of computation list
+  | TopDo of computation
 
 
 let rec print_pattern ?max_level p ppf =
@@ -184,7 +184,7 @@ and print_computation ?max_level c ppf =
         (print_expression e)
         (print_computation c)
   | Hook (op, (p1, c1), (p2, c2)) ->
-      print "@[<hv>with@[<hov> %t %t →@ %t@]@ as %t in@ %t@]"
+      print "@[<hv>with@[<hov> %t %t →@ %t@]@ as %t do@ %t@]"
         (Operation.print op)
         (print_pattern p1)
         (print_computation c1)

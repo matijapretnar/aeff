@@ -62,7 +62,7 @@ command:
     { let (p, t) = def in TopLet (p, t) }
   | LET REC def = let_rec_def
     { let (f, t) = def in TopLetRec (f, t) }
-  | DO trm = separated_nonempty_list(AND, term)
+  | DO trm = term
     { TopDo trm }
   | OPERATION op = operation
     { Operation op }
@@ -87,7 +87,7 @@ plain_term:
     { let (p, t1) = def in Let (p, t1, t2) }
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
-  | WITH op = operation p1 = pattern ARROW t1 = term AS p2 = pattern IN t2 = term
+  | WITH op = operation p1 = pattern ARROW t1 = term AS p2 = pattern DO t2 = term
     { Hook (op, (p1, t1), (p2, t2)) }
   | t1 = term SEMI t2 = term
     { Let ({it= PNonbinding; at= t1.at}, t1, t2) }

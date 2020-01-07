@@ -94,12 +94,9 @@ let execute_command state = function
 | Ast.TopLet (pat, comp) ->
     let interpreter_state' = Interpreter.eval_top_let state.interpreter pat comp in
     {state with interpreter = interpreter_state'}
-| Ast.TopDo [comp] ->
-    run state comp;
-    state
-| Ast.TopDo [comp1; comp2] ->
-    run2 state comp1 comp2;
-    state
+| Ast.TopDo comp ->
+    let interpreter_state' = Interpreter.top_do state.interpreter comp in
+    {state with interpreter = interpreter_state'}
 | Ast.Operation (x, op) ->
     let interpreter_state' = Interpreter.add_operation x op state.interpreter in
     {state with interpreter = interpreter_state'}
@@ -119,9 +116,11 @@ let main () =
                 Utils.fold_map Desugarer.desugar_command state.desugarer cmds
             in
             let state' = {state with desugarer=desugarer_state'} in
-            let _ = List.fold_left execute_command state' cmds'
+            let state'' = List.fold_left execute_command state' cmds'
             in
-            ()
+            match state''.interpreter.Interpreter.top_computations with
+            | [comp] -> run state'' comp
+            | [comp1; comp2] -> run2 state'' comp1 comp2
         with
         | Error.Error error -> Error.print error; exit 1
 

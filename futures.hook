@@ -7,7 +7,7 @@ let get_answer f =
   with answer x ->
     print "FINALLY HERE";
     Result x
-  as result in
+  as result do
   question f;
   result
 
@@ -25,7 +25,8 @@ do
   let u = (w + 1) * (match r with Result x -> x) in
   print "DONE";
   u
-and
+
+do
   print "AND NOW MY WATCH BEGINS";
   with question f ->
     print "GOT THE QUESTION";
