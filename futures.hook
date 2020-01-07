@@ -1,0 +1,39 @@
+operation question
+operation answer
+
+type 'a result = Result of 'a
+
+let get_answer f =
+  with answer x ->
+    print "FINALLY HERE";
+    Result x
+  as result in
+  question f;
+  result
+
+do
+  print "STARTING COMPUTATION";
+  print "ISSUING A REQUEST";
+  let r = get_answer (fun () -> 3 + 3) in
+  print "DOING COMPUTATION ON MY OWN";
+  let y = 1 + 1 in
+  print "DOING SOME MORE COMPUTATION ON MY OWN";
+  let z = y + y in
+  print "AND SOME MORE COMPUTATION ON MY OWN";
+  let w = y + z in
+  print "GETTING IMPATIENT";
+  let u = (w + 1) * (match r with Result x -> x) in
+  print "DONE";
+  u
+and
+  print "AND NOW MY WATCH BEGINS";
+  with question f ->
+    print "GOT THE QUESTION";
+    print "PREPARING THE RESULT";
+    let y = f () in
+    print "CHECKING SURE IT IS OKAY";
+    print "IT IS";
+    answer y;
+    print "DONE"
+  as _ in
+  print "NOT MUCH TO DO HERE"
