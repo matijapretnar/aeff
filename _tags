@@ -1,2 +1,2 @@
-true: use_menhir
+true: use_menhir, thread
 <src/**>: include

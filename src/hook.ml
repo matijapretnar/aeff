@@ -8,85 +8,21 @@ let parse_commands lexbuf =
 type state = {
     desugarer : Desugarer.state;
     interpreter : Interpreter.state;
+    runner : Runner.state
 }
 
 let initial_state () =
     let load_function state (x, def) =
         let desugarer_state', x' = Desugarer.add_external_variable x state.desugarer in
         let interpreter_state' = Interpreter.add_external_function x' def state.interpreter in
-        {desugarer = desugarer_state'; interpreter = interpreter_state'}
+        {state with desugarer = desugarer_state'; interpreter = interpreter_state'}
     in
     {
         desugarer = Desugarer.initial_state;
         interpreter = Interpreter.initial_state;
+        runner = Runner.initial_state
     }
     |> fun state -> Utils.fold load_function state BuiltIn.functions
-
-let rec incoming_operation state =
-    let str = print_string "OP? "; read_line () in
-    let lexbuf = Lexing.from_string str in
-    try
-        match
-            Parser.incoming_operation Lexer.token lexbuf
-        with
-        | None -> None
-        | Some (op, term) ->
-            let op' = Desugarer.lookup_operation ~loc:term.at state.desugarer op in
-            let comp' = Desugarer.desugar_computation state.desugarer term in
-            Some (op', comp')
-    with
-    | Parser.Error ->
-        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
-        incoming_operation state)
-    | Failure failmsg when failmsg = "lexing: empty token" ->
-        (Print.warning ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error";
-        incoming_operation state)
-
-let rec run state comp =
-    Format.printf "%t@." (Ast.print_computation comp);
-    try
-        match comp with
-        | Ast.Return expr ->
-            Format.printf "FINAL VALUE: %t@." (Ast.print_expression expr)
-        | Ast.Out (op, expr, comp) ->
-            Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
-            run state (Interpreter.step state.interpreter comp)
-        | comp ->
-            begin match incoming_operation state with
-            | Some (op, comp') ->
-                let expr = Interpreter.eval_expr state.interpreter comp' in
-                Format.printf "  ~~[↓%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
-                run state (Ast.In (op, expr, comp))
-            | None ->
-                Format.printf "  ~~>@.";
-                run state (Interpreter.step state.interpreter comp)
-            end
-    with
-        Interpreter.Stuck ->
-            Format.printf "STUCK! @.";
-            run state comp
-
-let rec run2 state comp1 comp2 =
-    Format.printf "@[<hv>%t@ |||@ %t@]@." (Ast.print_computation comp1) (Ast.print_computation comp2);
-    try
-        match comp1, comp2 with
-        | Ast.Return expr1, Ast.Return expr2 ->
-            Format.printf "FINAL VALUES: %t ||| %t@." (Ast.print_expression expr1) (Ast.print_expression expr2)
-        | Ast.Out (op, expr, comp1), comp2 ->
-            Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
-            run2 state comp1 (Ast.In (op, expr, comp2))
-        | comp1, Ast.Out (op, expr, comp2) ->
-            Format.printf "  ~~[↑%t %t]~~>@." (Ast.Operation.print op) (Ast.print_expression expr);
-            run2 state (Ast.In (op, expr, comp1)) comp2
-        | comp1, comp2 ->
-            let _ = read_line () in
-            Format.printf "  ~~>@.";
-            let comp1', comp2' = Interpreter.step2 state.interpreter comp1 comp2 in
-            run2 state comp1' comp2'
-    with
-        Interpreter.Stuck ->
-            Format.printf "STUCK! @.";
-            run2 state comp1 comp2
 
 
 let execute_command state = function
@@ -95,11 +31,59 @@ let execute_command state = function
     let interpreter_state' = Interpreter.eval_top_let state.interpreter pat comp in
     {state with interpreter = interpreter_state'}
 | Ast.TopDo comp ->
-    let interpreter_state' = Interpreter.top_do state.interpreter comp in
-    {state with interpreter = interpreter_state'}
+    let runner_state' = Runner.top_do state.runner comp in
+    {state with runner = runner_state'}
 | Ast.Operation (x, op) ->
     let interpreter_state' = Interpreter.add_operation x op state.interpreter in
     {state with interpreter = interpreter_state'}
+
+module S = Tiny_httpd
+
+let redirect basepath url =
+  S.Response.make_raw ~headers:[("Location", Format.sprintf "%s%s" basepath url)] ~code:302 ""
+
+let print_request req =
+   Format.printf "%t@." (fun ppf -> S.Request.pp_ ppf req)
+
+let run_server state =
+  let server = S.create () in
+  let basepath = Format.sprintf "http://%s:%d" (S.addr server) (S.port server) in
+  let state = ref state in
+  let view () =
+    S.Response.make_string (Ok (View.show !state.runner.Runner.top_computations))
+  in
+  S.add_path_handler ~meth:`GET server
+    "/" (fun req -> print_request req; view ());
+  S.add_path_handler ~meth:`GET server
+    "/step/%d/" (fun i req ->
+        print_request req;
+        try
+            state := {!state with runner = Runner.step_process !state.interpreter !state.runner i};
+            redirect basepath "/"
+        with
+        | Error.Error (loc, error_kind, msg) ->
+            S.Response.make (Error (500, msg))
+    );
+  S.add_path_handler ~meth:`GET server
+    "/operation/" (fun req ->
+        print_request req;
+        let params = S.Request.query req in
+        let indices = List.filter_map (fun (field, _) ->
+            int_of_string_opt field
+        ) params in
+        try
+            let lexbuf = Lexing.from_string (List.assoc "operation" params) in
+            let (op, term) = Parser.incoming_operation Lexer.token lexbuf in
+            let op' = Desugarer.lookup_operation ~loc:term.Utils.at !state.desugarer op in
+            let comp' = Desugarer.desugar_computation !state.desugarer term in
+            state := {!state with runner = Runner.incoming_operation !state.interpreter !state.runner op' comp' indices};
+            redirect basepath "/"
+        with
+        | Error.Error (loc, error_kind, msg) ->
+            S.Response.make (Error (500, msg))
+    );
+  Format.printf "listening on %s/@." basepath;
+  S.run server
 
 let main () =
     match Array.to_list Sys.argv with
@@ -118,10 +102,9 @@ let main () =
             let state' = {state with desugarer=desugarer_state'} in
             let state'' = List.fold_left execute_command state' cmds'
             in
-            match state''.interpreter.Interpreter.top_computations with
-            | [comp] -> run state'' comp
-            | [comp1; comp2] -> run2 state'' comp1 comp2
+            run_server state''
         with
         | Error.Error error -> Error.print error; exit 1
+
 
 let _ = main ()

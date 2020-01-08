@@ -39,7 +39,7 @@
 %left  INFIXOP3 STAR MOD LAND LOR LXOR
 %right INFIXOP4 LSL LSR ASR
 
-%start <(Syntax.operation * Syntax.term) option> incoming_operation
+%start <Syntax.operation * Syntax.term> incoming_operation
 %start <Syntax.command list> commands
 
 %%
@@ -69,9 +69,7 @@ command:
 
 incoming_operation:
   | op = operation trm = term EOF
-    { Some (op, trm) }
-  | EOF
-    { None }
+    { (op, trm) }
 
 (* Main syntax tree *)
 
