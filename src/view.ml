@@ -24,6 +24,10 @@ let actions comps =
       Html.(form (Format.sprintf "http://127.0.0.1:8080/step/%d/" index) [
         button (string (Format.sprintf "STEP %d" (index + 1)))
       ])
+  and random_step =
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/") [
+        button (string (Format.sprintf "STEP RANDOM"))
+      ])
   and operation =
       Html.(form "http://127.0.0.1:8080/operation/" [
         text_input "operation";
@@ -31,7 +35,7 @@ let actions comps =
         button (string "TRIGGER")
       ])
   in
-    operation :: List.mapi (fun i _ -> step i) comps
+    operation :: random_step :: List.mapi (fun i _ -> step i) comps
 
 let content comps = Html.([
     h1 (string "Computations");

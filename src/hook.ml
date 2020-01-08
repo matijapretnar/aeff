@@ -8,7 +8,7 @@ let parse_commands lexbuf =
 type state = {
     desugarer : Desugarer.state;
     interpreter : Interpreter.state;
-    runner : Runner.state
+    top_computations : Ast.computation list
 }
 
 let initial_state () =
@@ -20,7 +20,7 @@ let initial_state () =
     {
         desugarer = Desugarer.initial_state;
         interpreter = Interpreter.initial_state;
-        runner = Runner.initial_state
+        top_computations = []
     }
     |> fun state -> Utils.fold load_function state BuiltIn.functions
 
@@ -31,8 +31,7 @@ let execute_command state = function
     let interpreter_state' = Interpreter.eval_top_let state.interpreter pat comp in
     {state with interpreter = interpreter_state'}
 | Ast.TopDo comp ->
-    let runner_state' = Runner.top_do state.runner comp in
-    {state with runner = runner_state'}
+    {state with top_computations = comp :: state.top_computations}
 | Ast.Operation (x, op) ->
     let interpreter_state' = Interpreter.add_operation x op state.interpreter in
     {state with interpreter = interpreter_state'}
@@ -48,9 +47,10 @@ let print_request req =
 let run_server state =
   let server = S.create () in
   let basepath = Format.sprintf "http://%s:%d" (S.addr server) (S.port server) in
-  let state = ref state in
+  let comps = ref state.top_computations in
+  let errors = ref [] in
   let view () =
-    S.Response.make_string (Ok (View.show !state.runner.Runner.top_computations))
+    S.Response.make_string (Ok (View.show !comps))
   in
   S.add_path_handler ~meth:`GET server
     "/" (fun req -> print_request req; view ());
@@ -58,7 +58,21 @@ let run_server state =
     "/step/%d/" (fun i req ->
         print_request req;
         try
-            state := {!state with runner = Runner.step_process !state.interpreter !state.runner i};
+            (match Runner.step_process state.interpreter !comps i with
+            | Some cs -> comps := cs
+            | None -> ());
+            redirect basepath "/"
+        with
+        | Error.Error (loc, error_kind, msg) ->
+            S.Response.make (Error (500, msg))
+    );
+  S.add_path_handler ~meth:`GET server
+    "/step/random/" (fun req ->
+        print_request req;
+        try
+            (match Runner.random_step state.interpreter !comps with
+            | Some cs -> comps := cs
+            | None -> ());
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->
@@ -74,9 +88,9 @@ let run_server state =
         try
             let lexbuf = Lexing.from_string (List.assoc "operation" params) in
             let (op, term) = Parser.incoming_operation Lexer.token lexbuf in
-            let op' = Desugarer.lookup_operation ~loc:term.Utils.at !state.desugarer op in
-            let comp' = Desugarer.desugar_computation !state.desugarer term in
-            state := {!state with runner = Runner.incoming_operation !state.interpreter !state.runner op' comp' indices};
+            let op' = Desugarer.lookup_operation ~loc:term.Utils.at state.desugarer op in
+            let comp' = Desugarer.desugar_computation state.desugarer term in
+            comps := Runner.incoming_operation state.interpreter !comps op' comp' indices;
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->

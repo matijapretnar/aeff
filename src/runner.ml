@@ -1,24 +1,34 @@
-type state = {
-    top_computations: Ast.computation list
-}
+type comp_state =
+  | Out of Ast.operation * Ast.expression * Ast.computation
+  | Step of Ast.computation
+  | Stuck
 
-let initial_state = {
-    top_computations = []
-}
+let comp_state state = function
+  | Ast.Out (op, expr, comp) -> Out (op, expr, comp)
+  | comp ->
+        try Step (Interpreter.step state comp)
+        with Interpreter.Stuck -> Stuck
 
-let top_do state comp =
-  {top_computations = comp :: state.top_computations}
+let step_process state comps i =
+    let comp = List.nth comps i in
+    match comp_state state comp with
+    | Stuck -> None
+    | Step comp' ->
+        Some (List.mapi (fun j comp'' -> if i = j then comp' else comp'') comps)
+    | Out (op, expr, comp') ->
+        Some (List.mapi (fun j comp'' -> if i = j then comp' else In (op, expr, comp'')) comps)
 
-
-let step_process interpreter_state state i =
-    let comps =
-        List.mapi (fun j comp -> if i = j then Interpreter.step interpreter_state comp else comp) state.top_computations
+let random_step state comps =
+    let steps =
+        List.mapi (fun i _ -> step_process state comps i) comps
+        |> List.filter_map (fun opt_step -> opt_step)
     in
-    {top_computations=comps}
+    match steps with
+    | [] -> None
+    | _ ->
+        let n = Random.int (List.length steps) in
+        Some (List.nth steps n)
 
-let incoming_operation interpreter_state state op comp indices =
-    let expr = Interpreter.eval_expr interpreter_state comp in
-    let comps =
-        List.mapi (fun j comp -> if List.mem j indices then Ast.In (op, expr, comp) else comp) state.top_computations
-    in
-    {top_computations=comps}
+let incoming_operation state comps op comp indices =
+    let expr = Interpreter.eval_expr state comp in
+    List.mapi (fun j comp -> if List.mem j indices then Ast.In (op, expr, comp) else comp) comps
