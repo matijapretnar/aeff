@@ -41,16 +41,26 @@ module S = Tiny_httpd
 let redirect basepath url =
   S.Response.make_raw ~headers:[("Location", Format.sprintf "%s%s" basepath url)] ~code:302 ""
 
-let print_request req =
-   Format.printf "%t@." (fun ppf -> S.Request.pp_ ppf req)
+let print_request req = ()
+   (* Format.printf "%t@." (fun ppf -> S.Request.pp_ ppf req) *)
 
-let run_server state =
+
+let run_server state0 =
   let server = S.create () in
   let basepath = Format.sprintf "http://%s:%d" (S.addr server) (S.port server) in
-  let comps = ref state.top_computations in
-  let errors = ref [] in
+  let state = ref [(state0.top_computations, [])] in
+  let update_comps comps =
+    let _, errors = List.nth !state 0 in
+    state := (comps, errors) :: !state
+  and add_msg msg =
+    let comps, errors = List.nth !state 0 in
+    state := (comps, msg :: errors) :: !state
+  and both msg comps' =
+    let _, errors = List.nth !state 0 in
+    state := (comps', msg :: errors) :: !state
+  in
   let view () =
-    S.Response.make_string (Ok (View.show !comps))
+    S.Response.make_string (Ok (View.show (List.nth !state 0)))
   in
   S.add_path_handler ~meth:`GET server
     "/" (fun req -> print_request req; view ());
@@ -58,9 +68,9 @@ let run_server state =
     "/step/%d/" (fun i req ->
         print_request req;
         try
-            (match Runner.step_process state.interpreter !comps i with
-            | Some cs -> comps := cs
-            | None -> ());
+            (match Runner.step_process state0.interpreter (List.nth !state 0 |> fst) i with
+            | Some cs -> update_comps cs
+            | None -> add_msg (View.Warning (Format.sprintf "Computation %d stuck." (i + 1))));
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->
@@ -70,9 +80,22 @@ let run_server state =
     "/step/random/" (fun req ->
         print_request req;
         try
-            (match Runner.random_step state.interpreter !comps with
-            | Some cs -> comps := cs
-            | None -> ());
+            (match Runner.random_step state0.interpreter (List.nth !state 0 |> fst) with
+            | Some cs -> update_comps cs
+            | None -> add_msg (View.Warning "All computations stuck."));
+            redirect basepath "/"
+        with
+        | Error.Error (loc, error_kind, msg) ->
+            S.Response.make (Error (500, msg))
+    );
+  S.add_path_handler ~meth:`GET server
+    "/back/" (fun req ->
+        print_request req;
+        try
+            (match !state with
+            | [] -> ()
+            | [_] -> ()
+            | _ :: old_state -> state := old_state);
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->
@@ -82,15 +105,15 @@ let run_server state =
     "/operation/" (fun req ->
         print_request req;
         let params = S.Request.query req in
-        let indices = List.filter_map (fun (field, _) ->
-            int_of_string_opt field
-        ) params in
         try
-            let lexbuf = Lexing.from_string (List.assoc "operation" params) in
+            let input = List.assoc "operation" params in
+            let lexbuf = Lexing.from_string input in
             let (op, term) = Parser.incoming_operation Lexer.token lexbuf in
-            let op' = Desugarer.lookup_operation ~loc:term.Utils.at state.desugarer op in
-            let comp' = Desugarer.desugar_computation state.desugarer term in
-            comps := Runner.incoming_operation state.interpreter !comps op' comp' indices;
+            let op' = Desugarer.lookup_operation ~loc:term.Utils.at state0.desugarer op in
+            let comp' = Desugarer.desugar_computation state0.desugarer term in
+            both
+                (View.Info (Format.sprintf "Incoming operation %s" input))
+                (Runner.incoming_operation state0.interpreter (List.nth !state 0 |> fst) op' comp');
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->

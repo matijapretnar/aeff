@@ -1,13 +1,17 @@
 module Html = Cow.Html
 
+type message =
+  | Info of string
+  | Warning of string
+
 let computation comp =
     Ast.print_computation comp Format.str_formatter ;
     let str = Format.flush_str_formatter () in
-    Html.(pre (string str))
+    Html.(li (pre ~attrs:[("style", "background: #ddd")] (string str)))
 
 let form url nodes =
   Html.(
-    tag "form" ~attrs:[("action", url); ("method", "GET")] (list nodes)
+    tag "form" ~attrs:[("action", url); ("method", "GET"); ("style", "display: inline")] (list nodes)
   )
 
 let button node =
@@ -19,6 +23,13 @@ let text_input name =
 let checkbox name =
   Html.input ~attrs:[("type", "checkbox"); ("name", name)] ""
 
+let message msg =
+  Html.(
+    match msg with
+    | Info msg -> li (string msg)
+    | Warning msg -> li (span ~attrs:[("style", "color: red")] (string msg))
+  )
+
 let actions comps =
   let step index =
       Html.(form (Format.sprintf "http://127.0.0.1:8080/step/%d/" index) [
@@ -28,22 +39,32 @@ let actions comps =
       Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/") [
         button (string (Format.sprintf "STEP RANDOM"))
       ])
+  and only_step =
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/") [
+        button (string (Format.sprintf "STEP"))
+      ])
+  and back =
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/back/") [
+        button (string (Format.sprintf "BACK"))
+      ])
   and operation =
       Html.(form "http://127.0.0.1:8080/operation/" [
         text_input "operation";
-        list (List.mapi (fun i _ -> checkbox (string_of_int i)) comps);
         button (string "TRIGGER")
       ])
   in
-    operation :: random_step :: List.mapi (fun i _ -> step i) comps
+    match comps with
+    | [_] -> back :: only_step :: operation :: []
+    | _ -> back :: List.mapi (fun i _ -> step i) comps @ random_step :: operation :: []
 
-let content comps = Html.([
+let content comps msgs = Html.([
     h1 (string "Computations");
     list (actions comps);
     ol (List.map computation comps)
+    (* ol (List.map message msgs) *)
 ])
 
-let show comps =
+let show (comps, msgs) =
   Html.to_string (Html.(
     html (list [
       head (list [
@@ -60,6 +81,6 @@ let show comps =
              []
       ]);
 
-      body (list (content comps))
+      body (list (content comps msgs))
     ])
   ))

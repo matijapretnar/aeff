@@ -35,6 +35,5 @@ let functions = [
     ("(*)", int_int_to_int ( * ));
     ("(-)", int_int_to_int (-));
     ("(mod)", int_int_to_int (mod));
-    ("(/)", int_int_to_int (/));
-    ("print", fun expr -> Format.printf "%t" (Ast.print_expression expr); Ast.Return (Ast.Tuple []))
+    ("(/)", int_int_to_int (/))
 ] 

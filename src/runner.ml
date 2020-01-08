@@ -29,6 +29,6 @@ let random_step state comps =
         let n = Random.int (List.length steps) in
         Some (List.nth steps n)
 
-let incoming_operation state comps op comp indices =
+let incoming_operation state comps op comp =
     let expr = Interpreter.eval_expr state comp in
-    List.mapi (fun j comp -> if List.mem j indices then Ast.In (op, expr, comp) else comp) comps
+    List.map (fun comp -> Ast.In (op, expr, comp)) comps

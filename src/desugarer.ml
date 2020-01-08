@@ -119,7 +119,7 @@ and desugar_plain_expression ~loc state = function
       let a' = desugar_abstraction state a in
       ([], Ast.Lambda a')
   | S.Function cases ->
-      let x = Ast.Variable.fresh "function_arg" in
+      let x = Ast.Variable.fresh "arg" in
       let cases' = List.map (desugar_abstraction state) cases in
       ( []
       , Ast.Lambda
@@ -138,7 +138,7 @@ and desugar_plain_expression ~loc state = function
       (binds, Ast.Variant (lbl', Some expr))
   | S.Apply _ | S.Match _ | S.Let _ | S.LetRec _
     | S.Conditional _ | S.Hook _ as term ->
-      let x = Ast.Variable.fresh "bind" in
+      let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
       ([hoist], Ast.Var x)
@@ -213,7 +213,7 @@ and desugar_let_rec_def state (f, {it= exp; at= loc}) =
     match exp with
     | S.Lambda a -> desugar_abstraction state' a
     | S.Function cs ->
-        let x = Ast.Variable.fresh "$let_rec_function" in
+        let x = Ast.Variable.fresh "rf" in
         let cs = List.map (desugar_abstraction state') cs in
         let new_match = Ast.Match (Ast.Var x, cs) in
         (Ast.PVar x, new_match)
