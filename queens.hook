@@ -64,4 +64,4 @@ let queens_all number_of_queens =
   place (1, [])
 
 do
-  (queens_one_option 4)
+  (map (fun x -> x + 1) [1; 2; 3])

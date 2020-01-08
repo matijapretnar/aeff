@@ -1,0 +1,29 @@
+operation tick
+operation tock
+
+let rec preempt () =
+  with tick _ ->
+    with tock _ -> () as y do match y with () -> preempt ()
+  as _
+  do ()
+
+let rec preempt' () =
+  with tock _ ->
+    with tick _ -> () as y do match y with () -> preempt ()
+  as _
+  do ()
+
+let rec ticktock () =
+  tick ();
+  tock ();
+  ticktock ()
+
+
+do
+  preempt (); 1 + 1 + 1 + 1 + 1
+
+do
+  preempt' (); 1 + 1 + 1 + 1 + 1
+
+do
+  ticktock ()
