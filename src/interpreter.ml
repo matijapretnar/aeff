@@ -79,17 +79,18 @@ let rec step state comp =
 and step_plain state = function
     | Ast.Return _ -> raise Stuck
     | Ast.Out _ -> raise Stuck
-    | Ast.Hook (op, hook, (pat, Ast.Out (op', expr', cont'))) ->
-        Ast.Out (op', expr', Ast.Hook (op, hook, (pat, cont')))
-    | Ast.Hook (op, hook, abs) -> Ast.Hook (op, hook, step_abs state abs)
+    | Ast.Hook (op, hook, p, Ast.Out (op', expr', cont')) ->
+        Ast.Out (op', expr', Ast.Hook (op, hook, p, cont'))
+    | Ast.Hook (op, hook, p, comp) -> Ast.Hook (op, hook, p, step state comp)
     | Ast.In (_, _, Ast.Return expr) -> Ast.Return expr
     | Ast.In (op, expr, Ast.Out (op', expr', cont')) ->
         Ast.Out (op', expr', Ast.In(op, expr, cont'))
-    | Ast.In (op, expr, Ast.Hook (op', (arg_pat, hook), (pat, cont))) when op = op' ->
+    | Ast.In (op, expr, Ast.Hook (op', (arg_pat, hook), p, comp)) when op = op' ->
         let subst = match_pattern_with_expression state arg_pat expr in
-        Ast.Do (Ast.substitute_computation subst hook, (pat, Ast.In (op, expr, cont)))
-    | Ast.In (op, expr, Ast.Hook (op', hook, (pat, cont))) ->
-        Ast.Hook (op', hook, (pat, Ast.In (op, expr, cont)))
+        let y = Ast.Variable.fresh "y" in
+        Ast.Do (Ast.substitute_computation subst hook, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Fulfill (Ast.Var y)), (Ast.PVar p, Ast.In (op, expr, comp)))))
+    | Ast.In (op, expr, Ast.Hook (op', hook, p, comp)) ->
+        Ast.Hook (op', hook, p, Ast.In (op, expr, comp))
     | Ast.In (op, expr, comp) -> Ast.In (op, expr, step state comp)
     | Ast.Match (expr, cases) ->
         let rec find_case = function
@@ -109,10 +110,17 @@ and step_plain state = function
         Ast.substitute_computation subst comp
     | Ast.Do (Ast.Out (op, expr, comp1), comp2) ->
         Ast.Out (op, expr, Ast.Do (comp1, comp2))
-    | Ast.Do (Ast.Hook (op, hook, (pat, comp1)), comp2) ->
-        Ast.Hook (op, hook, (pat, Ast.Do (comp1, comp2)))
+    | Ast.Do (Ast.Hook (op, hook, pat, comp1), comp2) ->
+        Ast.Hook (op, hook, pat, Ast.Do (comp1, comp2))
     | Ast.Do (comp1, cont2) ->
         Ast.Do (step state comp1, cont2)
+    | Ast.Await (expr, (pat, comp)) ->
+        begin match expr with
+        | Ast.Fulfill expr ->
+            let subst = match_pattern_with_expression state pat expr in
+            Ast.substitute_computation subst comp
+        | _ -> raise Stuck
+        end
 and step_abs state (pat, comp) =
     (pat, step state comp)
 

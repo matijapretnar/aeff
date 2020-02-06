@@ -3,6 +3,7 @@
 
   let reserved = Utils.StringMap.of_seq @@ List.to_seq [
     ("and", AND);
+    ("await", AWAIT);
     ("as", AS);
     ("asr", ASR);
     ("begin", BEGIN);
@@ -25,10 +26,12 @@
     ("of", OF);
     ("or", OR);
     ("operation", OPERATION);
+    ("promise", PROMISE);
     ("rec", REC);
     ("then", THEN);
     ("true", BOOL true);
     ("type", TYPE);
+    ("until", UNTIL);
     ("with", WITH)
   ]
 

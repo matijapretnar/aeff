@@ -55,6 +55,7 @@ type expression =
   | Variant of label * expression option
   | Lambda of abstraction
   | RecLambda of variable * abstraction
+  | Fulfill of expression
 
 and computation =
   | Return of expression
@@ -63,7 +64,8 @@ and computation =
   | Apply of expression * expression
   | Out of operation * expression * computation
   | In of operation * expression * computation
-  | Hook of operation * abstraction * abstraction
+  | Hook of operation * abstraction * variable * computation
+  | Await of expression * abstraction
 
 and abstraction = pattern * computation
 
@@ -94,6 +96,7 @@ let rec substitute_expression subst = function
   | Variant (label, expr) -> Variant (label, Option.map (substitute_expression subst) expr)
   | Lambda abs -> Lambda (substitute_abstraction subst abs)
   | RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
+  | Fulfill expr -> Fulfill (substitute_expression subst expr)
 and substitute_computation subst = function
   | Return expr -> Return (substitute_expression subst expr)
   | Do (comp, abs) -> Do (substitute_computation subst comp, substitute_abstraction subst abs)
@@ -101,7 +104,10 @@ and substitute_computation subst = function
   | Apply (expr1, expr2) -> Apply (substitute_expression subst expr1, substitute_expression subst expr2)
   | Out (op, expr, comp) -> Out (op, substitute_expression subst expr, substitute_computation subst comp)
   | In (op, expr, comp) -> In (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Hook (op, abs1, abs2) -> Hook (op, substitute_abstraction subst abs1, substitute_abstraction subst abs2)
+  | Hook (op, abs, p, comp) ->
+      let subst' = remove_pattern_bound_variables subst (PVar p) in
+      Hook (op, substitute_abstraction subst abs, p, substitute_computation subst' comp)
+  | Await (expr, abs) -> Await (substitute_expression subst expr, substitute_abstraction subst abs)
 and substitute_abstraction subst (pat, comp) =
   let subst' = remove_pattern_bound_variables subst pat in
   (pat, substitute_computation subst' comp)
@@ -153,6 +159,7 @@ let rec print_expression ?max_level e ppf =
         (print_expression ~max_level:0 e)
   | Lambda a -> print ~at_level:2 "fun %t" (print_abstraction a)
   | RecLambda (f, a) -> print ~at_level:2 "rec %t ..." (Variable.print f)
+  | Fulfill expr -> print "<%t>" (print_expression expr)
 
 and print_computation ?max_level c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
@@ -183,13 +190,18 @@ and print_computation ?max_level c ppf =
         (Operation.print op)
         (print_expression e)
         (print_computation c)
-  | Hook (op, (p1, c1), (p2, c2)) ->
-      print "@[<hv>with@[<hov> %t %t →@ %t@]@ as %t do@ %t@]"
+  | Hook (op, (p1, c1), p2, c2) ->
+      print "@[<hv>promise@[<hov> %t %t →@ %t@]@ as %t in@ %t@]"
         (Operation.print op)
         (print_pattern p1)
         (print_computation c1)
-        (print_pattern p2)
+        (Variable.print p2)
         (print_computation c2)
+  | Await (e, (p, c)) ->
+      print "@[<hov>await@[<hov>@ %t until@ %t@] in@ %t@]"
+        (print_expression e)
+        (print_pattern p)
+        (print_computation c)
 
 and print_abstraction (p, c) ppf =
   Format.fprintf ppf "%t → %t" (print_pattern p) (print_computation c)

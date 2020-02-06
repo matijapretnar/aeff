@@ -137,7 +137,7 @@ and desugar_plain_expression ~loc state = function
       let binds, expr = desugar_expression state term in
       (binds, Ast.Variant (lbl', Some expr))
   | S.Apply _ | S.Match _ | S.Let _ | S.LetRec _
-    | S.Conditional _ | S.Hook _ as term ->
+    | S.Conditional _ | S.Hook _ | S.Await _ as term ->
       let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
@@ -191,8 +191,17 @@ function
     | S.Hook (op, abs1, abs2) ->
         let op' = lookup_operation ~loc state op in
         let abs1' = desugar_abstraction state abs1 in
-        let abs2' = desugar_abstraction state abs2 in
-        ([], Ast.Hook (op', abs1', abs2'))
+        begin match desugar_abstraction state abs2 with
+        | (Ast.PVar p, comp') -> ([], Ast.Hook (op', abs1', p, comp'))
+        | (Ast.PNonbinding, comp') ->
+            let p = Ast.Variable.fresh "_" in
+            ([], Ast.Hook (op', abs1', p, comp'))
+        | _ -> Error.syntax ~loc "Variable or underscore expected"
+        end
+    | S.Await (t, abs) ->
+        let binds, e = desugar_expression state t in
+        let abs' = desugar_abstraction state abs in
+        (binds, Ast.Await (e, abs'))
     (* The remaining cases are expressions, which we list explicitly to catch any
        future changes. *)
     | S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _

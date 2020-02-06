@@ -68,6 +68,7 @@ and plain_term =
   | Conditional of term * term * term  (** [if t then t1 else t2] *)
   | Apply of term * term  (** [t1 t2] *)
   | Hook of operation * abstraction * abstraction (** [with op p1 -> t1 as p2 in t2] *)
+  | Await of term * abstraction (** [await t1 until <p> in t2] *)
 
 and abstraction = pattern * term
 
