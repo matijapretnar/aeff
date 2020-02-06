@@ -1,12 +1,9 @@
 operation question
 operation answer
 
-type 'a result = Result of 'a
-
 let get_answer f =
-  with answer x ->
-    Result x
-  as result do
+  promise answer x -> x
+  as result in
   question f;
   result
 
@@ -15,12 +12,12 @@ do
   let y = 1 + 1 in
   let z = y + y in
   let w = y + z in
-  let u = (w + 1) * (match r with Result x -> x) in
+  let u = (w + 1) * (await r until x in x) in
   u
 
 do
-  with question f ->
+  promise question f ->
     let y = f () in
     answer y
-  as _ do
+  as _ in
   ()

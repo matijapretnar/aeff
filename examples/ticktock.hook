@@ -1,0 +1,10 @@
+operation tick
+operation tock
+
+let rec ticktock () =
+  tick ();
+  tock ();
+  ticktock ()
+
+do
+  ticktock ()
