@@ -1,44 +1,45 @@
 operation call
 operation result
-operation cancel
-operation resume
 
-let callWith x =
+let awaitValue p =
+    await p until value in value
+
+let naiveCallWith x =
     call x;
-    promise result y -> y as rp in
-    fun () -> await rp until r in r
+    promise result y -> y as p in
+    fun () -> awaitValue p
+
+let callWith =
+    let callCounter = ref 0 in
+    fun x ->
+        let callNo = !callCounter in
+        call (x, callNo);
+        callCounter := callNo + 1;
+        let rec awaitLoop () =
+            promise result (y, callNo') ->
+                if callNo = callNo' then
+                    y
+                else
+                    awaitValue (awaitLoop ())
+            as resultPromise in resultPromise
+        in
+        let actualPromise = awaitLoop () in
+        fun () -> awaitValue actualPromise
 
 let remote f =
     let rec loop () =
-        promise call x ->
+        promise call (x, callNo) ->
             let y = f x in
-            result y;
-            loop ()
-        as _ in ()
-    in
-    loop ()
-
-let cancellableRemote f =
-    let rec loop () =
-        promise call x ->
-            promise cancel x ->
-                promise resume () -> () as p in
-                loop ();
-                await p until () in ()
-            as _ in
-            let y = f x in
-            result y;
+            result (y, callNo);
             loop ()
         as _ in ()
     in
     loop ()
 
 do
-    let yt = callWith 30 in
-    let z = 1 + 1 in
-    cancel ();
-    let zt = callWith 50 in
-    zt () * zt () + z + z
+    let yt = callWith 20 in
+    let zt = callWith 30 in
+    yt () * yt () + zt () * zt ()
 
 do
-    cancellableRemote (fun x -> 10 * (20 * (30 * x)))
+    remote (fun x -> 10 * (20 * (30 * x)))
