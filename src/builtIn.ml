@@ -34,6 +34,10 @@ let int_int_to_bool f expr =
 let functions = [
     ("(=)", int_int_to_bool (=));
     ("(<)", int_int_to_bool (<));
+    ("(>)", int_int_to_bool (>));
+    ("(<=)", int_int_to_bool (<=));
+    ("(>=)", int_int_to_bool (>=));
+    ("(<>)", int_int_to_bool (<>));
     ("(~-)", int_to_int (~-));
     ("(+)", int_int_to_int (+));
     ("(*)", int_int_to_int ( * ));
