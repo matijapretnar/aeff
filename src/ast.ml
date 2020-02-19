@@ -56,6 +56,7 @@ type expression =
   | Lambda of abstraction
   | RecLambda of variable * abstraction
   | Fulfill of expression
+  | Reference of expression ref
 
 and computation =
   | Return of expression
@@ -97,6 +98,8 @@ let rec substitute_expression subst = function
   | Lambda abs -> Lambda (substitute_abstraction subst abs)
   | RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
   | Fulfill expr -> Fulfill (substitute_expression subst expr)
+  | Reference ref -> Reference ref
+
 and substitute_computation subst = function
   | Return expr -> Return (substitute_expression subst expr)
   | Do (comp, abs) -> Do (substitute_computation subst comp, substitute_abstraction subst abs)
@@ -160,6 +163,7 @@ let rec print_expression ?max_level e ppf =
   | Lambda a -> print ~at_level:2 "fun %t" (print_abstraction a)
   | RecLambda (f, a) -> print ~at_level:2 "rec %t ..." (Variable.print f)
   | Fulfill expr -> print "<%t>" (print_expression expr)
+  | Reference r -> print "{ contents = %t }" (print_expression !r)
 
 and print_computation ?max_level c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in

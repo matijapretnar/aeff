@@ -287,7 +287,7 @@ ident:
     { x }
   | LPAREN op = binop RPAREN
     { op }
-  | LPAREN op = PREFIXOP RPAREN
+  | LPAREN op = prefixop RPAREN
     { op }
 
 binop:
@@ -340,7 +340,7 @@ binop:
 
 %inline prefixop:
   | op = PREFIXOP
-    { op }
+    { "(" ^ op ^ ")" }
 
 cases0(case):
   | BAR? cs = separated_list(BAR, case)

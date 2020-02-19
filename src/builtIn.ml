@@ -8,6 +8,10 @@ let get_int = function
   | Ast.Const (Const.Integer n) -> n
   | expr -> raise Interpreter.Stuck
 
+let get_reference = function
+  | Ast.Reference r -> r
+  | expr -> raise Interpreter.Stuck
+
 let int_to f expr =
   let n = get_int expr in
   f n
@@ -35,5 +39,8 @@ let functions = [
     ("(*)", int_int_to_int ( * ));
     ("(-)", int_int_to_int (-));
     ("(mod)", int_int_to_int (mod));
-    ("(/)", int_int_to_int (/))
+    ("(/)", int_int_to_int (/));
+    ("ref", (fun v -> Ast.Return (Ast.Reference (ref v))));
+    ("(!)", (fun v -> let r = get_reference v in Ast.Return (!r)));
+    ("(:=)", binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple [])))
 ] 
