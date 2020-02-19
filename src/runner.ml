@@ -16,6 +16,7 @@ let step_process state comps i =
     | Step comp' ->
         Some (List.mapi (fun j comp'' -> if i = j then comp' else comp'') comps)
     | Out (op, expr, comp') ->
+        Format.printf "process %d: out %t %t@." i (Ast.Operation.print op) (Ast.print_expression expr);
         Some (List.mapi (fun j comp'' -> if i = j then comp' else In (op, expr, comp'')) comps)
 
 let random_step state comps =

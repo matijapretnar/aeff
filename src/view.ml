@@ -36,12 +36,16 @@ let actions comps =
         button (string (Format.sprintf "STEP %d" (index + 1)))
       ])
   and random_step =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/") [
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/1/") [
         button (string (Format.sprintf "STEP RANDOM"))
       ])
   and only_step =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/") [
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/1/") [
         button (string (Format.sprintf "STEP"))
+      ])
+  and step10 =
+      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/10/") [
+        button (string (Format.sprintf "STEP 10"))
       ])
   and back =
       Html.(form (Format.sprintf "http://127.0.0.1:8080/back/") [
@@ -54,8 +58,8 @@ let actions comps =
       ])
   in
     match comps with
-    | [_] -> back :: only_step :: operation :: []
-    | _ -> back :: List.mapi (fun i _ -> step i) comps @ random_step :: operation :: []
+    | [_] -> back :: only_step :: step10 :: operation :: []
+    | _ -> back :: List.mapi (fun i _ -> step i) comps @ random_step :: step10 :: operation :: []
 
 let content comps msgs = Html.([
     h1 (string "Computations");

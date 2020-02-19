@@ -54,7 +54,8 @@ let run_server state0 =
     state := (comps, errors) :: !state
   and add_msg msg =
     let comps, errors = List.nth !state 0 in
-    state := (comps, msg :: errors) :: !state
+    print_endline msg;
+    state := (comps, (View.Warning msg) :: errors) :: !state
   and both msg comps' =
     let _, errors = List.nth !state 0 in
     state := (comps', msg :: errors) :: !state
@@ -70,19 +71,21 @@ let run_server state0 =
         try
             (match Runner.step_process state0.interpreter (List.nth !state 0 |> fst) i with
             | Some cs -> update_comps cs
-            | None -> add_msg (View.Warning (Format.sprintf "Computation %d stuck." (i + 1))));
+            | None -> add_msg (Format.sprintf "Computation %d stuck." (i + 1)));
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->
             S.Response.make (Error (500, msg))
     );
   S.add_path_handler ~meth:`GET server
-    "/step/random/" (fun req ->
+    "/step/random/%d/" (fun num_steps req ->
         print_request req;
         try
-            (match Runner.random_step state0.interpreter (List.nth !state 0 |> fst) with
-            | Some cs -> update_comps cs
-            | None -> add_msg (View.Warning "All computations stuck."));
+            for step = 1 to num_steps do
+                (match Runner.random_step state0.interpreter (List.nth !state 0 |> fst) with
+                | Some cs -> update_comps cs
+                | None -> add_msg "All computations stuck.")
+            done;
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->
