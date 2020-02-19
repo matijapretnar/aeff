@@ -1,0 +1,60 @@
+operation call
+operation result
+operation cancel
+operation dummy
+
+let awaitValue p =
+    await p until value in value
+
+let callWith =
+    let callCounter = ref 0 in
+    fun x ->
+        let callNo = !callCounter in
+        call (x, callNo);
+        callCounter := callNo + 1;
+        let rec awaitLoop () =
+            promise result (y, callNo') ->
+                if callNo = callNo' then
+                    y
+                else
+                    awaitValue (awaitLoop ())
+            as resultPromise in resultPromise
+        in
+        let actualPromise = awaitLoop () in
+        let valueThunk () = awaitValue actualPromise in
+        let cancelThunk () = cancel callNo in
+        let changeMind x = cancelThunk (); call (x, callNo) in
+        valueThunk, cancelThunk, changeMind
+
+let awaitCancel callNo wrongCallCallback =
+    promise cancel callNo' ->
+        if callNo = callNo' then
+            promise dummy () -> () as dummyPromise in
+            wrongCallCallback ();
+            awaitValue dummyPromise
+        else
+            awaitValue (awaitCancel ())
+    as _ in ()
+
+let remote f =
+    let rec loop () =
+        promise call (x, callNo) ->
+            awaitCancel callNo loop;
+            let y = f x in
+            result (y, callNo);
+            loop ()
+        as _ in ()
+    in
+    loop ()
+
+do
+    let result1, cancel1, changeMind1 = callWith 10 in
+    let result2, cancel2, changeMind2 = callWith 20 in
+    let result3, cancel3, changeMind3 = callWith 30 in
+    let a = result1 () in
+    cancel2 ();
+    changeMind3 a;
+    result3 ()
+
+do
+    remote (fun x -> 10 * (20 * (30 * x)))
