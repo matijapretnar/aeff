@@ -1,0 +1,44 @@
+operation call
+operation result
+operation cancel
+operation resume
+
+let callWith x =
+    call x;
+    promise result y -> y as rp in
+    fun () -> await rp until r in r
+
+let remote f =
+    let rec loop () =
+        promise call x ->
+            let y = f x in
+            result y;
+            loop ()
+        as _ in ()
+    in
+    loop ()
+
+let cancellableRemote f =
+    let rec loop () =
+        promise call x ->
+            promise cancel x ->
+                promise resume () -> () as p in
+                loop ();
+                await p until () in ()
+            as _ in
+            let y = f x in
+            result y;
+            loop ()
+        as _ in ()
+    in
+    loop ()
+
+do
+    let yt = callWith 30 in
+    let z = 1 + 1 in
+    cancel ();
+    let zt = callWith 50 in
+    zt () * zt () + z + z
+
+do
+    cancellableRemote (fun x -> 10 * (20 * (30 * x)))
