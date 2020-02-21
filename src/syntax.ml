@@ -69,6 +69,7 @@ and plain_term =
   | Apply of term * term  (** [t1 t2] *)
   | Hook of operation * abstraction * abstraction (** [with op p1 -> t1 as p2 in t2] *)
   | Await of term * abstraction (** [await t1 until <p> in t2] *)
+  | Fulfill of term (** [fulfill t] *)
 
 and abstraction = pattern * term
 

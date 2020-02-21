@@ -136,6 +136,9 @@ and desugar_plain_expression ~loc state = function
       let lbl' = lookup_label ~loc state lbl in
       let binds, expr = desugar_expression state term in
       (binds, Ast.Variant (lbl', Some expr))
+  | S.Fulfill term ->
+      let binds, e = desugar_expression state term in
+      (binds, Ast.Fulfill e)
   | S.Apply _ | S.Match _ | S.Let _ | S.LetRec _
     | S.Conditional _ | S.Hook _ | S.Await _ as term ->
       let x = Ast.Variable.fresh "b" in
@@ -205,7 +208,7 @@ function
     (* The remaining cases are expressions, which we list explicitly to catch any
        future changes. *)
     | S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _
-     | S.Variant _ | S.Lambda _ |S.Function _ as term ->
+     | S.Variant _ | S.Lambda _ | S.Function _ | S.Fulfill _ as term ->
         let binds, expr = desugar_expression state {it= term; at= loc} in
         (binds, Ast.Return expr)
 

@@ -11,6 +11,7 @@
     ("else", ELSE);
     ("end", END);
     ("false", BOOL false);
+    ("fulfill", FULFILL);
     ("fun", FUN);
     ("function", FUNCTION);
     ("if", IF);

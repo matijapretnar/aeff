@@ -88,7 +88,7 @@ and step_plain state = function
     | Ast.In (op, expr, Ast.Hook (op', (arg_pat, hook), p, comp)) when op = op' ->
         let subst = match_pattern_with_expression state arg_pat expr in
         let y = Ast.Variable.fresh "y" in
-        Ast.Do (Ast.substitute_computation subst hook, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Fulfill (Ast.Var y)), (Ast.PVar p, Ast.In (op, expr, comp)))))
+        Ast.Do (Ast.substitute_computation subst hook, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp)))))
     | Ast.In (op, expr, Ast.Hook (op', hook, p, comp)) ->
         Ast.Hook (op', hook, p, Ast.In (op, expr, comp))
     | Ast.In (op, expr, comp) -> Ast.In (op, expr, step state comp)

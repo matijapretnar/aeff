@@ -15,7 +15,7 @@
 %token <Syntax.label> UNAME
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
-%token MATCH WITH FUNCTION
+%token MATCH WITH FUNCTION FULFILL
 %token AWAIT UNTIL PROMISE
 %token DO LET REC AND IN OPERATION
 %token FUN BAR BARBAR
@@ -145,6 +145,10 @@ plain_prefix_term:
     {
       let op_loc = Location.of_lexeme $startpos(op) in
       Apply ({it= Var op; at= op_loc}, t)
+    }
+  | FULFILL t = simple_term
+    {
+      Fulfill t
     }
   | t = plain_simple_term
     { t }
