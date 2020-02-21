@@ -2,7 +2,7 @@
 
 Install dependencies by
 
-    opam install cow tiny_httpd
+    opam install menhir cow tiny_httpd
 
 and build by running
 
