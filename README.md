@@ -1,4 +1,4 @@
-# Hook
+# Æff
 
 Install dependencies by
 
@@ -6,11 +6,11 @@ Install dependencies by
 
 and build by running
 
-    ocamlbuild -use-ocamlfind -pkgs cow,tiny_httpd hook.byte
+    ocamlbuild -use-ocamlfind -pkgs cow,tiny_httpd aeff.byte
 
 Then, run
 
-    ./hook.byte file1.hook file2.hook ...
+    ./aeff.byte file1.aeff file2.aeff ...
 
 This loads all the commands in all the listed files and starts a local HTTP server providing the interface.
 

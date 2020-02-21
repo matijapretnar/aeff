@@ -129,8 +129,8 @@ let main () =
     match Array.to_list Sys.argv with
     | [] ->
         assert false
-    | [hook] ->
-        failwith ("Run HOOK as '" ^ Sys.argv.(0) ^ " <filename>.hook'")
+    | [aeff] ->
+        failwith ("Run AEff as '" ^ Sys.argv.(0) ^ " <filename>.aeff'")
     | _ :: filenames ->
         try
             let parse_file filename = Lexer.read_file parse_commands filename in

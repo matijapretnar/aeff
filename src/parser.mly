@@ -87,7 +87,7 @@ plain_term:
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
   | PROMISE op = operation p1 = pattern ARROW t1 = term AS p2 = pattern IN t2 = term
-    { Hook (op, (p1, t1), (p2, t2)) }
+    { Handler (op, (p1, t1), (p2, t2)) }
   | AWAIT t1 = term UNTIL p = pattern IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term

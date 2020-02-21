@@ -65,7 +65,7 @@ and computation =
   | Apply of expression * expression
   | Out of operation * expression * computation
   | In of operation * expression * computation
-  | Hook of operation * abstraction * variable * computation
+  | Handler of operation * abstraction * variable * computation
   | Await of expression * abstraction
 
 and abstraction = pattern * computation
@@ -107,9 +107,9 @@ and substitute_computation subst = function
   | Apply (expr1, expr2) -> Apply (substitute_expression subst expr1, substitute_expression subst expr2)
   | Out (op, expr, comp) -> Out (op, substitute_expression subst expr, substitute_computation subst comp)
   | In (op, expr, comp) -> In (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Hook (op, abs, p, comp) ->
+  | Handler (op, abs, p, comp) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
-      Hook (op, substitute_abstraction subst abs, p, substitute_computation subst' comp)
+      Handler (op, substitute_abstraction subst abs, p, substitute_computation subst' comp)
   | Await (expr, abs) -> Await (substitute_expression subst expr, substitute_abstraction subst abs)
 and substitute_abstraction subst (pat, comp) =
   let subst' = remove_pattern_bound_variables subst pat in
@@ -194,7 +194,7 @@ and print_computation ?max_level c ppf =
         (Operation.print op)
         (print_expression e)
         (print_computation c)
-  | Hook (op, (p1, c1), p2, c2) ->
+  | Handler (op, (p1, c1), p2, c2) ->
       print "@[<hv>promise@[<hov> %t %t →@ %t@]@ as %t in@ %t@]"
         (Operation.print op)
         (print_pattern p1)
