@@ -25,9 +25,9 @@ let client () =
                 cachedData := !cachedData @ newBatch;
                 return (fulfill ())
             as _ in
-            ()
+            return ()
         else
-            ()
+            return ()
     in
 
     let rec clientLoop batchSize =
@@ -58,7 +58,8 @@ let server batchSize =
     let rec waitForBatchSize () =
         promise batchSizeRequest () ->
             batchSizeResponse batchSize;
-            waitForBatchSize ()
+            waitForBatchSize ();
+            return (fulfill ())
         as _ in
         ()
     in
@@ -66,7 +67,8 @@ let server batchSize =
         promise request offset ->
             let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
             response payload;
-            waitForRequest ()
+            waitForRequest ();
+            return (fulfill ())
         as _ in
         ()
     in
