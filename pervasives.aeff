@@ -117,3 +117,4 @@ let snd (_, y) = y
 let awaitValue p =
     await p until value in value
   
+let return x = x

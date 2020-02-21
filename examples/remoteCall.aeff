@@ -6,7 +6,7 @@ let awaitValue p =
 
 let naiveCallWith x =
     call x;
-    promise result y -> y as p in
+    promise result y -> fulfill y as p in
     fun () -> awaitValue p
 
 let callWith =
@@ -18,13 +18,14 @@ let callWith =
         let rec awaitLoop () =
             promise result (y, callNo') ->
                 if callNo = callNo' then
-                    y
+                    fulfill y
                 else
-                    awaitValue (awaitLoop ())
+                    awaitLoop ()
             as resultPromise in resultPromise
         in
         let actualPromise = awaitLoop () in
-        fun () -> awaitValue actualPromise
+        let valueThunk () = awaitValue actualPromise in
+        valueThunk
 
 let remote f =
     let rec loop () =
@@ -32,7 +33,7 @@ let remote f =
             let y = f x in
             result (y, callNo);
             loop ()
-        as _ in ()
+        as _ in fulfill ()
     in
     loop ()
 

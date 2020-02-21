@@ -9,7 +9,7 @@ operation batchSizeResponse
 let client batchSize =
     batchSizeRequest ();
     promise batchSizeResponse batchSize ->
-        batchSize
+        return (fulfill batchSize)
     as batchSizePromise in
 
     let cachedData = ref [] in
@@ -22,7 +22,8 @@ let client batchSize =
             request (offset, limit);
             promise response newBatch ->
                 requestInProgress := false;
-                cachedData := !cachedData @ newBatch
+                cachedData := !cachedData @ newBatch;
+                return (fulfill ())
             as _ in
             ()
         else
@@ -36,7 +37,7 @@ let client batchSize =
                 if (!currentItem) > (cachedSize - batchSize / 2) then
                     requestNewData (cachedSize + 1) batchSize
                 else
-                    ()
+                    return ()
             end;
             begin
                 if (!currentItem) < cachedSize then
@@ -45,9 +46,9 @@ let client batchSize =
                 else  
                     display "wait a bit more"
             end;
-            clientLoop batchSize
+            return (fulfill (clientLoop batchSize))
         as _ in
-        ()
+        return ()
     in
 
     await batchSizePromise until batchSize in
@@ -73,13 +74,16 @@ let server batchSize =
     waitForRequest ();
     waitForBatchSize ()
 
-let user () =
+let rec user () =
+    let rec wait n =
+        if n = 0 then
+            return ()
+        else
+            wait (n - 1)
+    in
     nextItem ();
-    nextItem ();
-    nextItem ();
-    nextItem ();
-    nextItem ();
-    nextItem ()
+    wait 10;
+    user ()
 
 do
     client ()
