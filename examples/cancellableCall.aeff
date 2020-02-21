@@ -15,9 +15,9 @@ let callWith =
         let rec awaitLoop () =
             promise result (y, callNo') ->
                 if callNo = callNo' then
-                    y
+                    fulfill y
                 else
-                    awaitValue (awaitLoop ())
+                    awaitLoop ()
             as resultPromise in resultPromise
         in
         let actualPromise = awaitLoop () in
@@ -31,9 +31,10 @@ let awaitCancel callNo wrongCallCallback =
         if callNo = callNo' then
             promise dummy () -> () as dummyPromise in
             wrongCallCallback ();
-            awaitValue dummyPromise
+            awaitValue dummyPromise;
+            awaitCancel ()
         else
-            awaitValue (awaitCancel ())
+            awaitCancel ()
     as _ in ()
 
 let remote f =
