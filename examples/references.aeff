@@ -1,0 +1,79 @@
+operation to
+operation from
+
+type loc = int
+type val = int
+
+type toSig =
+  | ToLookup of loc
+  | ToUpdate of loc * int
+  | ToAssign of val
+
+type fromSig =
+  | FromLookup of int
+  | FromUpdate of unit
+  | FromAssign of loc
+
+let empty = []
+
+let rec lookupHeap ((l', v) :: heap') l =
+  if l = l' then v else lookupHeap heap' l
+
+let rec updateHeap ((l', v') :: heap') l v =
+  if l = l' then (l, v) :: heap' else (l', v') :: updateHeap heap' l v
+
+let assignHeap heap v =
+  let l = length heap in
+  (l, v) :: heap, l
+
+let rec heapRunner heap =
+    promise to (toPayload, callNo) ->
+        let heap', fromPayload =
+            match toPayload with
+            | ToLookup l ->
+                let v = lookupHeap heap l in
+                heap, FromLookup v
+            | ToUpdate (l, v) ->
+                let heap' = updateHeap heap l v in
+                heap', FromUpdate ()
+            | ToAssign v ->
+                let heap', l = assignHeap heap v in
+                heap', FromAssign l
+        in
+        from (fromPayload, callNo);
+        heapRunner heap'
+    as _ in ()
+
+let callWith =
+    let callCounter = ref 0 in
+    fun x ->
+        let callNo = !callCounter in
+        to (x, callNo);
+        callCounter := callNo + 1;
+        let rec awaitLoop () =
+            promise from (y, callNo') ->
+                if callNo = callNo' then
+                    fulfill y
+                else
+                    awaitLoop ()
+            as resultPromise in resultPromise
+        in
+        let actualPromise = awaitLoop () in
+        awaitValue actualPromise
+
+let lookup l =
+    match callWith (ToLookup l) with FromLookup v -> v
+let update l v =
+    match callWith (ToUpdate (l, v)) with FromUpdate () -> ()
+let assign v =
+    match callWith (ToAssign v) with FromAssign l -> l
+
+do
+    let l = assign 0 in
+    let l' = assign 10 in
+    update l 10;
+    update l' (lookup l + 4);
+    (lookup l, lookup l')
+
+do
+    heapRunner []
