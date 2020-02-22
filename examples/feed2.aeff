@@ -1,0 +1,91 @@
+operation request
+operation response
+operation nextItem
+operation display
+operation batchSizeRequest
+operation batchSizeResponse
+
+
+let client () =
+    batchSizeRequest ();
+    promise batchSizeResponse batchSize ->
+        return (fulfill batchSize)
+    as batchSizePromise in
+
+    let cachedData = ref [] in
+    let requestInProgress = ref false in
+    let currentItem = ref 0 in
+
+    let requestNewData offset =
+        if not !requestInProgress then
+            requestInProgress := true;
+            request offset;
+            promise response newBatch ->
+                requestInProgress := false;
+                cachedData := !cachedData @ newBatch
+            as x in
+            return x
+        else
+            return (fulfill ())
+    in
+
+    let rec clientLoop batchSize =
+        promise nextItem () ->
+            let cachedSize = length !cachedData in
+            begin
+                if (!currentItem) > (cachedSize - batchSize / 2) then
+                    requestNewData (cachedSize + 1)
+                else
+                    return ()
+            end;
+            begin
+                if (!currentItem) < cachedSize then
+                    display (nth !cachedData !currentItem);
+                    currentItem := !currentItem + 1
+                else  
+                    display "wait a bit more"
+            end;
+            clientLoop batchSize ()
+        as x in
+        return x
+    in
+
+    await batchSizePromise until batchSize in
+    clientLoop batchSize
+
+let server batchSize =
+    let rec waitForBatchSize () =
+        promise batchSizeRequest () ->
+            batchSizeResponse batchSize;
+            waitForBatchSize ()
+        as x in
+        return x
+    in
+    let rec waitForRequest () =
+        promise request offset ->
+            let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
+            response payload;
+            waitForRequest ()
+        as x in
+        return x
+    in
+    waitForBatchSize ();
+    waitForRequest ()
+
+let rec user () =
+    let rec wait n =
+        if n = 0 then
+            return ()
+        else
+            wait (n - 1)
+    in
+    nextItem ();
+    wait 10;
+    user ()
+
+do
+    client ()
+do
+    server 6
+do
+    user ()
