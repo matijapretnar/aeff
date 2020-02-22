@@ -22,8 +22,8 @@ let client () =
         promise response newBatch ->
             requestInProgress := false;
             cachedData := !cachedData @ newBatch
-        as x in
-        return x
+        as _ in
+        return ()
     in
 
     let rec clientLoop batchSize =
@@ -43,8 +43,8 @@ let client () =
                     display "wait a bit more"
             end;
             clientLoop batchSize ()
-        as x in
-        return x
+        as p in
+        return p
     in
 
     await batchSizePromise until batchSize in
@@ -63,8 +63,8 @@ let server batchSize =
             let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
             response payload;
             waitForRequest ()
-        as x in
-        return x
+        as p in
+        return p
     in
     waitForBatchSize ();
     waitForRequest ()
