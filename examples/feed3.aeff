@@ -21,7 +21,8 @@ let client () =
         request offset;
         promise response newBatch ->
             requestInProgress := false;
-            cachedData := !cachedData @ newBatch
+            cachedData := !cachedData @ newBatch;
+            return (fulfill ())
         as _ in
         return ()
     in
