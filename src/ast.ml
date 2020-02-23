@@ -85,6 +85,59 @@ let rec remove_pattern_bound_variables subst = function
   | PConst c -> subst
   | PNonbinding -> subst
 
+let rec refresh_pattern = function
+  | PVar x ->
+      let x' = Variable.refresh x in
+      PVar x', [(x, x')]
+  | PAnnotated (pat, _) -> refresh_pattern pat
+  | PAs (pat, x) ->
+      let pat', vars = refresh_pattern pat in
+      let x' = Variable.refresh x in
+      (PAs (pat', x')), (x, x') :: vars
+  | PTuple pats ->
+      let fold pat (pats', vars) =
+        let pat', vars' = refresh_pattern pat in
+        pat' :: pats', vars' @ vars
+      in
+      let pats', vars = List.fold_right fold pats ([], []) in
+      PTuple pats', vars
+  | PVariant (lbl, Some pat) ->
+      let pat', vars = refresh_pattern pat in
+      PVariant (lbl, Some pat'), vars
+  | PVariant (_, None) | PConst _ | PNonbinding as pat -> pat, []
+
+let rec refresh_expression vars = function
+  | Var x as expr ->
+      begin match List.assoc_opt x vars with
+      | None -> expr
+      | Some x' -> Var x'
+      end
+  | Const _ as expr -> expr
+  | Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
+  | Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
+  | Variant (label, expr) -> Variant (label, Option.map (refresh_expression vars) expr)
+  | Lambda abs -> Lambda (refresh_abstraction vars abs)
+  | RecLambda (x, abs) ->
+      let x' = Variable.refresh x in
+      RecLambda (x', refresh_abstraction ((x, x') :: vars) abs)
+  | Fulfill expr -> Fulfill (refresh_expression vars expr)
+  | Reference ref -> Reference ref
+
+and refresh_computation vars = function
+  | Return expr -> Return (refresh_expression vars expr)
+  | Do (comp, abs) -> Do (refresh_computation vars comp, refresh_abstraction vars abs)
+  | Match (expr, cases) -> Match (refresh_expression vars expr, List.map (refresh_abstraction vars) cases)
+  | Apply (expr1, expr2) -> Apply (refresh_expression vars expr1, refresh_expression vars expr2)
+  | Out (op, expr, comp) -> Out (op, refresh_expression vars expr, refresh_computation vars comp)
+  | In (op, expr, comp) -> In (op, refresh_expression vars expr, refresh_computation vars comp)
+  | Handler (op, abs, p, comp) ->
+      let p' = Variable.refresh p in
+      Handler (op, refresh_abstraction vars abs, p', refresh_computation ((p, p') :: vars) comp)
+  | Await (expr, abs) -> Await (refresh_expression vars expr, refresh_abstraction vars abs)
+and refresh_abstraction vars (pat, comp) =
+  let pat', vars' = refresh_pattern pat in
+  (pat', refresh_computation (vars @ vars') comp)
+
 let rec substitute_expression subst = function
   | Var x as expr ->
       begin match VariableMap.find_opt x subst with

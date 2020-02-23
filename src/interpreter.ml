@@ -52,18 +52,22 @@ let rec match_pattern_with_expression state pat expr =
     | Ast.PNonbinding ->  Ast.VariableMap.empty
     | _ -> raise Stuck
 
+let substitute subst comp =
+    let subst = Ast.VariableMap.map (Ast.refresh_expression []) subst in
+    Ast.substitute_computation subst comp
+
 let rec eval_function state = function
     | Ast.Lambda (pat, comp) ->
         fun arg ->
             let subst = match_pattern_with_expression state pat arg in
-            Ast.substitute_computation subst comp
+            substitute subst comp
     | Ast.RecLambda (f, (pat, comp)) as expr ->
         fun arg ->
             let subst =
                 match_pattern_with_expression state pat arg
                 |> Ast.VariableMap.add f expr
             in
-            Ast.substitute_computation subst comp
+            substitute subst comp
     | Ast.Var x ->
         begin match Ast.VariableMap.find_opt x state.variables with
         | Some expr -> eval_function state expr
@@ -88,7 +92,7 @@ and step_plain state = function
     | Ast.In (op, expr, Ast.Handler (op', (arg_pat, op_comp), p, comp)) when op = op' ->
         let subst = match_pattern_with_expression state arg_pat expr in
         let y = Ast.Variable.fresh "y" in
-        Ast.Do (Ast.substitute_computation subst op_comp, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp)))))
+        Ast.Do (substitute subst op_comp, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp)))))
     | Ast.In (op, expr, Ast.Handler (op', op_comp, p, comp)) ->
         Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp))
     | Ast.In (op, expr, comp) -> Ast.In (op, expr, step state comp)
@@ -96,7 +100,7 @@ and step_plain state = function
         let rec find_case = function
         | (pat, comp) :: cases ->
             begin match match_pattern_with_expression state pat expr with
-            | subst -> Ast.substitute_computation subst comp
+            | subst -> substitute subst comp
             | exception Stuck -> find_case cases
             end
         | [] -> raise Stuck
@@ -107,7 +111,7 @@ and step_plain state = function
         f expr2
     | Ast.Do (Ast.Return expr, (pat, comp)) ->
         let subst = match_pattern_with_expression state pat expr in
-        Ast.substitute_computation subst comp
+        substitute subst comp
     | Ast.Do (Ast.Out (op, expr, comp1), comp2) ->
         Ast.Out (op, expr, Ast.Do (comp1, comp2))
     | Ast.Do (Ast.Handler (op, handler, pat, comp1), comp2) ->
@@ -118,7 +122,7 @@ and step_plain state = function
         begin match expr with
         | Ast.Fulfill expr ->
             let subst = match_pattern_with_expression state pat expr in
-            Ast.substitute_computation subst comp
+            substitute subst comp
         | _ -> raise Stuck
         end
 and step_abs state (pat, comp) =

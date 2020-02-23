@@ -5,6 +5,8 @@ module type S = sig
 
   val fresh : string -> t
 
+  val refresh : t -> t
+
   val print : t -> Format.formatter -> unit
 end
 
@@ -16,6 +18,8 @@ module Make () : S = struct
   let count = ref (-1)
 
   let fresh ann = incr count ; (!count, ann)
+
+  let refresh (_, ann) = fresh ann
 
   let rec subscript i =
     let last =
