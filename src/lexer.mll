@@ -7,11 +7,9 @@
     ("as", AS);
     ("asr", ASR);
     ("begin", BEGIN);
-    ("do", DO);
     ("else", ELSE);
     ("end", END);
     ("false", BOOL false);
-    ("fulfill", FULFILL);
     ("fun", FUN);
     ("function", FUNCTION);
     ("if", IF);
@@ -29,6 +27,7 @@
     ("operation", OPERATION);
     ("promise", PROMISE);
     ("rec", REC);
+    ("run", RUN);
     ("then", THEN);
     ("true", BOOL true);
     ("type", TYPE);
@@ -101,6 +100,8 @@ rule token = parse
   | ')'                 { RPAREN }
   | '['                 { LBRACK }
   | ']'                 { RBRACK }
+  | "<<"                { LPROMISE }
+  | ">>"                { RPROMISE }
   | "::"                { CONS }
   | ':'                 { COLON }
   | ','                 { COMMA }
@@ -108,6 +109,7 @@ rule token = parse
   | "||"                { BARBAR }
   | ';'                 { SEMI }
   | "->"                { ARROW }
+  | "|->"               { MAPSTO }
   | '='                 { EQUAL }
   | '*'                 { STAR }
   | '+'                 { PLUS }

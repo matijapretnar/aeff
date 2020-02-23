@@ -3,7 +3,7 @@
   open Utils
 %}
 
-%token LPAREN RPAREN LBRACK RBRACK
+%token LPAREN RPAREN LBRACK RBRACK LPROMISE RPROMISE
 %token COLON COMMA SEMI EQUAL CONS
 %token BEGIN END
 %token <string> LNAME
@@ -15,9 +15,9 @@
 %token <Syntax.label> UNAME
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
-%token MATCH WITH FUNCTION FULFILL
-%token AWAIT UNTIL PROMISE
-%token DO LET REC AND IN OPERATION
+%token MATCH WITH FUNCTION
+%token AWAIT UNTIL PROMISE MAPSTO
+%token RUN LET REC AND IN OPERATION
 %token FUN BAR BARBAR
 %token IF THEN ELSE
 %token PLUS STAR MINUS MINUSDOT
@@ -63,7 +63,7 @@ command:
     { let (p, t) = def in TopLet (p, t) }
   | LET REC def = let_rec_def
     { let (f, t) = def in TopLetRec (f, t) }
-  | DO trm = term
+  | RUN trm = term
     { TopDo trm }
   | OPERATION op = operation
     { Operation op }
@@ -80,15 +80,15 @@ plain_term:
     { Match (t, cases) }
   | FUNCTION cases = cases(case) (* END *)
     { Function cases }
-  | FUN t = lambdas1(ARROW)
+  | FUN t = lambdas1(MAPSTO)
     { t.it }
   | LET def = let_def IN t2 = term
     { let (p, t1) = def in Let (p, t1, t2) }
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
-  | PROMISE op = operation p1 = pattern ARROW t1 = term AS p2 = pattern IN t2 = term
+  | PROMISE LPAREN op = operation p1 = pattern MAPSTO t1 = term RPAREN AS p2 = pattern IN t2 = term
     { Handler (op, (p1, t1), (p2, t2)) }
-  | AWAIT t1 = term UNTIL p = pattern IN t2 = term
+  | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term
     { Let ({it= PNonbinding; at= t1.at}, t1, t2) }
@@ -146,10 +146,6 @@ plain_prefix_term:
       let op_loc = Location.of_lexeme $startpos(op) in
       Apply ({it= Var op; at= op_loc}, t)
     }
-  | FULFILL t = simple_term
-    {
-      Fulfill t
-    }
   | t = plain_simple_term
     { t }
 
@@ -175,6 +171,10 @@ plain_simple_term:
     { Tuple [] }
   | LPAREN t = term COLON ty = ty RPAREN
     { Annotated (t, ty) }
+  | LPROMISE t = term RPROMISE
+    {
+      Fulfill t
+    }
   | LPAREN t = plain_term RPAREN
     { t }
   | BEGIN t = plain_term END
@@ -193,7 +193,7 @@ const:
     { Const.of_float f }
 
 case:
-  | p = pattern ARROW t = term
+  | p = pattern MAPSTO t = term
     { (p, t) }
 
 lambdas0(SEP):

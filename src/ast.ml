@@ -215,7 +215,7 @@ let rec print_expression ?max_level e ppf =
         (print_expression ~max_level:0 e)
   | Lambda a -> print ~at_level:2 "fun %t" (print_abstraction a)
   | RecLambda (f, a) -> print ~at_level:2 "rec %t ..." (Variable.print f)
-  | Fulfill expr -> print "<%t>" (print_expression expr)
+  | Fulfill expr -> print "⟨%t⟩" (print_expression expr)
   | Reference r -> print "{ contents = %t }" (print_expression !r)
 
 and print_computation ?max_level c ppf =
@@ -227,7 +227,7 @@ and print_computation ?max_level c ppf =
         (print_computation c1)
         (print_computation c2)
   | Do (c1, (pat, c2)) ->
-      print "@[<hov>do@[<hov>@ %t ←@ %t@] in@ %t@]"
+      print "@[<hov>let@[<hov>@ %t =@ %t@] in@ %t@]"
         (print_pattern pat)
         (print_computation c1)
         (print_computation c2)
@@ -238,30 +238,30 @@ and print_computation ?max_level c ppf =
       print ~at_level:1 "@[%t@ %t@]" (print_expression ~max_level:1 e1)
         (print_expression ~max_level:0 e2)
   | In (op, e, c) ->
-      print "↓%t(@[<hv>%t;@ %t@])"
+      print "↓%t(@[<hv>%t,@ %t@])"
         (Operation.print op)
         (print_expression e)
         (print_computation c)
   | Out (op, e, c) ->
-      print "↑%t(@[<hv>%t;@ %t@])"
+      print "↑%t(@[<hv>%t,@ %t@])"
         (Operation.print op)
         (print_expression e)
         (print_computation c)
   | Handler (op, (p1, c1), p2, c2) ->
-      print "@[<hv>promise@[<hov> %t %t →@ %t@]@ as %t in@ %t@]"
+      print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Operation.print op)
         (print_pattern p1)
         (print_computation c1)
         (Variable.print p2)
         (print_computation c2)
   | Await (e, (p, c)) ->
-      print "@[<hov>await@[<hov>@ %t until@ %t@] in@ %t@]"
+      print "@[<hov>await @[<hov>@%t until@ ⟨%t⟩@] in@ %t@]"
         (print_expression e)
         (print_pattern p)
         (print_computation c)
 
 and print_abstraction (p, c) ppf =
-  Format.fprintf ppf "%t → %t" (print_pattern p) (print_computation c)
+  Format.fprintf ppf "%t ↦ %t" (print_pattern p) (print_computation c)
 
 and let_abstraction (p, c) ppf =
   Format.fprintf ppf "%t = %t" (print_pattern p) (print_computation c)

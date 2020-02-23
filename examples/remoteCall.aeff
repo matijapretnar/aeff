@@ -1,27 +1,24 @@
 operation call
 operation result
 
-let awaitValue p =
-    await p until value in value
-
 let naiveCallWith x =
     call x;
-    promise result y -> fulfill y as p in
-    fun () -> awaitValue p
+    promise (result y |-> <<y>>) as p in
+    fun () |-> awaitValue p
 
 let callWith =
     let callCounter = ref 0 in
-    fun x ->
+    fun x |->
         let callNo = !callCounter in
         call (x, callNo);
         callCounter := callNo + 1;
         let rec awaitLoop () =
-            promise result (y, callNo') ->
+            promise (result (y, callNo') |->
                 if callNo = callNo' then
-                    fulfill y
+                    <<y>>
                 else
                     awaitLoop ()
-            as resultPromise in resultPromise
+            ) as resultPromise in resultPromise
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
@@ -29,18 +26,18 @@ let callWith =
 
 let remote f =
     let rec loop () =
-        promise call (x, callNo) ->
+        promise (call (x, callNo) |->
             let y = f x in
             result (y, callNo);
             loop ()
-        as _ in fulfill ()
+        ) as _ in <<()>>
     in
     loop ()
 
-do
+run
     let yt = callWith 20 in
     let zt = callWith 30 in
     yt () * yt () + zt () * zt ()
 
-do
-    remote (fun x -> 10 * (20 * (30 * x)))
+run
+    remote (fun x |-> 10 * (20 * (30 * x)))

@@ -3,22 +3,19 @@ operation result
 operation cancel
 operation dummy
 
-let awaitValue p =
-    await p until value in value
-
 let callWith =
     let callCounter = ref 0 in
-    fun x ->
+    fun x |->
         let callNo = !callCounter in
         call (x, callNo);
         callCounter := callNo + 1;
         let rec awaitLoop () =
-            promise result (y, callNo') ->
+            promise (result (y, callNo') |->
                 if callNo = callNo' then
-                    fulfill y
+                    <<y>>
                 else
                     awaitLoop ()
-            as resultPromise in resultPromise
+            ) as resultPromise in resultPromise
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
@@ -27,28 +24,28 @@ let callWith =
         valueThunk, cancelThunk, changeMind
 
 let awaitCancel callNo wrongCallCallback =
-    promise cancel callNo' ->
+    promise (cancel callNo' |->
         if callNo = callNo' then
-            promise dummy () -> () as dummyPromise in
+            promise (dummy () |-> ()) as dummyPromise in
             wrongCallCallback ();
             awaitValue dummyPromise;
             awaitCancel ()
         else
             awaitCancel ()
-    as _ in ()
+    ) as _ in ()
 
 let remote f =
     let rec loop () =
-        promise call (x, callNo) ->
+        promise (call (x, callNo) |->
             awaitCancel callNo loop;
             let y = f x in
             result (y, callNo);
             loop ()
-        as _ in ()
+        ) as _ in ()
     in
     loop ()
 
-do
+run
     let result1, cancel1, changeMind1 = callWith 10 in
     let result2, cancel2, changeMind2 = callWith 20 in
     let result3, cancel3, changeMind3 = callWith 30 in
@@ -57,5 +54,5 @@ do
     changeMind3 a;
     result3 ()
 
-do
-    remote (fun x -> 10 * (20 * (30 * x)))
+run
+    remote (fun x |-> 10 * (20 * (30 * x)))

@@ -2,22 +2,22 @@ operation question
 operation answer
 
 let get_answer f =
-  promise answer x -> x
+  promise (answer x |-> x)
   as result in
   question f;
   result
 
-do
-  let r = get_answer (fun () -> 3 + 3) in
+run
+  let r = get_answer (fun () |-> 3 + 3) in
   let y = 1 + 1 in
   let z = y + y in
   let w = y + z in
-  let u = (w + 1) * (await r until x in x) in
+  let u = (w + 1) * (await r until <<x>> in x) in
   u
 
-do
-  promise question f ->
+run
+  promise (question f |->
     let y = f () in
     answer y
-  as _ in
+  ) as _ in
   ()

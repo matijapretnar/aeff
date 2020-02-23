@@ -6,5 +6,5 @@ let rec ticktock () =
   tock ();
   ticktock ()
 
-do
+run
   ticktock ()
