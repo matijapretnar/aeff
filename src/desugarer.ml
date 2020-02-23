@@ -100,8 +100,7 @@ let add_fresh_variables state vars =
 
 let add_operation state op =
     let op' = Ast.Operation.fresh op in
-    let x' = Ast.Variable.fresh op in
-    op', x', {state with variables = StringMap.add op x' state.variables; operations = StringMap.add op op' state.operations}
+    op', {state with operations = StringMap.add op op' state.operations}
 
 let rec desugar_expression state {it= term; at= loc} =
   let binds, expr = desugar_plain_expression ~loc state term in
@@ -140,7 +139,7 @@ and desugar_plain_expression ~loc state = function
       let binds, e = desugar_expression state term in
       (binds, Ast.Fulfill e)
   | S.Apply _ | S.Match _ | S.Let _ | S.LetRec _
-    | S.Conditional _ | S.Handler _ | S.Await _ as term ->
+    | S.Conditional _ | S.Handler _ | S.Await _ | S.Send _ as term ->
       let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
@@ -205,6 +204,10 @@ function
         let binds, e = desugar_expression state t in
         let abs' = desugar_abstraction state abs in
         (binds, Ast.Await (e, abs'))
+    | S.Send (op, t) ->
+        let op' = lookup_operation ~loc state op in
+        let binds, e = desugar_expression state t in
+        (binds, Ast.Out (op', e, Ast.Return (Ast.Tuple [])))
     (* The remaining cases are expressions, which we list explicitly to catch any
        future changes. *)
     | S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _
@@ -299,8 +302,8 @@ let desugar_command state = function
       let state', pat, comp = desugar_let_rec_def state (f, term) in
       state', Ast.TopLet (pat, comp)
   | Syntax.Operation op ->
-      let op', x', state' = add_operation state op in
-      state', Ast.Operation (x', op')
+      let op', state' = add_operation state op in
+      state', Ast.Operation op'
 
 let add_external_variable x state =
   let x' = Ast.Variable.fresh x in

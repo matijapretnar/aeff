@@ -118,5 +118,3 @@ let awaitValue p =
     await p until <<value>> in value
   
 let return x = x
-
-let send op x = op x

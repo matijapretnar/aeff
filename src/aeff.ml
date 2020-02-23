@@ -32,9 +32,7 @@ let execute_command state = function
     {state with interpreter = interpreter_state'}
 | Ast.TopDo comp ->
     {state with top_computations = comp :: state.top_computations}
-| Ast.Operation (x, op) ->
-    let interpreter_state' = Interpreter.add_operation x op state.interpreter in
-    {state with interpreter = interpreter_state'}
+| Ast.Operation _ -> state
 
 module S = Tiny_httpd
 

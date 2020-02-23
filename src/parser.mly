@@ -16,7 +16,7 @@
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION
-%token AWAIT UNTIL PROMISE MAPSTO
+%token AWAIT UNTIL PROMISE MAPSTO SEND
 %token RUN LET REC AND IN OPERATION
 %token FUN BAR BARBAR
 %token IF THEN ELSE
@@ -145,6 +145,10 @@ plain_prefix_term:
     {
       let op_loc = Location.of_lexeme $startpos(op) in
       Apply ({it= Var op; at= op_loc}, t)
+    }
+  | SEND op = operation t = simple_term
+    {
+      Send (op, t)
     }
   | t = plain_simple_term
     { t }

@@ -140,6 +140,3 @@ let eval_top_let state pat comp =
 
 let add_external_function x def state =
   {state with builtin_functions = Ast.VariableMap.add x def state.builtin_functions}
-
-let add_operation x op state =
-  {state with builtin_functions = Ast.VariableMap.add x (fun expr -> Ast.Out (op, expr, Ast.Return (Ast.Tuple []))) state.builtin_functions}

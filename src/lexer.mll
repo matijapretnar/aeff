@@ -28,6 +28,7 @@
     ("promise", PROMISE);
     ("rec", REC);
     ("run", RUN);
+    ("send", SEND);
     ("then", THEN);
     ("true", BOOL true);
     ("type", TYPE);
