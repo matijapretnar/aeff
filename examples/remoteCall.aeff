@@ -2,33 +2,33 @@ operation call
 operation result
 
 let naiveCallWith x =
-    call x;
-    promise (result y |-> <<y>>) as p in
-    fun () |-> awaitValue p
+    send call x;
+    promise (result y |-> return <<y>>) as p in
+    fun () |-> return awaitValue p
 
 let callWith =
     let callCounter = ref 0 in
     fun x |->
         let callNo = !callCounter in
-        call (x, callNo);
+        send call (x, callNo);
         callCounter := callNo + 1;
         let rec awaitLoop () =
             promise (result (y, callNo') |->
                 if callNo = callNo' then
-                    <<y>>
+                    return <<y>>
                 else
                     awaitLoop ()
-            ) as resultPromise in resultPromise
+            ) as resultPromise in (return resultPromise)
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
-        valueThunk
+        return valueThunk
 
 let remote f =
     let rec loop () =
         promise (call (x, callNo) |->
             let y = f x in
-            result (y, callNo);
+            send result (y, callNo);
             loop ()
         ) as _ in <<()>>
     in
@@ -37,7 +37,7 @@ let remote f =
 run
     let yt = callWith 20 in
     let zt = callWith 30 in
-    yt () * yt () + zt () * zt ()
+    return (yt () * yt () + zt () * zt ())
 
 run
     remote (fun x |-> 10 * (20 * (30 * x)))
