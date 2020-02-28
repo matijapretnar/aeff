@@ -65,8 +65,8 @@ command:
     { let (f, t) = def in TopLetRec (f, t) }
   | RUN trm = term
     { TopDo trm }
-  | OPERATION op = operation
-    { Operation op }
+  | OPERATION op = operation COLON t = ty
+    { Operation (op, t) }
 
 incoming_operation:
   | op = operation trm = term EOF
@@ -408,6 +408,8 @@ plain_ty_apply:
 plain_simple_ty:
   | t = tyname
     { TyApply (t, []) }
+  | LPROMISE t = ty RPROMISE
+    { TyPromise t }
   | t = PARAM
     { TyParam t }
   | LPAREN t = ty RPAREN

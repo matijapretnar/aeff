@@ -20,6 +20,6 @@ let fatal ?loc fmt = error ?loc "Fatal error" fmt
 
 let syntax ~loc fmt = error ~loc "Syntax error" fmt
 
-let typing ~loc fmt = error ~loc "Typing error" fmt
+let typing ?loc fmt = error ?loc "Typing error" fmt
 
 let runtime ?loc fmt = error ?loc "Runtime error" fmt

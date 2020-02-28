@@ -25,6 +25,8 @@ and plain_ty =
   | TyApply of ty_name * ty list  (** [(ty1, ty2, ..., tyn) type_name] *)
   | TyParam of ty_param  (** ['a] *)
   | TyArrow of ty * ty  (** [ty1 -> ty2] *)
+  | TyPromise of ty  (** [<<ty>>] *)
+  | TyReference of ty  (** [ty ref] *)
   | TyTuple of ty list  (** [ty1 * ty2 * ... * tyn] *)
 
 
@@ -82,8 +84,8 @@ type ty_def =
 type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
       (** [type ('a...1) t1 = def1 and ... and ('a...n) tn = defn] *)
-  | Operation of operation
-      (** [operation op] *)
+  | Operation of operation * ty
+      (** [operation op : ty] *)
   | TopLet of pattern * term
       (** [let p = t] *)
   | TopLetRec of variable * term

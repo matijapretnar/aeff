@@ -18,7 +18,6 @@ let initial_state =
       |> StringMap.add Syntax.unit_ty_name Ast.unit_ty_name
       |> StringMap.add Syntax.string_ty_name Ast.string_ty_name
       |> StringMap.add Syntax.float_ty_name Ast.float_ty_name
-      |> StringMap.add Syntax.list_ty_name Ast.list_ty_name
       |> StringMap.add Syntax.empty_ty_name Ast.empty_ty_name
       |> StringMap.add Syntax.list_ty_name Ast.list_ty_name
   ; ty_params = StringMap.empty
@@ -189,7 +188,7 @@ function
     | S.LetRec (x, term1, term2) ->
         let state', pat, comp1 = desugar_let_rec_def state (x, term1) in
         let c = desugar_computation state' term2 in
-        ([], Ast.Do (comp1, (pat, c)))
+        ([], Ast.Do (Ast.Return comp1, (pat, c)))
     | S.Handler (op, abs1, abs2) ->
         let op' = lookup_operation ~loc state op in
         let abs1' = desugar_abstraction state abs1 in
@@ -237,8 +236,8 @@ and desugar_let_rec_def state (f, {it= exp; at= loc}) =
           "This kind of expression is not allowed in a recursive definition"
   in
   let pat = Ast.PVar f'
-  and comp = Ast.Return (Ast.RecLambda (f', abs')) in
-  state', pat, comp
+  and expr = Ast.RecLambda (f', abs') in
+  state', pat, expr
 
 and desugar_expressions state = function
   | [] -> ([], [])
@@ -246,6 +245,12 @@ and desugar_expressions state = function
       let binds, e = desugar_expression state t in
       let ws, es = desugar_expressions state ts in
       (binds @ ws, e :: es)
+
+let desugar_pure_expression state term =
+    let binds, expr = desugar_expression state term in
+    match binds with
+    | [] -> expr
+    | _ -> Error.syntax ~loc:term.at "Only pure expressions are allowed"
 
 let add_label state label label' =
     let labels' = StringMap.add label label' state.labels in
@@ -293,17 +298,18 @@ let desugar_command state = function
   | Syntax.TopLet (pat, term) ->
       let vars, pat' = desugar_pattern state pat in
       let state' = add_fresh_variables state vars in
-      let comp = desugar_computation state' term in
-      state', Ast.TopLet (pat', comp)
+      let expr = desugar_pure_expression state' term in
+      state', Ast.TopLet (pat', expr)
   | Syntax.TopDo term ->
       let comp = desugar_computation state term in
       state, Ast.TopDo comp
   | Syntax.TopLetRec (f, term) ->
-      let state', pat, comp = desugar_let_rec_def state (f, term) in
-      state', Ast.TopLet (pat, comp)
-  | Syntax.Operation op ->
+      let state', pat, expr = desugar_let_rec_def state (f, term) in
+      state', Ast.TopLet (pat, expr)
+  | Syntax.Operation (op, ty) ->
       let op', state' = add_operation state op in
-      state', Ast.Operation op'
+      let ty' = desugar_ty state ty in
+      state', Ast.Operation (op', ty')
 
 let add_external_variable x state =
   let x' = Ast.Variable.fresh x in

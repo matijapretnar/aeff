@@ -128,12 +128,7 @@ and step_plain state = function
 and step_abs state (pat, comp) =
     (pat, step state comp)
 
-let rec eval_expr state = function
-    | Ast.Return expr -> expr
-    | comp -> eval_expr state (step state comp)
-
-let eval_top_let state pat comp =
-    let expr = eval_expr state comp in
+let eval_top_let state pat expr =
     let subst = match_pattern_with_expression state pat expr in
     let variables' = Ast.VariableMap.union (fun _ _ _ -> assert false) subst state.variables in
     {state with variables=variables'}

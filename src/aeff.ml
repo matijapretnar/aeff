@@ -8,31 +8,41 @@ let parse_commands lexbuf =
 type state = {
     desugarer : Desugarer.state;
     interpreter : Interpreter.state;
+    typechecker : Typechecker.state;
     top_computations : Ast.computation list
 }
 
 let initial_state () =
-    let load_function state (x, def) =
+    let load_function state (x, ty, def) =
         let desugarer_state', x' = Desugarer.add_external_variable x state.desugarer in
         let interpreter_state' = Interpreter.add_external_function x' def state.interpreter in
-        {state with desugarer = desugarer_state'; interpreter = interpreter_state'}
+        let typechecker_state' = Typechecker.add_external_function x' ty state.typechecker in
+        {state with desugarer = desugarer_state'; interpreter = interpreter_state'; typechecker = typechecker_state'}
     in
     {
         desugarer = Desugarer.initial_state;
         interpreter = Interpreter.initial_state;
+        typechecker = Typechecker.initial_state;
         top_computations = []
     }
     |> fun state -> Utils.fold load_function state BuiltIn.functions
 
 
 let execute_command state = function
-| Ast.TyDef _ -> state
-| Ast.TopLet (pat, comp) ->
-    let interpreter_state' = Interpreter.eval_top_let state.interpreter pat comp in
-    {state with interpreter = interpreter_state'}
+| Ast.TyDef ty_defs ->
+    let typechecker_state' = Typechecker.add_type_definitions state.typechecker ty_defs in
+    {state with typechecker = typechecker_state'}
+
+| Ast.TopLet (pat, expr) ->
+    let interpreter_state' = Interpreter.eval_top_let state.interpreter pat expr in
+    let typechecker_state' = Typechecker.add_top_definition state.typechecker pat expr in
+    {state with interpreter = interpreter_state'; typechecker = typechecker_state'}
 | Ast.TopDo comp ->
+    let _ = Typechecker.infer state.typechecker comp in
     {state with top_computations = comp :: state.top_computations}
-| Ast.Operation _ -> state
+| Ast.Operation (op, ty) ->
+    let typechecker_state' = Typechecker.add_operation state.typechecker op ty in
+    {state with typechecker = typechecker_state'}
 
 module S = Tiny_httpd
 
@@ -111,10 +121,10 @@ let run_server state0 =
             let lexbuf = Lexing.from_string input in
             let (op, term) = Parser.incoming_operation Lexer.token lexbuf in
             let op' = Desugarer.lookup_operation ~loc:term.Utils.at state0.desugarer op in
-            let comp' = Desugarer.desugar_computation state0.desugarer term in
+            let expr' = Desugarer.desugar_pure_expression state0.desugarer term in
             both
                 (View.Info (Format.sprintf "Incoming operation %s" input))
-                (Runner.incoming_operation state0.interpreter (List.nth !state 0 |> fst) op' comp');
+                (Runner.incoming_operation state0.interpreter (List.nth !state 0 |> fst) op' expr');
             redirect basepath "/"
         with
         | Error.Error (loc, error_kind, msg) ->

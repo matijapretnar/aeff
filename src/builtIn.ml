@@ -23,28 +23,34 @@ let int_int_to f expr =
     f n1 n2
   ) expr
 
-let int_to_int f expr =
-  int_to (fun n -> Ast.Return (Ast.Const (Const.Integer (f n)))) expr
+let int_to_int name f =
+  (name,
+   Ast.TyArrow (Ast.TyConst Const.IntegerTy, Ast.TyConst Const.IntegerTy),
+   int_to (fun n -> Ast.Return (Ast.Const (Const.Integer (f n)))))
 
-let int_int_to_int f expr =
-  int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Integer (f n1 n2)))) expr
-let int_int_to_bool f expr =
-  int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Boolean (f n1 n2)))) expr
+let int_int_to_int name f =
+  (name,
+   Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.IntegerTy),
+   int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Integer (f n1 n2)))))
+let int_int_to_bool name f =
+  (name,
+   Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.BooleanTy),
+   int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Boolean (f n1 n2)))))
 
 let functions = [
-    ("(=)", int_int_to_bool (=));
-    ("(<)", int_int_to_bool (<));
-    ("(>)", int_int_to_bool (>));
-    ("(<=)", int_int_to_bool (<=));
-    ("(>=)", int_int_to_bool (>=));
-    ("(<>)", int_int_to_bool (<>));
-    ("(~-)", int_to_int (~-));
-    ("(+)", int_int_to_int (+));
-    ("(*)", int_int_to_int ( * ));
-    ("(-)", int_int_to_int (-));
-    ("(mod)", int_int_to_int (mod));
-    ("(/)", int_int_to_int (/));
-    ("ref", (fun v -> Ast.Return (Ast.Reference (ref v))));
+    int_int_to_bool "(=)" (=);
+    int_int_to_bool "(<)" (<);
+    int_int_to_bool "(>)" (>);
+    int_int_to_bool "(<=)" (<=);
+    int_int_to_bool "(>=)" (>=);
+    int_int_to_bool "(<>)" (<>);
+    int_to_int "(~-)" (~-);
+    int_int_to_int "(+)" (+);
+    int_int_to_int "(*)" ( * );
+    int_int_to_int "(-)" (-);
+    int_int_to_int "(mod)" (mod);
+    int_int_to_int "(/)" (/);
+    (* ("ref", (fun v -> Ast.Return (Ast.Reference (ref v))));
     ("(!)", (fun v -> let r = get_reference v in Ast.Return (!r)));
-    ("(:=)", binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple [])))
+    ("(:=)", binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple []))) *)
 ] 

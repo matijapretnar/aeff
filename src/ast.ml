@@ -2,6 +2,7 @@ open Utils
 
 module TyName = Symbol.Make ()
 type ty_name = TyName.t
+module TyNameMap = Map.Make(TyName)
 
 
 let bool_ty_name = TyName.fresh "bool"
@@ -21,12 +22,42 @@ let empty_ty_name = TyName.fresh "empty"
 
 module TyParam = Symbol.Make ()
 type ty_param = TyParam.t
+module TyParamMap = Map.Make(TyParam)
 
 type ty =
+  | TyConst of Const.ty
   | TyApply of ty_name * ty list  (** [(ty1, ty2, ..., tyn) type_name] *)
   | TyParam of ty_param  (** ['a] *)
   | TyArrow of ty * ty  (** [ty1 -> ty2] *)
   | TyTuple of ty list  (** [ty1 * ty2 * ... * tyn] *)
+  | TyPromise of ty  (** [<<ty>>] *)
+  | TyReference of ty  (** [ty ref] *)
+
+let rec print_ty ?max_level p ppf =
+  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  match p with
+  | TyConst c -> print "%t" (Const.print_ty c)
+  | TyApply (ty_name, []) -> print "%t" (TyName.print ty_name)
+  | TyApply (ty_name, [ty]) -> print "%t %t" (print_ty ~max_level:1 ty) (TyName.print ty_name)
+  | TyApply (ty_name, tys) -> print "%t %t" (Utils.print_tuple print_ty tys) (TyName.print ty_name)
+  | TyParam a -> print "%t" (TyParam.print a)
+  | TyArrow (ty1, ty2) -> print ~at_level:3 "%t → %t" (print_ty ~max_level:2 ty1) (print_ty ~max_level:3 ty2)
+  | TyTuple tys -> print ~at_level:2 "%t" (Utils.print_sequence "×" (print_ty ~max_level:1) tys)
+  | TyPromise ty -> print "⟨%t⟩" (print_ty ty)
+  | TyReference ty -> print "%t ref" (print_ty ~max_level:1 ty)
+
+let rec substitute_ty subst = function
+  | TyConst _ as ty -> ty
+  | TyParam a as ty ->
+      begin match TyParamMap.find_opt a subst with
+      | None -> ty
+      | Some ty' -> ty'
+      end
+  | TyApply (ty_name, tys) -> TyApply (ty_name, List.map (substitute_ty subst) tys)
+  | TyTuple tys -> TyTuple (List.map (substitute_ty subst) tys)
+  | TyArrow (ty1, ty2) -> TyArrow (substitute_ty subst ty1, substitute_ty subst ty2)
+  | TyPromise ty -> TyPromise (substitute_ty subst ty)
+  | TyReference ty -> TyReference (substitute_ty subst ty)
 
 module Variable = Symbol.Make ()
 module Label = Symbol.Make ()
@@ -71,6 +102,7 @@ and computation =
 and abstraction = pattern * computation
 
 module VariableMap = Map.Make(Variable)
+module OperationMap = Map.Make(Operation)
 
 let rec remove_pattern_bound_variables subst = function
   | PVar x -> VariableMap.remove x subst
@@ -174,8 +206,8 @@ type ty_def =
 
 type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
-  | Operation of operation
-  | TopLet of pattern * computation
+  | Operation of operation * ty
+  | TopLet of pattern * expression
   | TopDo of computation
 
 
