@@ -13,8 +13,13 @@ let initial_state =
         |> Ast.TyNameMap.add Ast.unit_ty_name ([], Ast.TyInline (Ast.TyTuple []))
         |> Ast.TyNameMap.add Ast.string_ty_name ([], Ast.TyInline (Ast.TyConst (Const.StringTy)))
         |> Ast.TyNameMap.add Ast.float_ty_name ([], Ast.TyInline (Ast.TyConst (Const.FloatTy)))
-        (* |> Ast.TyNameMap.add Ast.list_ty_name ([], Ast.TyConst (Const.BooleanTy)) *)
         |> Ast.TyNameMap.add Ast.empty_ty_name ([], Ast.TySum [])
+        |> 
+            let a = Ast.TyParam.fresh "list" in
+            Ast.TyNameMap.add Ast.list_ty_name ([a], Ast.TySum [
+                (Ast.nil_label, None);
+                (Ast.cons_label, Some (Ast.TyTuple [Ast.TyParam a; Ast.TyApply (Ast.list_ty_name, [Ast.TyParam a])]))
+            ])
  }
 
 let fresh_ty () =
@@ -97,6 +102,12 @@ let rec infer_expression state = function
   | Ast.Lambda abs ->
       let ty, ty', eqs = infer_abstraction state abs in
       Ast.TyArrow (ty, ty'), eqs
+  | Ast.RecLambda (f, abs) ->
+      let f_ty = fresh_ty () in
+      let state' = extend_variables state [(f, f_ty)] in
+      let ty, ty', eqs = infer_abstraction state' abs in
+      let out_ty = Ast.TyArrow (ty, ty') in
+      out_ty, (f_ty, out_ty) :: eqs
   | Ast.Fulfill expr ->
       let ty, eqs = infer_expression state expr in
       Ast.TyPromise ty, eqs
