@@ -33,10 +33,12 @@ let int_int_to_int name f =
    ([], Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.IntegerTy)),
    int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Integer (f n1 n2)))))
 
+let poly_type ty =
+  let a = Ast.TyParam.fresh "poly" in ([a], ty (Ast.TyParam a))
+
 let poly_poly_to_bool name f =
-  let a = Ast.TyParam.fresh "poly" in
   (name,
-   ([a], Ast.TyArrow (Ast.TyTuple [Ast.TyParam a; Ast.TyParam a], Ast.TyConst Const.BooleanTy)),
+   (poly_type (fun a -> Ast.TyArrow (Ast.TyTuple [a; a], Ast.TyConst Const.BooleanTy))),
    binary_function (fun n1 n2 -> Ast.Return (Ast.Const (Const.Boolean (f n1 n2)))))
 
 let functions = [
@@ -52,7 +54,8 @@ let functions = [
     int_int_to_int "(-)" (-);
     int_int_to_int "(mod)" (mod);
     int_int_to_int "(/)" (/);
-    (* ("ref", (fun v -> Ast.Return (Ast.Reference (ref v))));
-    ("(!)", (fun v -> let r = get_reference v in Ast.Return (!r)));
-    ("(:=)", binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple []))) *)
+    ("ref", poly_type (fun a -> Ast.TyArrow (a, Ast.TyReference a)), (fun v -> Ast.Return (Ast.Reference (ref v))));
+    ("(!)", poly_type (fun a -> Ast.TyArrow (Ast.TyReference a, a)), (fun v -> let r = get_reference v in Ast.Return (!r)));
+    ("(:=)", poly_type (fun a -> Ast.TyArrow (Ast.TyTuple [Ast.TyReference a; a], Ast.TyTuple [])), binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple [])));
+    ("toString", poly_type (fun a -> Ast.TyArrow (a, Ast.TyConst Const.StringTy)), (fun v -> Ast.Return (Ast.Const (Const.String "string"))))
 ] 
