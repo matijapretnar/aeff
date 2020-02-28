@@ -241,6 +241,7 @@ let infer state e =
   t'
 
 let add_external_function x ty_sch state =
+  Format.printf "@[val %t :@ %t@]@." (Ast.Variable.print x) (Ast.print_ty_scheme ty_sch);
   {state with variables = Ast.VariableMap.add x ty_sch state.variables}
 
 let add_operation state op ty =
@@ -251,7 +252,8 @@ let add_top_definition state x expr =
     let subst = unify state eqs in
     let ty' = Ast.substitute_ty subst ty in
     let free_vars = Ast.free_vars ty' |> Ast.TyParamSet.elements in
-    {state with variables = Ast.VariableMap.add x (free_vars, ty') state.variables}
+    let ty_sch = (free_vars, ty') in
+    add_external_function x ty_sch state
 
 let add_type_definitions state ty_defs =
     List.fold_left (fun state (params, ty_name, ty_def) ->

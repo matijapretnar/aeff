@@ -47,6 +47,9 @@ let rec print_ty ?max_level p ppf =
   | TyPromise ty -> print "⟨%t⟩" (print_ty ty)
   | TyReference ty -> print "%t ref" (print_ty ~max_level:1 ty)
 
+let print_ty_scheme (params, ty) ppf =
+  Format.printf "@[%t.@ %t@]" (Utils.print_sequence " " TyParam.print params) (print_ty ty)
+
 let rec substitute_ty subst = function
   | TyConst _ as ty -> ty
   | TyParam a as ty ->
