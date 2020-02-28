@@ -1,13 +1,12 @@
-operation call
-operation result
-operation cancel
-operation dummy
+operation call : int * int
+operation result : int * int
+operation cancel : int
+operation dummy : empty
 
-let callWith =
-    let callCounter = ref 0 in
+let callWith callCounter =
     fun x |->
         let callNo = !callCounter in
-        call (x, callNo);
+        send call (x, callNo);
         callCounter := callNo + 1;
         let rec awaitLoop () =
             promise (result (y, callNo') |->
@@ -19,36 +18,37 @@ let callWith =
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
-        let cancelThunk () = cancel callNo in
-        let changeMind x = cancelThunk (); call (x, callNo) in
+        let cancelThunk () = send cancel callNo in
+        let changeMind x = cancelThunk (); send call (x, callNo) in
         valueThunk, cancelThunk, changeMind
 
-let awaitCancel callNo wrongCallCallback =
+let rec awaitCancel callNo wrongCallCallback =
     promise (cancel callNo' |->
         if callNo = callNo' then
-            promise (dummy () |-> ()) as dummyPromise in
+            promise (dummy empty |-> return <<empty>>) as dummyPromise in
             wrongCallCallback ();
             awaitValue dummyPromise;
-            awaitCancel ()
+            awaitCancel callNo wrongCallCallback
         else
-            awaitCancel ()
-    ) as _ in ()
+            awaitCancel callNo wrongCallCallback
+    ) as p in p
 
 let remote f =
     let rec loop () =
         promise (call (x, callNo) |->
             awaitCancel callNo loop;
             let y = f x in
-            result (y, callNo);
+            send result (y, callNo);
             loop ()
-        ) as _ in ()
+        ) as p in p
     in
     loop ()
 
 run
-    let result1, cancel1, changeMind1 = callWith 10 in
-    let result2, cancel2, changeMind2 = callWith 20 in
-    let result3, cancel3, changeMind3 = callWith 30 in
+    let callCounter = ref 0 in
+    let result1, cancel1, changeMind1 = callWith callCounter 10 in
+    let result2, cancel2, changeMind2 = callWith callCounter 20 in
+    let result3, cancel3, changeMind3 = callWith callCounter 30 in
     let a = result1 () in
     cancel2 ();
     changeMind3 a;

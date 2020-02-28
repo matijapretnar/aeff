@@ -1,13 +1,12 @@
-operation call
-operation result
+operation call : int * int
+operation result : int * int
 
 let naiveCallWith x =
     send call x;
     promise (result y |-> return <<y>>) as p in
     fun () |-> return awaitValue p
 
-let callWith =
-    let callCounter = ref 0 in
+let callWith callCounter =
     fun x |->
         let callNo = !callCounter in
         send call (x, callNo);
@@ -35,8 +34,9 @@ let remote f =
     loop ()
 
 run
-    let yt = callWith 20 in
-    let zt = callWith 30 in
+    let callCounter = ref 0 in
+    let yt = callWith callCounter 20 in
+    let zt = callWith callCounter 30 in
     return (yt () * yt () + zt () * zt ())
 
 run

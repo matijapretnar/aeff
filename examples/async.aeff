@@ -1,10 +1,10 @@
-operation question
-operation answer
+operation question : unit -> int
+operation answer : int
 
 let get_answer f =
-  promise (answer x |-> x)
+  promise (answer x |-> <<x>>)
   as result in
-  question f;
+  send question f;
   result
 
 run
@@ -12,12 +12,13 @@ run
   let y = 1 + 1 in
   let z = y + y in
   let w = y + z in
-  let u = (w + 1) * (await r until <<x>> in x) in
+  let u = (w + 1) * (awaitValue r) in
   u
 
 run
   promise (question f |->
     let y = f () in
-    answer y
-  ) as _ in
-  ()
+    send answer y;
+    return <<()>>
+  ) as p in
+  p

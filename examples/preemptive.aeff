@@ -1,15 +1,15 @@
-operation stop
-operation go
+operation stop : unit
+operation go : unit
 
 let rec preempt () =
   promise (stop _ |->
     promise (go _ |->
-      ()
-    )as p in
+      <<()>>
+    ) as p in
     await p until <<y>> in
     preempt ()
-  )as _ in
-  ()
+  ) as p in
+  p
 
 run
   preempt (); 1 + 1 + 1 + 1 + 1

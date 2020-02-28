@@ -4,15 +4,15 @@ operation from
 type loc = int
 type val = int
 
-type toSig =
-  | ToLookup of loc
-  | ToUpdate of loc * int
-  | ToAssign of val
+type payloadOut =
+  | LookupOut of loc
+  | UpdateOut of loc * int
+  | AssignOut of val
 
-type fromSig =
-  | FromLookup of int
-  | FromUpdate of unit
-  | FromAssign of loc
+type payloadIn =
+  | LookupIn of int
+  | UpdateIn of unit
+  | AssignIn of loc
 
 let empty = []
 

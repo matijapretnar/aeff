@@ -1,13 +1,13 @@
-operation randomOut
-operation randomIn
+operation randomOut : int
+operation randomIn : int * int
 
 let lcg modulus a c seed =
     let rec loop seed =
         promise (randomOut callNo |->
             let seed' = (a * seed + c) mod modulus in
-            randomIn (callNo, seed);
+            send randomIn (callNo, seed);
             loop seed'
-        ) as _ in ()
+        ) as p in p
     in
     loop seed
 
@@ -16,14 +16,14 @@ let randomDigit callCounter =
     let rec awaitLoop () =
         promise (randomIn (callNo', seed) |->
             if callNo = callNo' then
-                seed mod 10
+                return <<seed mod 10>>
             else
                 awaitLoop ()
-        ) as p in awaitValue p
+        ) as p in p
     in
-    randomOut callNo;
+    send randomOut callNo;
     callCounter := callNo + 1;
-    awaitLoop ()
+    awaitValue (awaitLoop ())
 
 run
     lcg 1234 567 89 1

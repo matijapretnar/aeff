@@ -1,10 +1,9 @@
-operation tick
-operation tock
+operation tick : int
+operation tock : int
 
-let rec ticktock () =
-  tick ();
-  tock ();
-  ticktock ()
+let ticktock () =
+  send tick 1;
+  send tock 2
 
 run
   ticktock ()
