@@ -25,25 +25,27 @@ let int_int_to f expr =
 
 let int_to_int name f =
   (name,
-   Ast.TyArrow (Ast.TyConst Const.IntegerTy, Ast.TyConst Const.IntegerTy),
+   ([], Ast.TyArrow (Ast.TyConst Const.IntegerTy, Ast.TyConst Const.IntegerTy)),
    int_to (fun n -> Ast.Return (Ast.Const (Const.Integer (f n)))))
 
 let int_int_to_int name f =
   (name,
-   Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.IntegerTy),
+   ([], Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.IntegerTy)),
    int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Integer (f n1 n2)))))
-let int_int_to_bool name f =
+
+let poly_poly_to_bool name f =
+  let a = Ast.TyParam.fresh "poly" in
   (name,
-   Ast.TyArrow (Ast.TyTuple [Ast.TyConst Const.IntegerTy; Ast.TyConst Const.IntegerTy], Ast.TyConst Const.BooleanTy),
-   int_int_to (fun n1 n2 -> Ast.Return (Ast.Const (Const.Boolean (f n1 n2)))))
+   ([a], Ast.TyArrow (Ast.TyTuple [Ast.TyParam a; Ast.TyParam a], Ast.TyConst Const.BooleanTy)),
+   binary_function (fun n1 n2 -> Ast.Return (Ast.Const (Const.Boolean (f n1 n2)))))
 
 let functions = [
-    int_int_to_bool "(=)" (=);
-    int_int_to_bool "(<)" (<);
-    int_int_to_bool "(>)" (>);
-    int_int_to_bool "(<=)" (<=);
-    int_int_to_bool "(>=)" (>=);
-    int_int_to_bool "(<>)" (<>);
+    poly_poly_to_bool "(=)" (=);
+    poly_poly_to_bool "(<)" (<);
+    poly_poly_to_bool "(>)" (>);
+    poly_poly_to_bool "(<=)" (<=);
+    poly_poly_to_bool "(>=)" (>=);
+    poly_poly_to_bool "(<>)" (<>);
     int_to_int "(~-)" (~-);
     int_int_to_int "(+)" (+);
     int_int_to_int "(*)" ( * );

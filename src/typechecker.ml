@@ -1,5 +1,5 @@
 type state = 
-  { variables: Ast.ty Ast.VariableMap.t;
+  { variables: (Ast.ty_param list * Ast.ty) Ast.VariableMap.t;
     operations: Ast.ty Ast.OperationMap.t;
     type_definitions: (Ast.ty_param list * Ast.ty_def) Ast.TyNameMap.t }
 
@@ -28,7 +28,14 @@ let fresh_ty () =
 
 let extend_variables state vars =
     List.fold_left (fun state (x, ty) ->
-    {state with variables = Ast.VariableMap.add x ty state.variables}) state vars
+    {state with variables = Ast.VariableMap.add x ([], ty) state.variables}) state vars
+
+let refreshing_subst params =
+    List.fold_left (fun subst param ->
+        let ty = fresh_ty () in
+        Ast.TyParamMap.add param ty subst
+    ) Ast.TyParamMap.empty params
+
 
 let infer_variant state lbl =
   let rec find = function
@@ -41,10 +48,7 @@ let infer_variant state lbl =
     end
   in
   let ty_name, params, ty = find (Ast.TyNameMap.bindings state.type_definitions) in
-  let subst = List.fold_left (fun subst param ->
-    let ty = fresh_ty () in
-    Ast.TyParamMap.add param ty subst) Ast.TyParamMap.empty params
-  in
+  let subst = refreshing_subst params in
   let args = List.map (fun param -> Ast.TyParamMap.find param subst) params
   and ty' = Option.map (Ast.substitute_ty subst) ty in
   ty', Ast.TyApply (ty_name, args)
@@ -86,7 +90,9 @@ let rec infer_pattern state = function
 
 let rec infer_expression state = function
   | Ast.Var x ->
-      Ast.VariableMap.find x state.variables, []
+      let params, ty = Ast.VariableMap.find x state.variables in
+      let subst = refreshing_subst params in
+      Ast.substitute_ty subst ty, []
   | Ast.Const c ->
       Ast.TyConst (Const.infer_ty c), []
   | Ast.Annotated  (expr, ty) ->
@@ -195,7 +201,13 @@ let is_transparent_type state ty_name =
 let unfold state ty_name args =
     match Ast.TyNameMap.find ty_name state.type_definitions with
     | (_, Ast.TySum _) -> assert false
-    | (params, Ast.TyInline ty) -> ty
+    | (params, Ast.TyInline ty) ->
+        let subst =
+            List.combine params args
+            |> List.to_seq
+            |> Ast.TyParamMap.of_seq
+        in
+        Ast.substitute_ty subst ty
 
 let rec unify state = function
   | [] -> Ast.TyParamMap.empty
@@ -228,8 +240,8 @@ let infer state e =
   let t' = Ast.substitute_ty sbst t in
   t'
 
-let add_external_function x ty state =
-  {state with variables = Ast.VariableMap.add x ty state.variables}
+let add_external_function x ty_sch state =
+  {state with variables = Ast.VariableMap.add x ty_sch state.variables}
 
 let add_operation state op ty =
   {state with operations = Ast.OperationMap.add op ty state.operations}
