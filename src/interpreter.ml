@@ -128,10 +128,8 @@ and step_plain state = function
 and step_abs state (pat, comp) =
     (pat, step state comp)
 
-let eval_top_let state pat expr =
-    let subst = match_pattern_with_expression state pat expr in
-    let variables' = Ast.VariableMap.union (fun _ _ _ -> assert false) subst state.variables in
-    {state with variables=variables'}
+let eval_top_let state x expr =
+    {state with variables=Ast.VariableMap.add x expr state.variables}
 
 let add_external_function x def state =
   {state with builtin_functions = Ast.VariableMap.add x def state.builtin_functions}

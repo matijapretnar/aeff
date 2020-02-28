@@ -246,13 +246,10 @@ let add_external_function x ty_sch state =
 let add_operation state op ty =
   {state with operations = Ast.OperationMap.add op ty state.operations}
 
-let add_top_definition state pat expr =
-    let ty, vars, eqs = infer_pattern state pat
-    and ty', eqs' = infer_expression state expr
-    in
-    let subst = unify state ((ty, ty') :: eqs @ eqs') in
-    let vars' = List.map (fun (x, ty) -> (x, Ast.substitute_ty subst ty)) vars in
-    extend_variables state vars'
+let add_top_definition state x expr =
+    let ty, eqs = infer_expression state expr in
+    let subst = unify state eqs in
+    extend_variables state [(x, Ast.substitute_ty subst ty)]
 
 let add_type_definitions state ty_defs =
     List.fold_left (fun state (params, ty_name, ty_def) ->

@@ -207,7 +207,7 @@ type ty_def =
 type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
   | Operation of operation * ty
-  | TopLet of pattern * expression
+  | TopLet of variable * expression
   | TopDo of computation
 
 

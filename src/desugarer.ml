@@ -186,9 +186,9 @@ function
         let c2 = desugar_abstraction state (pat, term2) in
         ([], Ast.Do (c1, c2))
     | S.LetRec (x, term1, term2) ->
-        let state', pat, comp1 = desugar_let_rec_def state (x, term1) in
+        let state', f, comp1 = desugar_let_rec_def state (x, term1) in
         let c = desugar_computation state' term2 in
-        ([], Ast.Do (Ast.Return comp1, (pat, c)))
+        ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
     | S.Handler (op, abs1, abs2) ->
         let op' = lookup_operation ~loc state op in
         let abs1' = desugar_abstraction state abs1 in
@@ -235,9 +235,8 @@ and desugar_let_rec_def state (f, {it= exp; at= loc}) =
         Error.syntax ~loc
           "This kind of expression is not allowed in a recursive definition"
   in
-  let pat = Ast.PVar f'
-  and expr = Ast.RecLambda (f', abs') in
-  state', pat, expr
+  let expr = Ast.RecLambda (f', abs') in
+  state', f', expr
 
 and desugar_expressions state = function
   | [] -> ([], [])
@@ -295,17 +294,17 @@ let desugar_command state = function
       in
       let state'', defs' = List.fold_right2 aux defs new_names (state', []) in
       state'', Ast.TyDef defs'
-  | Syntax.TopLet (pat, term) ->
-      let vars, pat' = desugar_pattern state pat in
-      let state' = add_fresh_variables state vars in
+  | Syntax.TopLet (x, term) ->
+      let x' = Ast.Variable.fresh x in
+      let state' = add_fresh_variables state [(x, x')] in
       let expr = desugar_pure_expression state' term in
-      state', Ast.TopLet (pat', expr)
+      state', Ast.TopLet (x', expr)
   | Syntax.TopDo term ->
       let comp = desugar_computation state term in
       state, Ast.TopDo comp
   | Syntax.TopLetRec (f, term) ->
-      let state', pat, expr = desugar_let_rec_def state (f, term) in
-      state', Ast.TopLet (pat, expr)
+      let state', f, expr = desugar_let_rec_def state (f, term) in
+      state', Ast.TopLet (f, expr)
   | Syntax.Operation (op, ty) ->
       let op', state' = add_operation state op in
       let ty' = desugar_ty state ty in

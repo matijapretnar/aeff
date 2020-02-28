@@ -59,8 +59,8 @@ commands:
 command:
   | TYPE defs = separated_nonempty_list(AND, ty_def)
     { TyDef defs }
-  | LET def = let_def
-    { let (p, t) = def in TopLet (p, t) }
+  | LET x = ident t = lambdas0(EQUAL)
+    { TopLet (x, t) }
   | LET REC def = let_rec_def
     { let (f, t) = def in TopLetRec (f, t) }
   | RUN trm = term

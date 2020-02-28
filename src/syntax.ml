@@ -86,8 +86,8 @@ type command =
       (** [type ('a...1) t1 = def1 and ... and ('a...n) tn = defn] *)
   | Operation of operation * ty
       (** [operation op : ty] *)
-  | TopLet of pattern * term
-      (** [let p = t] *)
+  | TopLet of variable * term
+      (** [let x = t] *)
   | TopLetRec of variable * term
       (** [let rec f = t] *)
   | TopDo of term

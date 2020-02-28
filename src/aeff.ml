@@ -33,9 +33,9 @@ let execute_command state = function
     let typechecker_state' = Typechecker.add_type_definitions state.typechecker ty_defs in
     {state with typechecker = typechecker_state'}
 
-| Ast.TopLet (pat, expr) ->
-    let interpreter_state' = Interpreter.eval_top_let state.interpreter pat expr in
-    let typechecker_state' = Typechecker.add_top_definition state.typechecker pat expr in
+| Ast.TopLet (x, expr) ->
+    let interpreter_state' = Interpreter.eval_top_let state.interpreter x expr in
+    let typechecker_state' = Typechecker.add_top_definition state.typechecker x expr in
     {state with interpreter = interpreter_state'; typechecker = typechecker_state'}
 | Ast.TopDo comp ->
     let _ = Typechecker.infer state.typechecker comp in
