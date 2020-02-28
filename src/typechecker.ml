@@ -25,6 +25,27 @@ let extend_variables state vars =
     List.fold_left (fun state (x, ty) ->
     {state with variables = Ast.VariableMap.add x ty state.variables}) state vars
 
+let infer_variant state lbl =
+  let rec find = function
+  | [] -> assert false
+  | (_, (_, Ast.TyInline _)) :: ty_defs -> find ty_defs
+  | (ty_name, (params, Ast.TySum variants)) :: ty_defs ->
+    begin match List.assoc_opt lbl variants with
+    | None -> find ty_defs
+    | Some ty -> (ty_name, params, ty)
+    end
+  in
+  let ty_name, params, ty = find (Ast.TyNameMap.bindings state.type_definitions) in
+  let subst = List.fold_left (fun subst param ->
+    let ty = fresh_ty () in
+    Ast.TyParamMap.add param ty subst) Ast.TyParamMap.empty params
+  in
+  let args = List.map (fun param -> Ast.TyParamMap.find param subst) params
+  and ty' = Option.map (Ast.substitute_ty subst) ty in
+  ty', Ast.TyApply (ty_name, args)
+
+    
+
 let rec infer_pattern state = function
   | Ast.PVar x ->
         let ty = fresh_ty () in
@@ -32,6 +53,9 @@ let rec infer_pattern state = function
   | Ast.PAs (pat, x) ->
       let ty, vars, eqs = infer_pattern state pat in
       ty, (x, ty) :: vars, eqs
+  | Ast.PAnnotated (pat, ty) ->
+      let ty', vars, eqs = infer_pattern state pat in
+      ty, vars, (ty, ty') :: eqs
   | Ast.PConst c ->
         Ast.TyConst (Const.infer_ty c), [], []
   | Ast.PNonbinding -> 
@@ -44,6 +68,16 @@ let rec infer_pattern state = function
       in
       let tys, vars, eqs = List.fold_right fold pats ([], [], []) in
       Ast.TyTuple tys, vars, eqs
+  | Ast.PVariant (lbl, pat) ->
+      let ty_in, ty_out = infer_variant state lbl in
+      begin match ty_in, pat with
+      | None, None -> ty_out, [], []
+      | Some ty_in, Some pat ->
+          let ty, vars, eqs = infer_pattern state pat in
+          ty_out, vars, (ty_in, ty) :: eqs
+      | None, Some _ | Some _, None ->
+          Error.typing "Variant optional argument mismatch"
+      end
 
 let rec infer_expression state = function
   | Ast.Var x ->
@@ -69,6 +103,17 @@ let rec infer_expression state = function
   | Ast.Reference expr_ref ->
       let ty, eqs = infer_expression state !expr_ref in
       Ast.TyReference ty, eqs
+  | Ast.Variant (lbl, expr) ->
+      let ty_in, ty_out = infer_variant state lbl in
+      begin match ty_in, expr with
+      | None, None -> ty_out, []
+      | Some ty_in, Some expr ->
+          let ty, eqs = infer_expression state expr in
+          ty_out, (ty_in, ty) :: eqs
+      | None, Some _ | Some _, None ->
+          Error.typing "Variant optional argument mismatch"
+      end
+
 and infer_computation state = function
   | Ast.Return expr ->
       let ty, eqs = infer_expression state expr in
