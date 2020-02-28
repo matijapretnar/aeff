@@ -23,6 +23,7 @@ let empty_ty_name = TyName.fresh "empty"
 module TyParam = Symbol.Make ()
 type ty_param = TyParam.t
 module TyParamMap = Map.Make(TyParam)
+module TyParamSet = Set.Make(TyParam)
 
 type ty =
   | TyConst of Const.ty
@@ -58,6 +59,15 @@ let rec substitute_ty subst = function
   | TyArrow (ty1, ty2) -> TyArrow (substitute_ty subst ty1, substitute_ty subst ty2)
   | TyPromise ty -> TyPromise (substitute_ty subst ty)
   | TyReference ty -> TyReference (substitute_ty subst ty)
+
+let rec free_vars = function
+  | TyConst _ -> TyParamSet.empty
+  | TyParam a -> TyParamSet.singleton a
+  | TyApply (_, tys) -> List.fold_left (fun vars ty -> TyParamSet.union vars (free_vars ty)) TyParamSet.empty tys
+  | TyTuple tys -> List.fold_left (fun vars ty -> TyParamSet.union vars (free_vars ty)) TyParamSet.empty tys
+  | TyArrow (ty1, ty2) -> TyParamSet.union (free_vars ty1) (free_vars ty2)
+  | TyPromise ty -> free_vars ty
+  | TyReference ty -> free_vars ty
 
 module Variable = Symbol.Make ()
 module Label = Symbol.Make ()

@@ -249,7 +249,9 @@ let add_operation state op ty =
 let add_top_definition state x expr =
     let ty, eqs = infer_expression state expr in
     let subst = unify state eqs in
-    extend_variables state [(x, Ast.substitute_ty subst ty)]
+    let ty' = Ast.substitute_ty subst ty in
+    let free_vars = Ast.free_vars ty' |> Ast.TyParamSet.elements in
+    {state with variables = Ast.VariableMap.add x (free_vars, ty') state.variables}
 
 let add_type_definitions state ty_defs =
     List.fold_left (fun state (params, ty_name, ty_def) ->
