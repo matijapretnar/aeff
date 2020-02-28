@@ -28,22 +28,22 @@ let extend_variables state vars =
 let rec infer_pattern state = function
   | Ast.PVar x ->
         let ty = fresh_ty () in
-        ty, [(x, ty)]
+        ty, [(x, ty)], []
   | Ast.PAs (pat, x) ->
-      let ty, vars = infer_pattern state pat in
-      ty, (x, ty) :: vars
+      let ty, vars, eqs = infer_pattern state pat in
+      ty, (x, ty) :: vars, eqs
   | Ast.PConst c ->
-        Ast.TyConst (Const.infer_ty c), []
+        Ast.TyConst (Const.infer_ty c), [], []
   | Ast.PNonbinding -> 
         let ty = fresh_ty () in
-        ty, []
+        ty, [], []
   | Ast.PTuple pats ->
-      let fold pat (tys, vars) =
-        let ty', vars' = infer_pattern state pat in
-        ty' :: tys, vars' @ vars
+      let fold pat (tys, vars, eqs) =
+        let ty', vars', eqs' = infer_pattern state pat in
+        ty' :: tys, vars' @ vars, eqs' @ eqs
       in
-      let tys, vars = List.fold_right fold pats ([], []) in
-      Ast.TyTuple tys, vars
+      let tys, vars, eqs = List.fold_right fold pats ([], [], []) in
+      Ast.TyTuple tys, vars, eqs
 
 let rec infer_expression state = function
   | Ast.Var x ->
@@ -111,10 +111,10 @@ and infer_computation state = function
       let ty, eqs2 = infer_computation state' comp in
       ty, (ty1, ty1') :: (ty2, ty2') :: eqs1 @ eqs2 
 and infer_abstraction state (pat, comp) =
-      let ty, vars = infer_pattern state pat in
+      let ty, vars, eqs = infer_pattern state pat in
       let state' = extend_variables state vars in
-      let ty', eqs = infer_computation state' comp in
-      ty, ty', eqs
+      let ty', eqs' = infer_computation state' comp in
+      ty, ty', eqs @ eqs'
 
 let subst_equations sbst =
   let subst_equation (t1, t2) = (Ast.substitute_ty sbst t1, Ast.substitute_ty sbst t2) in
@@ -179,10 +179,10 @@ let add_operation state op ty =
   {state with operations = Ast.OperationMap.add op ty state.operations}
 
 let add_top_definition state pat expr =
-    let ty, vars = infer_pattern state pat
-    and ty', eqs = infer_expression state expr
+    let ty, vars, eqs = infer_pattern state pat
+    and ty', eqs' = infer_expression state expr
     in
-    let subst = unify state ((ty, ty') :: eqs) in
+    let subst = unify state ((ty, ty') :: eqs @ eqs') in
     let vars' = List.map (fun (x, ty) -> (x, Ast.substitute_ty subst ty)) vars in
     extend_variables state vars'
 
