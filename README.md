@@ -16,4 +16,4 @@ This loads all the commands in all the listed files and starts a local HTTP serv
 
 The server provides a web interface allows users to click through the reductions of their asynchronous programs. 
 
-For running the examples in `aeff/examples`, also include `pervasives.aeff` in the list of files to load.
+For running the examples in `examples/`, also include `pervasives.aeff` in the list of files to load.
