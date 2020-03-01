@@ -232,7 +232,8 @@ let rec unify state = function
   | (t, Ast.TyParam a) :: eqs when not (occurs a t) ->
       add_subst a t (unify state (subst_equations (Ast.TyParamMap.singleton a t) eqs))
   | (t1, t2) :: _ ->
-      Error.typing "Cannot unify %t = %t" (Ast.print_ty t1) (Ast.print_ty t2)
+      let print_param = Ast.new_print_param () in
+      Error.typing "Cannot unify %t = %t" (Ast.print_ty print_param t1) (Ast.print_ty print_param t2)
 
 let infer state e =
   let t, eqs = infer_computation state e in
@@ -241,7 +242,7 @@ let infer state e =
   t'
 
 let add_external_function x ty_sch state =
-  Format.printf "@[val %t :@ %t@]@." (Ast.Variable.print x) (Ast.print_ty_scheme ty_sch);
+  Format.printf "@[val %t : %t@]@." (Ast.Variable.print x) (Ast.print_ty_scheme ty_sch);
   {state with variables = Ast.VariableMap.add x ty_sch state.variables}
 
 let add_operation state op ty =

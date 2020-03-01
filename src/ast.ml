@@ -34,21 +34,40 @@ type ty =
   | TyPromise of ty  (** [<<ty>>] *)
   | TyReference of ty  (** [ty ref] *)
 
-let rec print_ty ?max_level p ppf =
+let rec print_ty ?max_level print_param p ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
   match p with
   | TyConst c -> print "%t" (Const.print_ty c)
   | TyApply (ty_name, []) -> print "%t" (TyName.print ty_name)
-  | TyApply (ty_name, [ty]) -> print "%t %t" (print_ty ~max_level:1 ty) (TyName.print ty_name)
-  | TyApply (ty_name, tys) -> print "%t %t" (Utils.print_tuple print_ty tys) (TyName.print ty_name)
-  | TyParam a -> print "%t" (TyParam.print a)
-  | TyArrow (ty1, ty2) -> print ~at_level:3 "%t → %t" (print_ty ~max_level:2 ty1) (print_ty ~max_level:3 ty2)
-  | TyTuple tys -> print ~at_level:2 "%t" (Utils.print_sequence "×" (print_ty ~max_level:1) tys)
-  | TyPromise ty -> print "⟨%t⟩" (print_ty ty)
-  | TyReference ty -> print "%t ref" (print_ty ~max_level:1 ty)
+  | TyApply (ty_name, [ty]) -> print ~at_level:1 "%t %t" (print_ty ~max_level:1 print_param ty) (TyName.print ty_name)
+  | TyApply (ty_name, tys) -> print ~at_level:1 "%t %t" (Utils.print_tuple (print_ty print_param) tys) (TyName.print ty_name)
+  | TyParam a -> print "%t" (print_param a)
+  | TyArrow (ty1, ty2) -> print ~at_level:3 "%t → %t" (print_ty ~max_level:2 print_param ty1) (print_ty ~max_level:3 print_param ty2)
+  | TyTuple [] -> print "unit"
+  | TyTuple tys -> print ~at_level:2 "%t" (Utils.print_sequence " × " (print_ty ~max_level:1 print_param) tys)
+  | TyPromise ty -> print "⟨%t⟩" (print_ty print_param ty)
+  | TyReference ty -> print ~at_level:1 "%t ref" (print_ty ~max_level:1 print_param ty)
+
+let new_print_param () =
+  let names = ref TyParamMap.empty in
+  let counter = ref 0 in
+  let print_param param ppf =
+    let symbol =
+      match TyParamMap.find_opt param !names with
+      | Some symbol -> symbol
+      | None ->
+          let symbol = Symbol.type_symbol !counter in
+          incr counter;
+          names := TyParamMap.add param symbol !names;
+          symbol
+    in
+    Utils.print ppf "%s" symbol
+  in
+  print_param
 
 let print_ty_scheme (params, ty) ppf =
-  Format.printf "@[%t.@ %t@]" (Utils.print_sequence " " TyParam.print params) (print_ty ty)
+  let print_param = new_print_param () in
+  Format.printf "@[%t@]" (print_ty print_param ty)
 
 let rec substitute_ty subst = function
   | TyConst _ as ty -> ty
