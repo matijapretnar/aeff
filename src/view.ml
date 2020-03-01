@@ -72,16 +72,16 @@ let show (comps, msgs) =
   Html.to_string (Html.(
     html (list [
       head (list [
-        base (Uri.of_string "http://www.example.com");
+        base (Uri.of_string "http://127.0.0.1:8080/");
         meta ~charset:"UTF-8" [];
-        title (string "An application with a long head");
+        title (string "An interactive interpreter for Æff");
         link ~rel:"stylesheet" (Uri.of_string "default.css");
         link ~rel:"stylesheet alternate"
              ~title:"Big text"
              (Uri.of_string "big.css");
         script ~src:(Uri.of_string "support.js") empty;
         meta ~name:"application-name"
-             ~content:"Long headed application"
+             ~content:"An interactive interpreter for Æff"
              []
       ]);
 
