@@ -1,18 +1,18 @@
-operation to
-operation from
-
 type loc = int
 type val = int
 
-type payloadOut =
-  | LookupOut of loc
-  | UpdateOut of loc * int
-  | AssignOut of val
+type payloadRec =
+  | LookupReq of loc
+  | UpdateReq of loc * int
+  | AllocReq of val
 
-type payloadIn =
-  | LookupIn of int
-  | UpdateIn of unit
-  | AssignIn of loc
+type payloadRes =
+  | LookupRes of int
+  | UpdateRes of unit
+  | AllocRes of loc
+
+operation opReq : payloadRec * int
+operation opRes : payloadRes * int
 
 let empty = []
 
@@ -22,60 +22,59 @@ let rec lookupHeap ((l', v) :: heap') l =
 let rec updateHeap ((l', v') :: heap') l v =
   if l = l' then (l, v) :: heap' else (l', v') :: updateHeap heap' l v
 
-let assignHeap heap v =
+let allocHeap heap v =
   let l = length heap in
   (l, v) :: heap, l
 
 let rec heapRunner heap =
-    promise (to (toPayload, callNo) |->
-        let heap', fromPayload =
-            match toPayload with
-            | ToLookup l |->
+    promise (opReq (reqPayload, callNo) |->
+        let heap', resPayload =
+            match reqPayload with
+            | LookupReq l |->
                 let v = lookupHeap heap l in
-                heap, FromLookup v
-            | ToUpdate (l, v) |->
+                return (heap, LookupRes v)
+            | UpdateReq (l, v) |->
                 let heap' = updateHeap heap l v in
-                heap', FromUpdate ()
-            | ToAssign v |->
-                let heap', l = assignHeap heap v in
-                heap', FromAssign l
+                return (heap', UpdateRes ())
+            | AllocReq v |->
+                let heap', l = allocHeap heap v in
+                return (heap', AllocRes l)
         in
-        from (fromPayload, callNo);
+        send opRes (resPayload, callNo);
         heapRunner heap'
     )
-    as _ in ()
+    as p in return p
 
-let callWith =
-    let callCounter = ref 0 in
-    fun x |->
-        let callNo = !callCounter in
-        to (x, callNo);
-        callCounter := callNo + 1;
-        let rec awaitLoop () =
-            promise (from (y, callNo') |->
-                if callNo = callNo' then
-                    <<y>>
-                else
-                    awaitLoop ()
-            )
-            as resultPromise in resultPromise
-        in
-        let actualPromise = awaitLoop () in
-        awaitValue actualPromise
+let callWith callCounter x =
+    let callNo = !callCounter in
+    send opReq (x, callNo);
+    callCounter := callNo + 1;
+    let rec awaitLoop () =
+        promise (opRes (y, callNo') |->
+            if callNo = callNo' then
+                return <<y>>
+            else
+                awaitLoop ()
+        )
+        as resultPromise in return resultPromise
+    in
+    let actualPromise = awaitLoop () in
+    awaitValue actualPromise
 
-let lookup l =
-    match callWith (ToLookup l) with FromLookup v |-> v
-let update l v =
-    match callWith (ToUpdate (l, v)) with FromUpdate () |-> ()
-let assign v =
-    match callWith (ToAssign v) with FromAssign l |-> l
+let lookup callCounter l =
+    match callWith callCounter (LookupReq l) with LookupRes v |-> return v
+let update callCounter l v =
+    match callWith callCounter (UpdateReq (l, v)) with UpdateRes () |-> return ()
+let alloc callCounter v =
+    match callWith callCounter (AllocReq v) with AllocRes l |-> return l
 
 run
-    let l = assign 0 in
-    let l' = assign 10 in
-    update l 10;
-    update l' (lookup l + 4);
-    (lookup l, lookup l')
+    let callCounter = ref 0 in
+    let l = alloc callCounter 0 in
+    let l' = alloc callCounter 10 in
+    update callCounter l 10;
+    update callCounter l' (lookup callCounter l + 4);
+    return (lookup callCounter l, lookup callCounter l')
 
 run
     heapRunner []
