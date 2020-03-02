@@ -150,6 +150,7 @@ and desugar_plain_expression ~loc state = function
 and desugar_computation state {it= term; at= loc} =
   let binds, comp = desugar_plain_computation ~loc state term in
   List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds comp
+
 and desugar_plain_computation ~loc state =
   let if_then_else e c1 c2 =
     let true_p = Ast.PConst Const.of_true in
@@ -192,16 +193,41 @@ function
         let state', f, comp1 = desugar_let_rec_def state (x, term1) in
         let c = desugar_computation state' term2 in
         ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-    | S.Handler (op, abs1, abs2) ->
+    | S.Handler (op, (p, None, c), abs2) ->
         let op' = lookup_operation ~loc state op in
-        let abs1' = desugar_abstraction state abs1 in
-        begin match desugar_abstraction state abs2 with
-        | (Ast.PVar p, comp') -> ([], Ast.Handler (op', abs1', p, comp'))
-        | (Ast.PNonbinding, comp') ->
-            let p = Ast.Variable.fresh "_" in
-            ([], Ast.Handler (op', abs1', p, comp'))
-        | _ -> Error.syntax ~loc "Variable or underscore expected"
-        end
+        let abs1' = desugar_abstraction state (p, c) in
+        let p, cont = desugar_promise_abstraction ~loc state abs2 in
+        ([], Ast.Handler (op', abs1', p, cont))
+    | S.Handler (op, (x, Some guard, comp), (p, cont)) ->
+        let op = lookup_operation ~loc state op
+        and (x, guard, comp) = desugar_guarded_abstraction state (x, guard, comp)
+        and p, cont = desugar_promise_abstraction ~loc state (p, cont) in
+        let wait_for_guard = Ast.Variable.fresh "waitForGuard"
+        and p' = Ast.Variable.fresh "p'"
+        and guard_var = Ast.Variable.fresh "guardVar" in
+        let recursive_call = Ast.Apply (Ast.Var wait_for_guard, Ast.Tuple []) in
+        ([],
+            Ast.Do (
+                Ast.Return (
+                    Ast.RecLambda (wait_for_guard, (Ast.PTuple [],
+                        Ast.Handler (
+                            op,
+                            (x,
+                                Ast.Do (guard, (Ast.PVar guard_var, (
+                                    if_then_else (Ast.Var guard_var) comp recursive_call
+                                )))
+                            ),
+                            p',
+                            Ast.Return (Ast.Var p')
+                        )
+                    ))
+                ),
+                (Ast.PVar wait_for_guard, Ast.Do (
+                    recursive_call,
+                    (Ast.PVar p, cont)
+                ))
+            )
+        )
     | S.Await (t, abs) ->
         let binds, e = desugar_expression state t in
         let abs' = desugar_abstraction state abs in
@@ -222,6 +248,21 @@ and desugar_abstraction state (pat, term) =
   let state' = add_fresh_variables state vars in
   let comp = desugar_computation state' term in
   (pat', comp)
+
+and desugar_guarded_abstraction state (pat, term1, term2) =
+  let vars, pat' = desugar_pattern state pat in
+  let state' = add_fresh_variables state vars in
+  let comp1 = desugar_computation state' term1
+  and comp2 = desugar_computation state' term2 in
+  (pat', comp1, comp2)
+
+and desugar_promise_abstraction ~loc state abs2 =
+    match desugar_abstraction state abs2 with
+    | (Ast.PVar p, comp') -> p, comp'
+    | (Ast.PNonbinding, comp') ->
+        let p = Ast.Variable.fresh "_" in
+        p, comp'
+    | _ -> Error.syntax ~loc "Variable or underscore expected"
 
 and desugar_let_rec_def state (f, {it= exp; at= loc}) =
   let f' = Ast.Variable.fresh f in

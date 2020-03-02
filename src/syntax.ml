@@ -69,12 +69,13 @@ and plain_term =
       (** [match t with p1 |-> t1 | ... | pn |-> tn] *)
   | Conditional of term * term * term  (** [if t then t1 else t2] *)
   | Apply of term * term  (** [t1 t2] *)
-  | Handler of operation * abstraction * abstraction (** [with op (p1 |-> t1) as p2 in t2] *)
+  | Handler of operation * guarded_abstraction * abstraction (** [with op (p1 |-> t1) as p2 in t2] *)
   | Await of term * abstraction (** [await t1 until <<p>> in t2] *)
   | Fulfill of term (** [<<t>>] *)
   | Send of operation * term (** [send op t] *)
 
 and abstraction = pattern * term
+and guarded_abstraction = pattern * term option * term
 
 type ty_def =
   | TySum of (label * ty option) list

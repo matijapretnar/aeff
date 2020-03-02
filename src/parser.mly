@@ -15,7 +15,7 @@
 %token <Syntax.label> UNAME
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
-%token MATCH WITH FUNCTION
+%token MATCH WITH FUNCTION WHEN
 %token AWAIT UNTIL PROMISE MAPSTO SEND
 %token RUN LET REC AND IN OPERATION
 %token FUN BAR BARBAR
@@ -87,7 +87,9 @@ plain_term:
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
   | PROMISE LPAREN op = operation p1 = pattern MAPSTO t1 = term RPAREN AS p2 = pattern IN t2 = term
-    { Handler (op, (p1, t1), (p2, t2)) }
+    { Handler (op, (p1, None, t1), (p2, t2)) }
+  | PROMISE LPAREN op = operation p1 = pattern WHEN t = term MAPSTO t1 = term RPAREN AS p2 = pattern IN t2 = term
+    { Handler (op, (p1, Some t, t1), (p2, t2)) }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term
