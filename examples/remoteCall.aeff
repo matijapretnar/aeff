@@ -17,7 +17,7 @@ let callWith callCounter =
                     return <<y>>
                 else
                     awaitLoop ()
-            ) as resultPromise in (return resultPromise)
+            ) as resultPromise in return resultPromise
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
@@ -29,7 +29,7 @@ let remote f =
             let y = f x in
             send result (y, callNo);
             loop ()
-        ) as _ in <<()>>
+        ) as p in return p
     in
     loop ()
 

@@ -14,24 +14,24 @@ let callWith callCounter =
                     <<y>>
                 else
                     awaitLoop ()
-            ) as resultPromise in resultPromise
+            ) as resultPromise in return resultPromise
         in
         let actualPromise = awaitLoop () in
         let valueThunk () = awaitValue actualPromise in
         let cancelThunk () = send cancel callNo in
         let changeMind x = cancelThunk (); send call (x, callNo) in
-        valueThunk, cancelThunk, changeMind
+        return (valueThunk, cancelThunk, changeMind)
 
-let rec awaitCancel callNo wrongCallCallback =
+let rec awaitCancel callNo runBeforeStall =
     promise (cancel callNo' |->
         if callNo = callNo' then
             promise (dummy empty |-> return <<empty>>) as dummyPromise in
-            wrongCallCallback ();
+            runBeforeStall ();
             awaitValue dummyPromise;
-            awaitCancel callNo wrongCallCallback
+            awaitCancel callNo runBeforeStall
         else
-            awaitCancel callNo wrongCallCallback
-    ) as p in p
+            awaitCancel callNo runBeforeStall
+    ) as p in return p
 
 let remote f =
     let rec loop () =
@@ -40,7 +40,7 @@ let remote f =
             let y = f x in
             send result (y, callNo);
             loop ()
-        ) as p in p
+        ) as p in return p
     in
     loop ()
 

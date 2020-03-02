@@ -21,8 +21,8 @@ let client () =
             cachedData := !cachedData @ newBatch;
             requestInProgress := false;
             return <<()>>)
-        as p in
-        return p
+        as _ in
+        return ()
     in
 
     let rec clientLoop batchSize =
@@ -31,12 +31,12 @@ let client () =
             (if (!currentItem > cachedSize - batchSize / 2) && (not !requestInProgress) then
                  requestNewData (cachedSize + 1)
              else
-                 return <<()>>);
+                 return ());
             (if (!currentItem) < cachedSize then
                  send display (toString (nth !cachedData !currentItem));
                  currentItem := !currentItem + 1
              else  
-                 send display "please wait a bit more");
+                 send display "please wait a bit and try again");
             clientLoop batchSize)
         as p in
         return p

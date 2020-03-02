@@ -113,8 +113,8 @@ let (|>) x f = f x
 let ignore _ = ()
 let fst (x, _) = x
 let snd (_, y) = y
-
-let awaitValue p =
-    await p until <<value>> in value
   
 let return x = x
+
+let awaitValue p =
+    await p until <<value>> in return value
