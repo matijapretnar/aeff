@@ -246,6 +246,7 @@ let add_external_function x ty_sch state =
   {state with variables = Ast.VariableMap.add x ty_sch state.variables}
 
 let add_operation state op ty =
+  Format.printf "@[operation %t : %t@]@." (Ast.Operation.print op) (Ast.print_ty_scheme ([], ty));
   {state with operations = Ast.OperationMap.add op ty state.operations}
 
 let add_top_definition state x expr =
@@ -258,5 +259,6 @@ let add_top_definition state x expr =
 
 let add_type_definitions state ty_defs =
     List.fold_left (fun state (params, ty_name, ty_def) ->
+      Format.printf "@[type %t@]@." (Ast.TyName.print ty_name);
       {state with type_definitions = Ast.TyNameMap.add ty_name (params, ty_def) state.type_definitions}
     ) state ty_defs

@@ -319,7 +319,7 @@ and print_computation ?max_level c ppf =
         (Variable.print p2)
         (print_computation c2)
   | Await (e, (p, c)) ->
-      print "@[<hov>await @[<hov>@%t until@ ⟨%t⟩@] in@ %t@]"
+      print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]"
         (print_expression e)
         (print_pattern p)
         (print_computation c)
