@@ -49,17 +49,9 @@ let callWith callCounter x =
     let callNo = !callCounter in
     send opReq (x, callNo);
     callCounter := callNo + 1;
-    let rec awaitLoop () =
-        promise (opRes (y, callNo') |->
-            if callNo = callNo' then
-                return <<y>>
-            else
-                awaitLoop ()
-        )
-        as resultPromise in return resultPromise
-    in
-    let actualPromise = awaitLoop () in
-    awaitValue actualPromise
+    promise (opRes (y, callNo') when callNo = callNo' |->
+        return <<y>>
+    ) as p in awaitValue p
 
 let lookup callCounter l =
     match callWith callCounter (LookupReq l) with LookupRes v |-> return v

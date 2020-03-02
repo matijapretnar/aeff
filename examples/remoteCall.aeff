@@ -11,16 +11,10 @@ let callWith callCounter =
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        let rec awaitLoop () =
-            promise (result (y, callNo') |->
-                if callNo = callNo' then
-                    return <<y>>
-                else
-                    awaitLoop ()
-            ) as resultPromise in return resultPromise
-        in
-        let actualPromise = awaitLoop () in
-        let valueThunk () = awaitValue actualPromise in
+        promise (result (y, callNo') when callNo = callNo' |->
+            return <<y>>
+        ) as p in
+        let valueThunk () = awaitValue p in
         return valueThunk
 
 let remote f =

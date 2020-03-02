@@ -1,0 +1,87 @@
+type callId = int
+type loc = int
+type val = int
+
+operation lookupReq : loc * callId
+operation updateReq : loc * val * callId
+operation allocReq : val * callId
+
+operation lookupRes : val * callId
+operation updateRes : callId
+operation allocRes : loc * callId
+
+let empty = []
+
+let rec lookupHeap ((l', v) :: heap') l =
+  if l = l' then v else lookupHeap heap' l
+
+let rec updateHeap ((l', v') :: heap') l v =
+  if l = l' then (l, v) :: heap' else (l', v') :: updateHeap heap' l v
+
+let allocHeap heap v =
+  let l = length heap in
+  (l, v) :: heap, l
+
+let heapRunner () =
+    let heap = ref empty in
+    let rec awaitLookup () =
+        promise (lookupReq (l, callId) |->
+            let v = lookupHeap !heap l in
+            send lookupRes (v, callId);
+            awaitLookup ()
+        ) as p in return p
+    in
+    let rec awaitUpdate () =
+        promise (updateReq (l, v, callId) |->
+            let heap' = updateHeap !heap l v in
+            send updateRes callId;
+            heap := heap';
+            awaitUpdate ()
+        ) as p in return p
+    in
+    let rec awaitAlloc () =
+        promise (allocReq (v, callId) |->
+            let heap', l = allocHeap !heap v in
+            send allocRes (l, callId);
+            heap := heap';
+            awaitAlloc ()
+        ) as p in return p
+    in
+    awaitLookup ();
+    awaitUpdate ();
+    awaitAlloc ()
+
+let lookup callCounter l =
+    let callNo = !callCounter in
+    send lookupReq (l, callNo);
+    callCounter := callNo + 1;
+    promise (lookupRes (v, callNo') when callNo = callNo' |->
+        return <<v>>
+    ) as p in awaitValue p
+
+let update callCounter l v =
+    let callNo = !callCounter in
+    send updateReq (l, v, callNo);
+    callCounter := callNo + 1;
+    promise (updateRes (callNo') when callNo = callNo' |->
+        return <<()>>
+    ) as p in awaitValue p
+
+let alloc callCounter v =
+    let callNo = !callCounter in
+    send allocReq (v, callNo);
+    callCounter := callNo + 1;
+    promise (allocRes (l, callNo') when callNo = callNo' |->
+        return <<l>>
+    ) as p in awaitValue p
+
+run
+    let callCounter = ref 0 in
+    let l = alloc callCounter 0 in
+    let l' = alloc callCounter 10 in
+    update callCounter l 10;
+    update callCounter l' (lookup callCounter l + 4);
+    return (lookup callCounter l, lookup callCounter l')
+
+run
+    heapRunner ()

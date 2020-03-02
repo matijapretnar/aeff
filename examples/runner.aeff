@@ -13,17 +13,12 @@ let lcgRunner modulus a c seed =
 
 let randomDigit callCounter =
     let callNo = !callCounter in
-    let rec awaitLoop () =
-        promise (randomRes (callNo', seed) |->
-            if callNo = callNo' then
-                return <<seed mod 10>>
-            else
-                awaitLoop ()
-        ) as p in return p
-    in
     send randomReq callNo;
     callCounter := callNo + 1;
-    awaitValue (awaitLoop ())
+    promise (randomRes (callNo', seed) when callNo = callNo' |->
+        return <<seed mod 10>>
+    ) as p in
+    awaitValue p
 
 run
     lcgRunner 1234 567 89 1
