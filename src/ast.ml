@@ -1,5 +1,3 @@
-open Utils
-
 module TyName = Symbol.Make ()
 type ty_name = TyName.t
 module TyNameMap = Map.Make(TyName)
@@ -65,9 +63,9 @@ let new_print_param () =
   in
   print_param
 
-let print_ty_scheme (params, ty) ppf =
+let print_ty_scheme (_params, ty) ppf =
   let print_param = new_print_param () in
-  Format.printf "@[%t@]" (print_ty print_param ty)
+  Utils.print ppf "@[%t@]" (print_ty print_param ty)
 
 let rec substitute_ty subst = function
   | TyConst _ as ty -> ty
@@ -146,7 +144,7 @@ let rec remove_pattern_bound_variables subst = function
       List.fold_left remove_pattern_bound_variables subst pats
   | PVariant (_, None) -> subst
   | PVariant (_, Some pat) -> remove_pattern_bound_variables subst pat
-  | PConst c -> subst
+  | PConst _ -> subst
   | PNonbinding -> subst
 
 let rec refresh_pattern = function
@@ -249,7 +247,7 @@ let rec print_pattern ?max_level p ppf =
   | PVar x -> print "%t" (Variable.print x)
   | PAs (p, x) ->
       print "%t as %t" (print_pattern p) (Variable.print x)
-  | PAnnotated (p, ty) -> print_pattern ?max_level p ppf
+  | PAnnotated (p, _ty) -> print_pattern ?max_level p ppf
   | PConst c -> Const.print c ppf
   | PTuple lst -> Utils.print_tuple print_pattern lst ppf
   | PVariant (lbl, None) when lbl = nil_label -> print "[]"
@@ -267,7 +265,7 @@ let rec print_expression ?max_level e ppf =
   match e with
   | Var x -> print "%t" (Variable.print x)
   | Const c -> print "%t" (Const.print c)
-  | Annotated (t, ty) -> print_expression ?max_level t ppf
+  | Annotated (t, _ty) -> print_expression ?max_level t ppf
   | Tuple lst -> Utils.print_tuple print_expression lst ppf
   | Variant (lbl, None) when lbl = nil_label -> print "[]"
   | Variant (lbl, None) -> print "%t" (Label.print lbl)
@@ -278,7 +276,7 @@ let rec print_expression ?max_level e ppf =
         (Label.print lbl)
         (print_expression ~max_level:0 e)
   | Lambda a -> print ~at_level:2 "fun %t" (print_abstraction a)
-  | RecLambda (f, a) -> print ~at_level:2 "rec %t ..." (Variable.print f)
+  | RecLambda (f, _ty) -> print ~at_level:2 "rec %t ..." (Variable.print f)
   | Fulfill expr -> print "⟨%t⟩" (print_expression expr)
   | Reference r -> print "{ contents = %t }" (print_expression !r)
 
@@ -331,3 +329,11 @@ and let_abstraction (p, c) ppf =
   Format.fprintf ppf "%t = %t" (print_pattern p) (print_computation c)
 
 and case a ppf = Format.fprintf ppf "%t" (print_abstraction a)
+
+let string_of_expression e =
+  print_expression e Format.str_formatter ;
+  Format.flush_str_formatter ()
+
+let string_of_computation c =
+  print_computation c Format.str_formatter ;
+  Format.flush_str_formatter ()

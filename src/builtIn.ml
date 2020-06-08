@@ -1,16 +1,14 @@
-open Utils
-
 let binary_function f = function
   | Ast.Tuple [expr1; expr2] -> f expr1 expr2
-  | expr -> raise Interpreter.Stuck
+  | _ -> raise Interpreter.Stuck
 
 let get_int = function
   | Ast.Const (Const.Integer n) -> n
-  | expr -> raise Interpreter.Stuck
+  | _ -> raise Interpreter.Stuck
 
 let get_reference = function
   | Ast.Reference r -> r
-  | expr -> raise Interpreter.Stuck
+  | _ -> raise Interpreter.Stuck
 
 let int_to f expr =
   let n = get_int expr in
@@ -57,5 +55,5 @@ let functions = [
     ("ref", poly_type (fun a -> Ast.TyArrow (a, Ast.TyReference a)), (fun v -> Ast.Return (Ast.Reference (ref v))));
     ("(!)", poly_type (fun a -> Ast.TyArrow (Ast.TyReference a, a)), (fun v -> let r = get_reference v in Ast.Return (!r)));
     ("(:=)", poly_type (fun a -> Ast.TyArrow (Ast.TyTuple [Ast.TyReference a; a], Ast.TyTuple [])), binary_function (fun v1 v2 -> let r = get_reference v1 in r := v2; Ast.Return (Ast.Tuple [])));
-    ("toString", poly_type (fun a -> Ast.TyArrow (a, Ast.TyConst Const.StringTy)), (fun v -> Ast.Return (Ast.Const (Const.String "string"))))
+    ("toString", poly_type (fun a -> Ast.TyArrow (a, Ast.TyConst Const.StringTy)), (fun expr -> Ast.Return (Ast.Const (Const.String (Ast.string_of_expression expr)))))
 ] 

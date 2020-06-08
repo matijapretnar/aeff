@@ -5,8 +5,7 @@ type message =
   | Warning of string
 
 let computation comp =
-    Ast.print_computation comp Format.str_formatter ;
-    let str = Format.flush_str_formatter () in
+    let str = Ast.string_of_computation comp in
     Html.(li (pre ~attrs:[("style", "background: #ddd; font-family: \"Lucida Console\", Monaco, monospace; font-size: smaller")] (string str)))
 
 let form url nodes =
@@ -61,7 +60,7 @@ let actions comps =
     | [_] -> back :: only_step :: step10 :: operation :: []
     | _ -> back :: List.mapi (fun i _ -> step i) comps @ random_step :: step10 :: operation :: []
 
-let content comps msgs = Html.([
+let content comps _msgs = Html.([
     h1 (string "An interactive interpreter for Æff");
     list (actions comps);
     ol (List.map computation comps)

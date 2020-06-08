@@ -49,7 +49,7 @@ module S = Tiny_httpd
 let redirect basepath url =
   S.Response.make_raw ~headers:[("Location", Format.sprintf "%s%s" basepath url)] ~code:302 ""
 
-let print_request req = ()
+let print_request req = ignore req
    (* Format.printf "%t@." (fun ppf -> S.Request.pp_ ppf req) *)
 
 
@@ -71,10 +71,10 @@ let run_server state0 =
   let view () =
     S.Response.make_string (Ok (View.show (List.nth !state 0)))
   in
-  S.add_path_handler ~meth:`GET server
-    "/" (fun req -> print_request req; view ());
-  S.add_path_handler ~meth:`GET server
-    "/step/%d/" (fun i req ->
+  S.add_route_handler ~meth:`GET server
+    S.Route.return (fun req -> print_request req; view ());
+  S.add_route_handler ~meth:`GET server
+    S.Route.(exact "step" @/ int @/ return) (fun i req ->
         print_request req;
         try
             (match Runner.step_process state0.interpreter (List.nth !state 0 |> fst) i with
@@ -82,25 +82,25 @@ let run_server state0 =
             | None -> add_msg (Format.sprintf "Computation %d stuck." (i + 1)));
             redirect basepath "/"
         with
-        | Error.Error (loc, error_kind, msg) ->
+        | Error.Error (_, _, msg) ->
             S.Response.make (Error (500, msg))
     );
-  S.add_path_handler ~meth:`GET server
-    "/step/random/%d/" (fun num_steps req ->
+  S.add_route_handler ~meth:`GET server
+    S.Route.(exact "step" @/ exact "random" @/ int @/ return) (fun num_steps req ->
         print_request req;
         try
-            for step = 1 to num_steps do
+            for _step = 1 to num_steps do
                 (match Runner.random_step state0.interpreter (List.nth !state 0 |> fst) with
                 | Some cs -> update_comps cs
                 | None -> add_msg "All computations stuck.")
             done;
             redirect basepath "/"
         with
-        | Error.Error (loc, error_kind, msg) ->
+        | Error.Error (_, _, msg) ->
             S.Response.make (Error (500, msg))
     );
-  S.add_path_handler ~meth:`GET server
-    "/back/" (fun req ->
+  S.add_route_handler ~meth:`GET server
+    S.Route.(exact "back" @/ return) (fun req ->
         print_request req;
         try
             (match !state with
@@ -109,11 +109,11 @@ let run_server state0 =
             | _ :: old_state -> state := old_state);
             redirect basepath "/"
         with
-        | Error.Error (loc, error_kind, msg) ->
+        | Error.Error (_, _, msg) ->
             S.Response.make (Error (500, msg))
     );
-  S.add_path_handler ~meth:`GET server
-    "/operation/" (fun req ->
+  S.add_route_handler ~meth:`GET server
+    S.Route.(exact "operation" @/ return) (fun req ->
         print_request req;
         let params = S.Request.query req in
         try
@@ -124,10 +124,10 @@ let run_server state0 =
             let expr' = Desugarer.desugar_pure_expression state0.desugarer term in
             both
                 (View.Info (Format.sprintf "Incoming operation %s" input))
-                (Runner.incoming_operation state0.interpreter (List.nth !state 0 |> fst) op' expr');
+                (Runner.incoming_operation (List.nth !state 0 |> fst) op' expr');
             redirect basepath "/"
         with
-        | Error.Error (loc, error_kind, msg) ->
+        | Error.Error (_, _, msg) ->
             S.Response.make (Error (500, msg))
     );
   Format.printf "listening on %s/@." basepath;
@@ -137,7 +137,7 @@ let main () =
     match Array.to_list Sys.argv with
     | [] ->
         assert false
-    | [aeff] ->
+    | [_aeff] ->
         failwith ("Run AEff as '" ^ Sys.argv.(0) ^ " <filename>.aeff'")
     | _ :: filenames ->
         try

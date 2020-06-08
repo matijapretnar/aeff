@@ -21,7 +21,7 @@ module Make () : S = struct
 
   let refresh (_, ann) = fresh ann
 
-  let print (n, ann) ppf =
+  let print (_n, ann) ppf =
     Format.fprintf ppf "%s" ann
 
 end

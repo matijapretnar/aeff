@@ -159,15 +159,15 @@ and desugar_plain_computation ~loc state =
   in
 function
     | S.Apply
-        ( {it= S.Var "(&&)"}
-        , {it= S.Tuple [t1; t2]}) ->
+        ( {it= S.Var "(&&)"; _}
+        , {it= S.Tuple [t1; t2]; _}) ->
         let binds1, e1 = desugar_expression state t1 in
         let c1 = desugar_computation state t2 in
         let c2 = Ast.Return (Ast.Const (Const.Boolean false)) in
         (binds1, if_then_else e1 c1 c2)
     | S.Apply
-        ( {it= S.Var "(||)"}
-        , {it= S.Tuple [t1; t2]}) ->
+        ( {it= S.Var "(||)"; _}
+        , {it= S.Tuple [t1; t2]; _}) ->
         let binds1, e1 = desugar_expression state t1 in
         let c1 = Ast.Return (Ast.Const (Const.Boolean true)) in
         let c2 = desugar_computation state t2 in

@@ -30,5 +30,5 @@ let random_step state comps =
         let n = Random.int (List.length steps) in
         Some (List.nth steps n)
 
-let incoming_operation state comps op expr =
+let incoming_operation comps op expr =
     List.map (fun comp -> Ast.In (op, expr, comp)) comps
