@@ -1,0 +1,9 @@
+(executable
+ (name aeff)
+ (libraries cow tiny_httpd)
+ (promote (until-clean) (into ..)))
+
+(ocamllex lexer)
+
+(menhir
+  (modules parser))

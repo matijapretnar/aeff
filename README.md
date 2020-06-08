@@ -6,11 +6,11 @@ Install dependencies by
 
 and build by running (requires OCaml >= 4.08.0)
 
-    make
+    dune build
 
 Then, run
 
-    ./aeff.byte file1.aeff file2.aeff ...
+    ./aeff.exe file1.aeff file2.aeff ...
 
 This loads all the commands in all the listed files and starts a local HTTP server at http://127.0.0.1:8080/.
 

@@ -1,4 +1,0 @@
-S src/**
-B _build/src/**
-PKG cow
-PKG tiny_httpd

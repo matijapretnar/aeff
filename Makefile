@@ -1,9 +1,9 @@
-.PHONY: aeff.byte
+.PHONY: aeff.exe
 
-default: aeff.byte
+default: aeff.exe
 
-aeff.byte:
-	ocamlbuild -use-ocamlfind -pkgs cow,tiny_httpd aeff.byte
+aeff.exe:
+	dune build src/aeff.exe
 
 clean:
-	rm -rf _build aeff.byte
+	dune clean
