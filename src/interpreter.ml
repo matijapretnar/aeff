@@ -8,7 +8,7 @@ let initial_state =
     builtin_functions = Ast.VariableMap.empty
   }
 
-exception Stuck
+exception PatternMismatch
 
 let rec eval_tuple state = function
     | Ast.Tuple exprs -> exprs
@@ -44,11 +44,11 @@ let rec match_pattern_with_expression state pat expr =
             Ast.VariableMap.empty
         | Some pat, (label', Some expr) when label = label' ->
             match_pattern_with_expression state pat expr
-        | _, _ -> raise Stuck
+        | _, _ -> raise PatternMismatch
         end
     | Ast.PConst c when Const.equal c (eval_const state expr) -> Ast.VariableMap.empty
     | Ast.PNonbinding ->  Ast.VariableMap.empty
-    | _ -> raise Stuck
+    | _ -> raise PatternMismatch
 
 let substitute subst comp =
     let subst = Ast.VariableMap.map (Ast.refresh_expression []) subst in
@@ -73,58 +73,63 @@ let rec eval_function state = function
         end
     | expr -> Error.runtime "Function expected but got %t" (Ast.print_expression expr)
 
-let rec step state comp =
-    try
-        step_plain state comp
-    with
-        Not_found -> raise Stuck
-and step_plain state = function
-    | Ast.Return _ -> raise Stuck
-    | Ast.Out _ -> raise Stuck
-    | Ast.Handler (op, op_comp, p, Ast.Out (op', expr', cont')) ->
-        Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont'))
-    | Ast.Handler (op, op_comp, p, comp) -> Ast.Handler (op, op_comp, p, step state comp)
-    | Ast.In (_, _, Ast.Return expr) -> Ast.Return expr
-    | Ast.In (op, expr, Ast.Out (op', expr', cont')) ->
-        Ast.Out (op', expr', Ast.In(op, expr, cont'))
-    | Ast.In (op, expr, Ast.Handler (op', (arg_pat, op_comp), p, comp)) when op = op' ->
-        let subst = match_pattern_with_expression state arg_pat expr in
-        let y = Ast.Variable.fresh "y" in
-        Ast.Do (substitute subst op_comp, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp)))))
-    | Ast.In (op, expr, Ast.Handler (op', op_comp, p, comp)) ->
-        Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp))
-    | Ast.In (op, expr, comp) -> Ast.In (op, expr, step state comp)
+let rec step state = function
+    | Ast.Return _ -> []
+    | Ast.Out _ -> []
+    | Ast.Handler (op, op_comp, p, comp) ->
+        let comps' = step state comp |> List.map (fun comp' -> Ast.Handler (op, op_comp, p, comp')) in
+        begin match comp with
+        | Ast.Out (op', expr', cont') ->
+            Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')) :: comps'
+        | _ -> comps'
+        end
+    | Ast.In (_, _, Ast.Return expr) -> [Ast.Return expr]
+    | Ast.In (op, expr, comp) ->
+        let comps' = step state comp |> List.map (fun comp' -> Ast.In (op, expr, comp')) in
+        begin match comp with
+        | Ast.Out (op', expr', cont') ->
+            Ast.Out (op', expr', Ast.In(op, expr, cont')) :: comps'
+        | Ast.Handler (op', (arg_pat, op_comp), p, comp) when op = op' ->
+            let subst = match_pattern_with_expression state arg_pat expr in
+            let y = Ast.Variable.fresh "y" in
+            let comp' = Ast.Do (substitute subst op_comp, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp))))) in
+            comp' :: comps'
+        | Ast.Handler (op', op_comp, p, comp) ->
+            Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp)) :: comps'
+        | _ -> comps'
+        end
     | Ast.Match (expr, cases) ->
         let rec find_case = function
         | (pat, comp) :: cases ->
             begin match match_pattern_with_expression state pat expr with
-            | subst -> substitute subst comp
-            | exception Stuck -> find_case cases
+            | subst -> [substitute subst comp]
+            | exception PatternMismatch -> find_case cases
             end
-        | [] -> raise Stuck
+        | [] -> []
         in
         find_case cases
     | Ast.Apply (expr1, expr2) ->
         let f = eval_function state expr1 in
-        f expr2
+        [f expr2]
     | Ast.Do (Ast.Return expr, (pat, comp)) ->
         let subst = match_pattern_with_expression state pat expr in
-        substitute subst comp
-    | Ast.Do (Ast.Out (op, expr, comp1), comp2) ->
-        Ast.Out (op, expr, Ast.Do (comp1, comp2))
-    | Ast.Do (Ast.Handler (op, handler, pat, comp1), comp2) ->
-        Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2))
-    | Ast.Do (comp1, cont2) ->
-        Ast.Do (step state comp1, cont2)
+        [substitute subst comp]
+    | Ast.Do (comp1, comp2) ->
+        let comps1' = step state comp1  |> List.map (fun comp1' -> Ast.Do (comp1', comp2)) in
+        begin match comp1 with
+        | Ast.Out (op, expr, comp1) ->
+            Ast.Out (op, expr, Ast.Do (comp1, comp2)) :: comps1'
+        | Ast.Handler (op, handler, pat, comp1) ->
+            Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2)) :: comps1'
+        | _ -> comps1'
+        end
     | Ast.Await (expr, (pat, comp)) ->
         begin match expr with
         | Ast.Fulfill expr ->
             let subst = match_pattern_with_expression state pat expr in
-            substitute subst comp
-        | _ -> raise Stuck
+            [substitute subst comp]
+        | _ -> []
         end
-and step_abs state (pat, comp) =
-    (pat, step state comp)
 
 let eval_top_let state x expr =
     {state with variables=Ast.VariableMap.add x expr state.variables}

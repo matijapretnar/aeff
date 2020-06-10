@@ -6,8 +6,11 @@ type comp_state =
 let comp_state state = function
   | Ast.Out (op, expr, comp) -> Out (op, expr, comp)
   | comp ->
-        try Step (Interpreter.step state comp)
-        with Interpreter.Stuck -> Stuck
+        match Interpreter.step state comp with
+        | [] -> Stuck
+        | comps ->
+            let n = Random.int (List.length comps) in
+            Step (List.nth comps n)
 
 let step_process state comps i =
     let comp = List.nth comps i in

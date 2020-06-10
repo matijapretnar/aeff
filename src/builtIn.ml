@@ -1,14 +1,14 @@
 let binary_function f = function
   | Ast.Tuple [expr1; expr2] -> f expr1 expr2
-  | _ -> raise Interpreter.Stuck
+  | expr -> Error.runtime "Pair expected but got %t" (Ast.print_expression expr)
 
 let get_int = function
   | Ast.Const (Const.Integer n) -> n
-  | _ -> raise Interpreter.Stuck
+  | expr -> Error.runtime "Integer expected but got %t" (Ast.print_expression expr)
 
 let get_reference = function
   | Ast.Reference r -> r
-  | _ -> raise Interpreter.Stuck
+  | expr -> Error.runtime "Reference expected but got %t" (Ast.print_expression expr)
 
 let int_to f expr =
   let n = get_int expr in
