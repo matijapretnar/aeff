@@ -77,12 +77,8 @@ let rec step state = function
     | Ast.Return _ -> []
     | Ast.Out _ -> []
     | Ast.Handler (op, op_comp, p, comp) ->
-        let comps' = step state comp |> List.map (fun comp' -> Ast.Handler (op, op_comp, p, comp')) in
-        begin match comp with
-        | Ast.Out (op', expr', cont') ->
-            Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')) :: comps'
-        | _ -> comps'
-        end
+        step state comp
+        |> List.map (fun comp' -> Ast.Handler (op, op_comp, p, comp'))
     | Ast.In (_, _, Ast.Return expr) -> [Ast.Return expr]
     | Ast.In (op, expr, comp) ->
         let comps' = step state comp |> List.map (fun comp' -> Ast.In (op, expr, comp')) in
