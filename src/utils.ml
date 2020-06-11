@@ -1,8 +1,8 @@
-type 'a located = {it: 'a; at: Location.t}
+type 'a located = { it : 'a; at : Location.t }
 
-let add_loc ~loc it = {it = it; at = loc}
+let add_loc ~loc it = { it; at = loc }
 
-module StringMap = Map.Make(String)
+module StringMap = Map.Make (String)
 
 type comparison = Less | Equal | Greater | Invalid
 
@@ -54,13 +54,14 @@ let print ?(at_level = min_int) ?(max_level = max_int) ppf =
 let rec print_sequence sep pp vs ppf =
   match vs with
   | [] -> ()
-  | [v] -> pp v ppf
-  | v :: vs -> Format.fprintf ppf "%t%s@,%t" (pp v) sep (print_sequence sep pp vs)
+  | [ v ] -> pp v ppf
+  | v :: vs ->
+      Format.fprintf ppf "%t%s@,%t" (pp v) sep (print_sequence sep pp vs)
 
 let rec print_cases pp vs ppf =
   match vs with
   | [] -> ()
-  | [v] -> pp v ppf
+  | [ v ] -> pp v ppf
   | v :: vs -> Format.fprintf ppf "%t@,| %t" (pp v) (print_cases pp vs)
 
 let print_field fpp vpp (f, v) ppf = print ppf "%t = %t" (fpp f) (vpp v)
