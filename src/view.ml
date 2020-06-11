@@ -15,8 +15,8 @@ let step_action (path, step) =
         button (step_description path) (Model.Step step)
     ]
 
-let actions (model : Model.model) =
-    let step_actions = List.map step_action (Model.steps model.loaded_code) in
+let actions (model : Model.model) code =
+    let step_actions = List.map step_action (Model.steps code) in
     let random_action =
         let random_step_button = 
             match model.random_step_size with
@@ -28,7 +28,7 @@ let actions (model : Model.model) =
             random_step_button
         ]]
     and back_action =
-        match model.loaded_code.history with
+        match code.history with
         | [] -> disabled_button "back" :: []
         | _ -> button "back" Model.Back :: []
     and interrupt_action =
@@ -58,5 +58,16 @@ let process proc =
     let txt = Ast.string_of_process proc in
     pre txt
 
+let editor (model : Model.model) =
+    div [
+        elt "textarea" ~a:[oninput (fun input -> Model.ChangeSource input)] [text model.unparsed_code];
+        button "Load" Model.LoadSource
+    ]
+
 let view (model : Model.model) = 
-    div [actions model; operations model.loaded_code.snapshot.operations; process model.loaded_code.snapshot.process]
+    match model.loaded_code with
+    | Ok code ->
+        div [editor model; actions model code; operations code.snapshot.operations; process code.snapshot.process]
+    | Error msg ->
+        div [editor model; text msg]
+
