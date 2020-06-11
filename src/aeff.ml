@@ -1,49 +1,3 @@
-let parse_commands lexbuf =
-    try Parser.commands Lexer.token lexbuf with
-    | Parser.Error ->
-        Error.syntax ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "parser error"
-    | Failure failmsg when failmsg = "lexing: empty token" ->
-        Error.syntax ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf)) "unrecognised symbol."
-
-type state = {
-    desugarer : Desugarer.state;
-    interpreter : Interpreter.state;
-    typechecker : Typechecker.state;
-    top_computations : Ast.computation list
-}
-
-let initial_state () =
-    let load_function state (x, ty_sch, def) =
-        let desugarer_state', x' = Desugarer.add_external_variable x state.desugarer in
-        let interpreter_state' = Interpreter.add_external_function x' def state.interpreter in
-        let typechecker_state' = Typechecker.add_external_function x' ty_sch state.typechecker in
-        {state with desugarer = desugarer_state'; interpreter = interpreter_state'; typechecker = typechecker_state'}
-    in
-    {
-        desugarer = Desugarer.initial_state;
-        interpreter = Interpreter.initial_state;
-        typechecker = Typechecker.initial_state;
-        top_computations = []
-    }
-    |> fun state -> Utils.fold load_function state BuiltIn.functions
-
-
-let execute_command state = function
-| Ast.TyDef ty_defs ->
-    let typechecker_state' = Typechecker.add_type_definitions state.typechecker ty_defs in
-    {state with typechecker = typechecker_state'}
-
-| Ast.TopLet (x, expr) ->
-    let interpreter_state' = Interpreter.eval_top_let state.interpreter x expr in
-    let typechecker_state' = Typechecker.add_top_definition state.typechecker x expr in
-    {state with interpreter = interpreter_state'; typechecker = typechecker_state'}
-| Ast.TopDo comp ->
-    let _ = Typechecker.infer state.typechecker comp in
-    {state with top_computations = comp :: state.top_computations}
-| Ast.Operation (op, ty) ->
-    let typechecker_state' = Typechecker.add_operation state.typechecker op ty in
-    {state with typechecker = typechecker_state'}
-
 module S = Tiny_httpd
 
 let redirect basepath url =
@@ -60,8 +14,8 @@ let make_process = function
 let run_server state0 =
   let server = S.create () in
   let basepath = Format.sprintf "http://%s:%d" (S.addr server) (S.port server) in
-  let steps proc = Runner.top_steps state0.interpreter proc in
-  let initial_process = make_process state0.top_computations in
+  let steps proc = Runner.top_steps state0.Loader.interpreter proc in
+  let initial_process = make_process state0.Loader.top_computations in
   let state = ref [(initial_process, steps initial_process, [])] in
   let update_proc proc =
     let _, _, errors = List.nth !state 0 in
@@ -160,14 +114,14 @@ let main () =
         failwith ("Run AEff as '" ^ Sys.argv.(0) ^ " <filename>.aeff'")
     | _ :: filenames ->
         try
-            let parse_file filename = Lexer.read_file parse_commands filename in
+            let parse_file filename = Lexer.read_file Loader.parse_commands filename in
             let cmds = List.concat (List.map parse_file filenames) in
-            let state = initial_state () in
+            let state = Loader.initial_state () in
             let desugarer_state', cmds' =
                 Utils.fold_map Desugarer.desugar_command state.desugarer cmds
             in
             let state' = {state with desugarer=desugarer_state'} in
-            let state'' = List.fold_left execute_command state' cmds'
+            let state'' = List.fold_left Loader.execute_command state' cmds'
             in
             run_server state''
         with
