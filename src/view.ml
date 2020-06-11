@@ -16,7 +16,7 @@ let step_action (path, step) =
     ]
 
 let actions (model : Model.model) =
-    let step_actions = List.map step_action model.state.steps in
+    let step_actions = List.map step_action (Model.steps model) in
     let random_action =
         let random_step_button = 
             match model.random_step_size with
