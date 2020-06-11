@@ -1,9 +1,20 @@
 (executable
  (name aeff)
- (libraries cow tiny_httpd)
- (promote (until-clean) (into ..)))
+ (libraries ocaml-vdom)
+ (modes js)
+ (link_flags -no-check-prims))
+
+(rule
+ (targets aeff.js)
+ (deps aeff.bc.js)
+ (action
+  (run cp %{deps} %{targets})))
 
 (ocamllex lexer)
 
 (menhir
   (modules parser))
+
+(alias
+ (name DEFAULT)
+ (deps aeff.js aeff.html))

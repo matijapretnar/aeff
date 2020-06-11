@@ -1,100 +1,64 @@
-module Html = Cow.Html
+open Vdom
 
-type message =
-  | Info of string
-  | Warning of string
+let button txt msg = input [] ~a:[onclick (fun _ -> msg); type_button; value txt]
+let disabled_button txt = input [] ~a:[type_button; value txt; disabled true]
+
+let pre txt =
+    elt "pre" ~a:[style "background" "#ddd"; style "font-family" "\"Lucida Console\", Monaco, monospace"; style "font-size" "smaller"] [text txt]
+
+let h1 txt = elt "h1" [text txt]
+
+let step_description = function
+    | Runner.TopOut _ -> "out"
+    | Runner.Step proc -> Ast.string_of_process proc
+
+let step_action step =
+    elt "li" [
+        button (step_description step) (Model.Step step)
+    ]
+
+let actions (model : Model.model) =
+    let step_actions = List.map step_action model.state.steps in
+    let random_action =
+        let random_step_button = 
+            match model.random_step_size with
+            | Error msg -> disabled_button msg
+            | Ok num_steps -> button (Format.sprintf "make %d random steps" num_steps) Model.RandomStep
+        in
+        elt "li" [div [
+            input ~a:[oninput (fun input -> Model.ChangeStepSize input); value model.unparsed_step_size] [];
+            random_step_button
+        ]]
+    and back_action =
+        match model.history with
+        | [] -> disabled_button "back" :: []
+        | _ -> button "back" Model.Back :: []
+    and interrupt_action =
+        let interrupt_button = 
+            match model.parsed_interrupt with
+            | Error msg -> disabled_button msg
+            | Ok _ -> button "interrupt" Model.Interrupt
+        in
+        elt "li" [div [
+            input ~a:[oninput (fun input -> Model.ParseInterrupt input)] [];
+            interrupt_button
+        ]]
+    in
+    elt "ol" (back_action @ [random_action] @ step_actions @ [interrupt_action])
+
+let operations ops =
+    let operation op =
+        begin match op with
+        | Model.In (op, expr) -> Format.fprintf Format.str_formatter "↓%t %t" (Ast.Operation.print op) (Ast.print_expression expr)
+        | Model.Out (op, expr) -> Format.fprintf Format.str_formatter "↑%t %t" (Ast.Operation.print op) (Ast.print_expression expr)
+        end;
+        elt "li" [text (Format.flush_str_formatter ())]
+    in
+    elt "ul" (List.map operation ops)
 
 let process proc =
-    let str = Ast.string_of_process proc in
-    Html.(li (pre ~attrs:[("style", "background: #ddd; font-family: \"Lucida Console\", Monaco, monospace; font-size: smaller")] (string str)))
+    let txt = Ast.string_of_process proc in
+    pre txt
 
-let form url nodes =
-  Html.(
-    tag "form" ~attrs:[("action", url); ("method", "GET"); ("style", "display: inline")] (list nodes)
-  )
-
-let button node =
-  Html.tag "button" node
-
-let text_input name =
-  Html.input ~attrs:[("name", name)] ""
-
-let checkbox name =
-  Html.input ~attrs:[("type", "checkbox"); ("name", name)] ""
-
-let message msg =
-  Html.(
-    match msg with
-    | Info msg -> li (string msg)
-    | Warning msg -> li (span ~attrs:[("style", "color: red")] (string msg))
-  )
-
-let actions steps =
-  let step index =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/%d/" index) [
-        button (string (Format.sprintf "STEP COMP. %d" (index + 1)))
-      ])
-  and random_step =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/1/") [
-        button (string (Format.sprintf "STEP RANDOM"))
-      ])
-  and only_step =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/1/") [
-        button (string (Format.sprintf "STEP COMP."))
-      ])
-  and step10 =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/step/random/10/") [
-        button (string (Format.sprintf "STEP RANDOM 10X"))
-      ])
-  and back =
-      Html.(form (Format.sprintf "http://127.0.0.1:8080/back/") [
-        button (string (Format.sprintf "STEP BACK"))
-      ])
-  and operation =
-      Html.(form "http://127.0.0.1:8080/operation/" [
-        text_input "operation";
-        button (string "TRIGGER INTERRUPT")
-      ])
-  in
-    match steps with
-    | [] -> back :: operation :: []
-    | [_] -> back :: only_step :: step10 :: operation :: []
-    | _ -> back :: List.mapi (fun i _ -> step i) steps @ random_step :: step10 :: operation :: []
-
-let content proc steps _msgs = Html.([
-    h1 (string "An interactive interpreter for Æff");
-    list (actions steps);
-    process proc
-    (* ol (List.map message msgs) *)
-])
-
-let help =
-  Html.(ul [ string "STEP BACK - take one step back in the evaluation" ;
-             string "STEP COMP. X - advance computation X by one step" ;
-             string "STEP RANDOM - advance a random computation by one step" ;
-             string "STEP RANDOM 10X - advance the computations randomly by 10 steps" ;
-             string "TRIGGER INTERRUPT - trigger the interrupt and its payload that you have entered in the input box"])
-
-let show (proc, steps, msgs) =
-  Html.to_string (Html.(
-    html ~attrs:[("style", "font-family: Arial, Helvetica, sans-serif")] (list [
-      head (list [
-        base (Uri.of_string "http://127.0.0.1:8080/");
-        meta ~charset:"UTF-8" [];
-        title (string "An interactive interpreter for Æff");
-        link ~rel:"stylesheet" (Uri.of_string "default.css");
-        link ~rel:"stylesheet alternate"
-             ~title:"Big text"
-             (Uri.of_string "big.css");
-        script ~src:(Uri.of_string "support.js") empty;
-        meta ~name:"application-name"
-             ~content:"An interactive interpreter for Æff"
-             []
-      ]);
-
-      body (list (content proc steps msgs));
-      body (br);
-      body (b (string "HELP:"));
-      body help
-    ])
-  ))
+let view (model : Model.model) = 
+    div [actions model; operations model.state.operations; process model.state.process]

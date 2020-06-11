@@ -12,7 +12,7 @@ type state = {
     top_computations : Ast.computation list
 }
 
-let initial_state () =
+let initial_state =
     let load_function state (x, ty_sch, def) =
         let desugarer_state', x' = Desugarer.add_external_variable x state.desugarer in
         let interpreter_state' = Interpreter.add_external_function x' def state.interpreter in
@@ -42,3 +42,16 @@ let execute_command state = function
 | Ast.Operation (op, ty) ->
     let typechecker_state' = Typechecker.add_operation state.typechecker op ty in
     {state with typechecker = typechecker_state'}
+
+let load_commands cmds =
+    let state = initial_state in
+    let desugarer_state', cmds' =
+        Utils.fold_map Desugarer.desugar_command state.desugarer cmds
+    in
+    let state' = {state with desugarer=desugarer_state'} in
+    List.fold_left execute_command state' cmds'
+
+let load_source source =
+    let lexbuf = Lexing.from_string source in
+    let cmds = parse_commands lexbuf in
+    load_commands cmds

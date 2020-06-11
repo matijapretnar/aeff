@@ -3,7 +3,7 @@
 default: aeff.exe
 
 aeff.exe:
-	dune build src/aeff.exe
+	dune build src
 
 clean:
 	dune clean
