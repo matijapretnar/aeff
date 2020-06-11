@@ -8,13 +8,11 @@ let pre txt =
 
 let h1 txt = elt "h1" [text txt]
 
-let step_description = function
-    | Runner.TopOut _ -> "out"
-    | Runner.Step proc -> Ast.string_of_process proc
+let step_description path = String.concat ">" path
 
-let step_action step =
+let step_action (path, step) =
     elt "li" [
-        button (step_description step) (Model.Step step)
+        button (step_description path) (Model.Step step)
     ]
 
 let actions (model : Model.model) =

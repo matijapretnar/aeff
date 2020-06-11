@@ -77,28 +77,27 @@ let rec step state = function
     | Ast.Return _ -> []
     | Ast.Out _ -> []
     | Ast.Handler (op, op_comp, p, comp) ->
-        step state comp
-        |> List.map (fun comp' -> Ast.Handler (op, op_comp, p, comp'))
-    | Ast.In (_, _, Ast.Return expr) -> [Ast.Return expr]
+        step_in_context state "promise" (fun comp' -> Ast.Handler (op, op_comp, p, comp')) comp
+    | Ast.In (_, _, Ast.Return expr) -> [(["inRet"], Ast.Return expr)]
     | Ast.In (op, expr, comp) ->
-        let comps' = step state comp |> List.map (fun comp' -> Ast.In (op, expr, comp')) in
+        let comps' = step_in_context state "in" (fun comp' -> Ast.In (op, expr, comp')) comp in
         begin match comp with
         | Ast.Out (op', expr', cont') ->
-            Ast.Out (op', expr', Ast.In(op, expr, cont')) :: comps'
+            (["inOut"], Ast.Out (op', expr', Ast.In(op, expr, cont'))) :: comps'
         | Ast.Handler (op', (arg_pat, op_comp), p, comp) when op = op' ->
             let subst = match_pattern_with_expression state arg_pat expr in
             let y = Ast.Variable.fresh "y" in
             let comp' = Ast.Do (substitute subst op_comp, (Ast.PVar y, Ast.Do (Ast.Return (Ast.Var y), (Ast.PVar p, Ast.In (op, expr, comp))))) in
-            comp' :: comps'
+            (["inMatchPromise"], comp') :: comps'
         | Ast.Handler (op', op_comp, p, comp) ->
-            Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp)) :: comps'
+            (["inMismatchPromise"], Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp))) :: comps'
         | _ -> comps'
         end
     | Ast.Match (expr, cases) ->
         let rec find_case = function
         | (pat, comp) :: cases ->
             begin match match_pattern_with_expression state pat expr with
-            | subst -> [substitute subst comp]
+            | subst -> [(["match"], substitute subst comp)]
             | exception PatternMismatch -> find_case cases
             end
         | [] -> []
@@ -106,26 +105,29 @@ let rec step state = function
         find_case cases
     | Ast.Apply (expr1, expr2) ->
         let f = eval_function state expr1 in
-        [f expr2]
+        [(["apply"], f expr2)]
     | Ast.Do (Ast.Return expr, (pat, comp)) ->
         let subst = match_pattern_with_expression state pat expr in
-        [substitute subst comp]
+        [(["doRet"], substitute subst comp)]
     | Ast.Do (comp1, comp2) ->
-        let comps1' = step state comp1  |> List.map (fun comp1' -> Ast.Do (comp1', comp2)) in
+        let comps1' = step_in_context state "do" (fun comp1' -> Ast.Do (comp1', comp2)) comp1 in
         begin match comp1 with
         | Ast.Out (op, expr, comp1) ->
-            Ast.Out (op, expr, Ast.Do (comp1, comp2)) :: comps1'
+            (["doOut"], Ast.Out (op, expr, Ast.Do (comp1, comp2))) :: comps1'
         | Ast.Handler (op, handler, pat, comp1) ->
-            Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2)) :: comps1'
+            (["doPromise"], Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2))) :: comps1'
         | _ -> comps1'
         end
     | Ast.Await (expr, (pat, comp)) ->
         begin match expr with
         | Ast.Fulfill expr ->
             let subst = match_pattern_with_expression state pat expr in
-            [substitute subst comp]
+            [(["fulfilAwait"], substitute subst comp)]
         | _ -> []
         end
+and step_in_context state label ctx comp =
+    let comps' = step state comp in
+    List.map (fun (path, comp') -> (label :: path, ctx comp')) comps'
 
 let eval_top_let state x expr =
     {state with variables=Ast.VariableMap.add x expr state.variables}

@@ -4,7 +4,7 @@ type operation =
 
 type state = {
     process: Ast.process;
-    steps: Runner.top_step list;
+    steps: (string list * Runner.top_step) list;
     operations: operation list;
 }
 
@@ -59,7 +59,7 @@ let rec make_random_steps interpreter_state state num_steps =
     | (0, _) | (_, []) -> state
     | _ ->
         let i = Random.int (List.length state.steps) in
-        let top_step = List.nth state.steps i in
+        let (_, top_step) = List.nth state.steps i in
         let state' = update_state interpreter_state state top_step in
         make_random_steps interpreter_state state' (num_steps - 1)
 
