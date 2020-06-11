@@ -52,21 +52,45 @@ let redirect basepath url =
 let print_request req = ignore req
    (* Format.printf "%t@." (fun ppf -> S.Request.pp_ ppf req) *)
 
+let make_process = function
+    | [] -> Ast.Run (Ast.Return (Ast.Tuple []))
+    | comp :: comps ->
+        List.fold_left (fun proc comp -> Ast.Parallel (proc, Ast.Run comp)) (Ast.Run comp) comps
 
 let run_server state0 =
   let server = S.create () in
   let basepath = Format.sprintf "http://%s:%d" (S.addr server) (S.port server) in
-  let state = ref [(state0.top_computations, [])] in
-  let update_comps comps =
-    let _, errors = List.nth !state 0 in
-    state := (comps, errors) :: !state
+  let steps proc = Runner.top_steps state0.interpreter proc in
+  let initial_process = make_process state0.top_computations in
+  let state = ref [(initial_process, steps initial_process, [])] in
+  let update_proc proc =
+    let _, _, errors = List.nth !state 0 in
+    state := (proc, steps proc, errors) :: !state
   and add_msg msg =
-    let comps, errors = List.nth !state 0 in
-    print_endline msg;
-    state := (comps, (View.Warning msg) :: errors) :: !state
-  and both msg comps' =
-    let _, errors = List.nth !state 0 in
-    state := (comps', msg :: errors) :: !state
+    let proc, steps, errors = List.nth !state 0 in
+    state := (proc, steps, msg :: errors) :: !state
+  in
+  let both msg proc' =
+    update_proc proc';
+    add_msg msg
+  in
+  let top_step i =
+    let (_, steps, _) = List.hd !state in
+    match List.nth steps i with
+    | Runner.Step proc -> update_proc proc
+    | Runner.TopOut (op, expr, proc) ->
+        Format.printf "out %t %t@." (Ast.Operation.print op) (Ast.print_expression expr);
+        update_proc proc
+  in
+  let random_step () =
+    let (_, steps, _) = List.hd !state in
+    let i = Random.int (List.length steps) in
+    top_step i
+  in
+  let many_steps num_steps =
+    for _step = 1 to num_steps do
+      random_step ()
+    done
   in
   let view () =
     S.Response.make_string (Ok (View.show (List.nth !state 0)))
@@ -77,9 +101,7 @@ let run_server state0 =
     S.Route.(exact "step" @/ int @/ return) (fun i req ->
         print_request req;
         try
-            (match Runner.step_process state0.interpreter (List.nth !state 0 |> fst) i with
-            | Some cs -> update_comps cs
-            | None -> add_msg (Format.sprintf "Computation %d stuck." (i + 1)));
+            top_step i;
             redirect basepath "/"
         with
         | Error.Error (_, _, msg) ->
@@ -89,11 +111,7 @@ let run_server state0 =
     S.Route.(exact "step" @/ exact "random" @/ int @/ return) (fun num_steps req ->
         print_request req;
         try
-            for _step = 1 to num_steps do
-                (match Runner.random_step state0.interpreter (List.nth !state 0 |> fst) with
-                | Some cs -> update_comps cs
-                | None -> add_msg "All computations stuck.")
-            done;
+            many_steps num_steps;
             redirect basepath "/"
         with
         | Error.Error (_, _, msg) ->
@@ -122,9 +140,10 @@ let run_server state0 =
             let (op, term) = Parser.incoming_operation Lexer.token lexbuf in
             let op' = Desugarer.lookup_operation ~loc:term.Utils.at state0.desugarer op in
             let expr' = Desugarer.desugar_pure_expression state0.desugarer term in
+            let (proc, _, _) = List.nth !state 0 in
             both
                 (View.Info (Format.sprintf "Incoming operation %s" input))
-                (Runner.incoming_operation (List.nth !state 0 |> fst) op' expr');
+                (Runner.incoming_operation proc op' expr');
             redirect basepath "/"
         with
         | Error.Error (_, _, msg) ->

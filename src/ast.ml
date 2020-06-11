@@ -230,6 +230,12 @@ and substitute_abstraction subst (pat, comp) =
   let subst' = remove_pattern_bound_variables subst pat in
   (pat, substitute_computation subst' comp)
 
+type process =
+  | Run of computation
+  | Parallel of process * process
+  | OutProc of operation * expression * process
+  | InProc of operation * expression * process
+
 type ty_def =
   | TySum of (label * ty option) list
   | TyInline of ty
@@ -330,10 +336,31 @@ and let_abstraction (p, c) ppf =
 
 and case a ppf = Format.fprintf ppf "%t" (print_abstraction a)
 
+let rec print_process ?max_level proc ppf =
+  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  match proc with
+  | Run comp -> print ~at_level:1 "run %t" (print_computation ~max_level:0 comp)
+  | Parallel (proc1, proc2) ->
+      print "@[<hv>%t@ || @ %t@]" (print_process proc1) (print_process proc2)
+  | InProc (op, expr, proc) ->
+      print "↓%t(@[<hv>%t,@ %t@])"
+        (Operation.print op)
+        (print_expression expr)
+        (print_process proc)
+  | OutProc (op, expr, proc) ->
+      print "↑%t(@[<hv>%t,@ %t@])"
+        (Operation.print op)
+        (print_expression expr)
+        (print_process proc)
+
 let string_of_expression e =
   print_expression e Format.str_formatter ;
   Format.flush_str_formatter ()
 
 let string_of_computation c =
   print_computation c Format.str_formatter ;
+  Format.flush_str_formatter ()
+
+let string_of_process proc =
+  print_process proc Format.str_formatter ;
   Format.flush_str_formatter ()
