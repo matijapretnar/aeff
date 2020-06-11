@@ -16,7 +16,7 @@ let step_action (path, step) =
     ]
 
 let actions (model : Model.model) =
-    let step_actions = List.map step_action (Model.steps model) in
+    let step_actions = List.map step_action (Model.steps model.loaded_code) in
     let random_action =
         let random_step_button = 
             match model.random_step_size with
@@ -28,7 +28,7 @@ let actions (model : Model.model) =
             random_step_button
         ]]
     and back_action =
-        match model.history with
+        match model.loaded_code.history with
         | [] -> disabled_button "back" :: []
         | _ -> button "back" Model.Back :: []
     and interrupt_action =
@@ -59,4 +59,4 @@ let process proc =
     pre txt
 
 let view (model : Model.model) = 
-    div [actions model; operations model.state.operations; process model.state.process]
+    div [actions model; operations model.loaded_code.snapshot.operations; process model.loaded_code.snapshot.process]
