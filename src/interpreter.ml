@@ -80,10 +80,18 @@ let rec eval_function state = function
 let rec step state = function
   | Ast.Return _ -> []
   | Ast.Out _ -> []
-  | Ast.Handler (op, op_comp, p, comp) ->
-      step_in_context state "promise"
-        (fun comp' -> Ast.Handler (op, op_comp, p, comp'))
-        comp
+  | Ast.Handler (op, op_comp, p, comp) -> (
+      let comps' =
+        step_in_context state "promise"
+          (fun comp' -> Ast.Handler (op, op_comp, p, comp'))
+          comp
+      in
+      match comp with
+      | Ast.Out (op', expr', cont') ->
+          ( [ "promiseOut" ],
+            Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')) )
+          :: comps'
+      | _ -> comps' )
   | Ast.In (_, _, Ast.Return expr) -> [ ([ "inRet" ], Ast.Return expr) ]
   | Ast.In (op, expr, comp) -> (
       let comps' =

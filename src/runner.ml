@@ -1,22 +1,13 @@
-let rec hoist_op = function
-  | Ast.Out (op, expr, comp) -> Some (op, expr, comp)
-  | Ast.Handler (op', abs, p, comp) -> (
-      match hoist_op comp with
-      | Some (op, expr, comp') ->
-          Some (op, expr, Ast.Handler (op', abs, p, comp'))
-      | None -> None )
-  | _ -> None
-
 let rec step state = function
   | Ast.Run comp -> (
       let comps' =
         Interpreter.step state comp
         |> List.map (fun (path, comp') -> (path, Ast.Run comp'))
       in
-      match hoist_op comp with
-      | None -> comps'
-      | Some (op, expr, comp') ->
-          ([ "runOut" ], Ast.OutProc (op, expr, Ast.Run comp')) :: comps' )
+      match comp with
+      | Ast.Out (op, expr, comp') ->
+          ([ "runOut" ], Ast.OutProc (op, expr, Ast.Run comp')) :: comps'
+      | _ -> comps' )
   | Ast.Parallel (proc1, proc2) ->
       let proc1_first =
         let procs' =
