@@ -70,6 +70,11 @@ let actions (model : Model.model) code =
     (back_action @ [ random_action ] @ step_actions @ [ interrupt_action ])
 
 let operations ops =
+  let filter_sigs op = 
+    match op with
+    | Model.In _ -> false
+    | Model.Out _ -> true
+  in
   let operation op =
     ( match op with
     | Model.In (op, expr) ->
@@ -80,7 +85,7 @@ let operations ops =
           (Ast.print_expression expr) );
     elt "li" [ text (Format.flush_str_formatter ()) ]
   in
-  elt "ul" (List.map operation ops)
+  elt "ul" (List.map operation (List.filter filter_sigs ops))
 
 let process proc =
   let txt = Ast.string_of_process proc in
