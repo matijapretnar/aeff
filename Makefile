@@ -4,7 +4,7 @@ default: aeff.exe
 
 aeff.exe:
 	dune build
-	mkdir web
+	mkdir -p web
 	ln -s ../_build/default/src/aeff.html web/aeff.html
 
 clean:
