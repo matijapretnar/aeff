@@ -456,6 +456,6 @@ let view (model : Model.model) =
     [
       view_navbar;
       ( match model.loaded_code with
-      | Error _ | Ok None -> view_source model
-      | Ok (Some code) -> view_code model code );
+      | Error _ -> view_source model
+      | Ok code -> view_code model code );
     ]
