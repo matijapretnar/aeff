@@ -11,6 +11,7 @@ type loaded_code = {
 }
 
 type model = {
+  use_pervasives : bool;
   unparsed_code : string;
   loaded_code : (loaded_code, string) result;
   random_step_size : int;
@@ -19,6 +20,7 @@ type model = {
 }
 
 type msg =
+  | UsePervasives of bool
   | ChangeSource of string
   | LoadSource
   | Step of Runner.top_step
@@ -30,6 +32,7 @@ type msg =
 
 let init =
   {
+    use_pervasives = true;
     unparsed_code = "";
     loaded_code = Error "";
     unparsed_interrupt = "";
@@ -109,6 +112,7 @@ let parse_source source =
   with Error.Error (_, _, msg) -> Error msg
 
 let update model = function
+  | UsePervasives use_pervasives -> { model with use_pervasives }
   | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
   | RandomStep ->
       apply_to_code_if_loaded (make_random_steps model.random_step_size) model
@@ -122,7 +126,14 @@ let update model = function
           }
       | _ -> model )
   | ChangeSource input -> { model with unparsed_code = input }
-  | LoadSource -> { model with loaded_code = parse_source model.unparsed_code }
+  | LoadSource ->
+      {
+        model with
+        loaded_code =
+          parse_source
+            ( (if model.use_pervasives then Examples.pervasives else "")
+            ^ "\n\n\n" ^ model.unparsed_code );
+      }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
   | ParseInterrupt input -> (
       match model.loaded_code with
