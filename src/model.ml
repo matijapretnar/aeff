@@ -12,9 +12,8 @@ type loaded_code = {
 
 type model = {
   unparsed_code : string;
-  loaded_code : (loaded_code, string) result;
-  unparsed_step_size : string;
-  random_step_size : (int, string) result;
+  loaded_code : (loaded_code option, string) result;
+  random_step_size : int;
   unparsed_interrupt : string;
   parsed_interrupt : (Ast.operation * Ast.expression, string) result;
 }
@@ -24,18 +23,17 @@ type msg =
   | LoadSource
   | Step of Runner.top_step
   | RandomStep
+  | ChangeRandomStepSize of int
   | Interrupt
   | ParseInterrupt of string
-  | ChangeStepSize of string
   | Back
 
 let init =
   {
-    unparsed_code = "";
-    loaded_code = Error "";
+    unparsed_code = "run 1";
+    loaded_code = Ok None;
     unparsed_interrupt = "";
-    unparsed_step_size = "1";
-    random_step_size = Ok 1;
+    random_step_size = 1;
     parsed_interrupt = Error "enter \"op expr\"";
   }
 
@@ -46,8 +44,8 @@ let step_snapshot snapshot = function
 
 let apply_to_code_if_loaded f model =
   match model.loaded_code with
-  | Ok code -> { model with loaded_code = Ok (f code) }
-  | Error _ -> model
+  | Ok (Some code) -> { model with loaded_code = Ok (Some (f code)) }
+  | Ok None | Error _ -> model
 
 let steps code =
   Runner.top_steps code.loader_state.interpreter code.snapshot.process
@@ -103,40 +101,36 @@ let parse_source source =
     let state = Loader.load_source source in
     let proc = make_process state.Loader.top_computations in
     Ok
-      {
-        snapshot = { process = proc; operations = [] };
-        history = [];
-        loader_state = state;
-      }
+      (Some
+         {
+           snapshot = { process = proc; operations = [] };
+           history = [];
+           loader_state = state;
+         })
   with Error.Error (_, _, msg) -> Error msg
 
 let update model = function
   | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
-  | RandomStep -> (
-      match model.random_step_size with
-      | Ok num_steps ->
-          apply_to_code_if_loaded (make_random_steps num_steps) model
-      | Error _ -> model )
+  | RandomStep ->
+      apply_to_code_if_loaded (make_random_steps model.random_step_size) model
   | Back -> (
       match model.loaded_code with
-      | Ok ({ history = snapshot' :: history'; _ } as code) ->
+      | Ok (Some ({ history = snapshot' :: history'; _ } as code)) ->
           {
             model with
             loaded_code =
-              Ok { code with snapshot = snapshot'; history = history' };
+              Ok (Some { code with snapshot = snapshot'; history = history' });
           }
       | _ -> model )
   | ChangeSource input -> { model with unparsed_code = input }
   | LoadSource -> { model with loaded_code = parse_source model.unparsed_code }
-  | ChangeStepSize input ->
-      let model = { model with unparsed_step_size = input } in
-      { model with random_step_size = parse_step_size input }
+  | ChangeRandomStepSize random_step_size -> { model with random_step_size }
   | ParseInterrupt input -> (
       match model.loaded_code with
-      | Ok code ->
+      | Ok (Some code) ->
           let model = { model with unparsed_interrupt = input } in
           { model with parsed_interrupt = parse_interrupt code input }
-      | Error _ -> model )
+      | Ok None | Error _ -> model )
   | Interrupt -> (
       match model.parsed_interrupt with
       | Ok (op, expr) -> apply_to_code_if_loaded (interrupt op expr) model
