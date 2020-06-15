@@ -1,12 +1,10 @@
-.PHONY: aeff.exe
+.PHONY: default release clean
 
-default: aeff.exe
-
-aeff.exe:
+default:
 	dune build
-	mkdir -p web
-	ln -s ../_build/default/src/aeff.html web/aeff.html
+
+release:
+	dune build --profile release
 
 clean:
 	dune clean
-	rm -rf web

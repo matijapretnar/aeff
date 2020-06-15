@@ -4,4 +4,4 @@ aeff.exe
 .devcontainer
 .vscode
 .merlin
-web
+web/aeff.bc.js

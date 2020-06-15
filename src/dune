@@ -2,19 +2,13 @@
  (name aeff)
  (libraries ocaml-vdom)
  (modes js)
- (link_flags -no-check-prims))
-
-(rule
- (targets aeff.js)
- (deps aeff.bc.js)
- (action
-  (run cp %{deps} %{targets})))
+ (link_flags -no-check-prims)
+ (promote
+  (until-clean)
+  (into ../web)
+  (only aeff.bc.js)))
 
 (ocamllex lexer)
 
 (menhir
-  (modules parser))
-
-(alias
- (name DEFAULT)
- (deps aeff.js aeff.html))
+ (modules parser))
