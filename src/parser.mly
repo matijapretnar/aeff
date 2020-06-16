@@ -40,7 +40,7 @@
 %left  INFIXOP3 STAR MOD LAND LOR LXOR
 %right INFIXOP4 LSL LSR ASR
 
-%start <Syntax.operation * Syntax.term> incoming_operation
+%start <Syntax.term> payload
 %start <Syntax.command list> commands
 
 %%
@@ -68,9 +68,9 @@ command:
   | OPERATION op = operation COLON t = ty
     { Operation (op, t) }
 
-incoming_operation:
-  | op = operation trm = term EOF
-    { (op, trm) }
+payload:
+  | trm = term EOF
+    { trm }
 
 (* Main syntax tree *)
 

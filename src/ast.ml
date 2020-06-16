@@ -380,6 +380,10 @@ let rec print_process ?max_level proc ppf =
       print "↑%t(@[<hv>%t,@ %t@])" (Operation.print op)
         (print_expression expr) (print_process proc)
 
+let string_of_operation op =
+  Operation.print op Format.str_formatter;
+  Format.flush_str_formatter ()
+
 let string_of_expression e =
   print_expression e Format.str_formatter;
   Format.flush_str_formatter ()

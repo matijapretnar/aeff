@@ -11,33 +11,36 @@ type loaded_code = {
 }
 
 type model = {
-  use_pervasives : bool;
+  use_stdlib : bool;
   unparsed_code : string;
   loaded_code : (loaded_code, string) result;
   random_step_size : int;
-  unparsed_interrupt : string;
-  parsed_interrupt : (Ast.operation * Ast.expression, string) result;
+  interrupt_operation : Ast.operation option;
+  unparsed_interrupt_payload : string;
+  parsed_interrupt_payload : (Ast.expression, string) result;
 }
 
 type msg =
-  | UsePervasives of bool
+  | UseStdlib of bool
   | ChangeSource of string
   | LoadSource
   | Step of Runner.top_step
   | RandomStep
   | ChangeRandomStepSize of int
+  | ChangeInterruptOperation of Ast.operation
+  | ParseInterruptPayload of string
   | Interrupt
-  | ParseInterrupt of string
   | Back
 
 let init =
   {
-    use_pervasives = true;
+    use_stdlib = true;
     unparsed_code = "";
     loaded_code = Error "";
-    unparsed_interrupt = "";
     random_step_size = 1;
-    parsed_interrupt = Error "";
+    interrupt_operation = None;
+    unparsed_interrupt_payload = "";
+    parsed_interrupt_payload = Error "";
   }
 
 let step_snapshot snapshot = function
@@ -78,19 +81,18 @@ let parse_step_size input =
   input |> int_of_string_opt
   |> Option.to_result ~none:(input ^ " is not an integer")
 
-let parse_interrupt code input =
+let parse_payload code op input =
   try
     let lexbuf = Lexing.from_string input in
-    let op, term = Parser.incoming_operation Lexer.token lexbuf in
-    let op' =
-      Desugarer.lookup_operation ~loc:term.Utils.at code.loader_state.desugarer
-        op
-    in
+    let term = Parser.payload Lexer.token lexbuf in
     let expr' =
       Desugarer.desugar_pure_expression code.loader_state.desugarer term
     in
-    Ok (op', expr')
-  with _ -> Error "error parsing stuff"
+    ignore (Typechecker.check_payload code.loader_state.typechecker op expr');
+    Ok expr'
+  with
+  | Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
+  | _ -> Error "Parser error"
 
 let parse_source source =
   let make_process = function
@@ -112,7 +114,7 @@ let parse_source source =
   with Error.Error (_, _, msg) -> Error msg
 
 let update model = function
-  | UsePervasives use_pervasives -> { model with use_pervasives }
+  | UseStdlib use_stdlib -> { model with use_stdlib }
   | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
   | RandomStep ->
       apply_to_code_if_loaded (make_random_steps model.random_step_size) model
@@ -131,17 +133,18 @@ let update model = function
         model with
         loaded_code =
           parse_source
-            ( (if model.use_pervasives then Examples.pervasives else "")
+            ( (if model.use_stdlib then Examples.stdlib else "")
             ^ "\n\n\n" ^ model.unparsed_code );
       }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
-  | ParseInterrupt input -> (
-      match model.loaded_code with
-      | Ok code ->
-          let model = { model with unparsed_interrupt = input } in
-          { model with parsed_interrupt = parse_interrupt code input }
-      | Error _ -> model )
+  | ChangeInterruptOperation operation -> {model with interrupt_operation = Some operation}
+  | ParseInterruptPayload input -> (
+      match model.interrupt_operation, model.loaded_code with
+      | Some op, Ok code ->
+          let model = { model with unparsed_interrupt_payload = input } in
+          { model with parsed_interrupt_payload = parse_payload code op input }
+      | _, _ -> model )
   | Interrupt -> (
-      match model.parsed_interrupt with
-      | Ok (op, expr) -> apply_to_code_if_loaded (interrupt op expr) model
-      | Error _ -> model )
+      match model.interrupt_operation, model.parsed_interrupt_payload with
+      | Some op, Ok expr -> apply_to_code_if_loaded (interrupt op expr) model
+      | _, _ -> model )

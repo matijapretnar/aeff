@@ -11,6 +11,27 @@ let button txt msg =
 
 let disabled_button txt = input [] ~a:[ type_button; value txt; disabled true ]
 
+let select ?(a = []) empty_description msg describe_choice selected choices =
+  let view_choice choice =
+    elt "option"
+      ~a:[ bool_prop "selected" (selected choice) ]
+      [ text (describe_choice choice) ]
+  in
+  div ~a
+    [
+      elt "select"
+        ~a:[ onchange_index (fun i -> msg (List.nth choices (i - 1))) ]
+        ( elt "option"
+            ~a:
+              [
+                disabled true;
+                bool_prop "selected"
+                  (List.for_all (fun choice -> not (selected choice)) choices);
+              ]
+            [ text empty_description ]
+        :: List.map view_choice choices );
+    ]
+
 let nil = text ""
 
 let step_description path = String.concat ">" path
@@ -77,12 +98,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
             ]
           [ text (step_description path) ];
       ]
-  and view_random_steps step_sizes steps =
-    let step_option step_size =
-      elt "option"
-        ~a:[ bool_prop "selected" (step_size = model.random_step_size) ]
-        [ text (string_of_int step_size) ]
-    in
+  and view_random_steps steps =
     div
       ~a:[ class_ "panel-block"; style "display" "block" ]
       [
@@ -92,25 +108,20 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
             div
               ~a:[ class_ "control is-expanded" ]
               [
-                div
-                  ~a:[ class_ "select is-fullwidth is-success" ]
-                  [
-                    elt "select"
-                      ~a:
-                        [
-                          onchange_index (fun i ->
-                              Model.ChangeRandomStepSize (List.nth step_sizes i));
-                          disabled (steps = []);
-                        ]
-                      (List.map step_option step_sizes);
-                  ];
+                select
+                  ~a:[ class_ "select is-fullwidth is-info" ]
+                  "Step size"
+                  (fun step_size -> Model.ChangeRandomStepSize step_size)
+                  string_of_int
+                  (fun step_size -> step_size = model.random_step_size)
+                  [ 1; 2; 4; 8; 16; 32; 64; 128; 256; 512; 1024 ];
               ];
             div ~a:[ class_ "control" ]
               [
                 elt "button"
                   ~a:
                     [
-                      class_ "button is-success";
+                      class_ "button is-info";
                       onclick (fun _ -> Model.RandomStep);
                       disabled (steps = []);
                     ]
@@ -126,13 +137,8 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
       ]
   in
   let steps = Model.steps code in
-  panel "Step process"
-    ( view_undo_last_step
-    :: view_random_steps [ 1; 2; 4; 8; 16; 32; 64; 128; 256; 512; 1024 ] steps
-    :: List.map view_step steps )
-
-let view_operations (model : Model.model) ops =
   let send_interrupt =
+    let warn_payload = model.unparsed_interrupt_payload <> "" && Result.is_error model.parsed_interrupt_payload in
     panel_block
       [
         div ~a:[ class_ "field" ]
@@ -140,38 +146,56 @@ let view_operations (model : Model.model) ops =
             div
               ~a:[ class_ "field has-addons" ]
               [
-                elt "p" ~a:[ class_ "control" ]
-                  [ elt "a" ~a:[ class_ "button is-static" ] [ text "↓" ] ];
+                div ~a:[class_ "control is-expanded"]
+                [
+                  select
+                  ~a:[ class_ "select is-fullwidth" ]
+                  "Interrupt"
+                  (fun operation -> Model.ChangeInterruptOperation operation)
+                  Ast.string_of_operation
+                  (fun operation -> Some operation = model.interrupt_operation)
+                  (Ast.OperationMap.bindings code.loader_state.typechecker.operations |> List.map fst);
+
+                ];
                 elt "p" ~a:[ class_ "control" ]
                   [
                     input
                       ~a:
                         [
-                          class_ "input";
+                          class_ (if warn_payload then "input is-danger" else "input");
                           type_ "text";
-                          oninput (fun input -> Model.ParseInterrupt input);
-                          str_prop "placeholder" "opName payload";
+                          oninput (fun input -> Model.ParseInterruptPayload input);
+                          str_prop "placeholder" "payload";
+                          disabled (Option.is_none model.interrupt_operation);
+                          value model.unparsed_interrupt_payload
                         ]
                       [];
                   ];
                 div ~a:[ class_ "control" ]
                   [
-                    elt "a"
+                    let dis = (Option.is_none model.interrupt_operation || Result.is_error model.parsed_interrupt_payload) in
+                    elt "button"
                       ~a:
                         [
-                          class_ "button";
+                          class_ "button is-info";
                           onclick (fun _ -> Model.Interrupt);
-                          disabled (Result.is_error model.parsed_interrupt);
+                          disabled dis;
                         ]
-                      [ text "Send" ];
+                      [ text "↓" ];
                   ];
               ];
-            ( match model.parsed_interrupt with
-            | Error msg -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
-            | Ok _ -> nil );
+            ( match model.parsed_interrupt_payload with
+            | Error msg when warn_payload -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
+            | _ -> nil );
           ];
       ]
-  and view_operation op =
+  in
+  panel "Interaction"
+    ( view_undo_last_step :: view_random_steps steps :: List.map view_step steps
+    @ [ send_interrupt ] )
+
+let view_history ops =
+  let view_operation op =
     ( match op with
     | Model.In (op, expr) ->
         Format.fprintf Format.str_formatter "↓ %t %t" (Ast.Operation.print op)
@@ -181,7 +205,7 @@ let view_operations (model : Model.model) ops =
           (Ast.print_expression expr) );
     elt "a" ~a:[ class_ "panel-block" ] [ text (Format.flush_str_formatter ()) ]
   in
-  panel "Operations" (send_interrupt :: List.map view_operation ops)
+  panel "History" (List.map view_operation ops)
 
 let view_process proc =
   let txt = Ast.string_of_process proc in
@@ -217,22 +241,21 @@ let view_editor (model : Model.model) =
   | Error msg -> div [ editor model; text msg ] *)
 
 let view_compiler (model : Model.model) =
-  let use_pervasives =
+  let use_stdlib =
     elt "label" ~a:[ class_ "panel-block" ]
       [
         input
           ~a:
             [
               type_ "checkbox";
-              onchange_checked (fun use_pervasives ->
-                  Model.UsePervasives use_pervasives);
-              bool_prop "checked" model.use_pervasives;
+              onchange_checked (fun use_stdlib ->
+                  Model.UseStdlib use_stdlib);
+              bool_prop "checked" model.use_stdlib;
             ]
           [];
-        text "Use pervasives";
+        text "Load standard library";
       ]
   in
-  let example_option (title, _) = elt "option" [ text title ] in
   let load_example =
     div
       ~a:[ class_ "panel-block"; style "display" "block" ]
@@ -242,21 +265,13 @@ let view_compiler (model : Model.model) =
             div
               ~a:[ class_ "control is-expanded" ]
               [
-                div
-                  ~a:[ class_ "select is-fullwidth is-success" ]
-                  [
-                    elt "select"
-                      ~a:
-                        [
-                          onchange_index (fun i ->
-                              Model.ChangeSource
-                                (snd (List.nth Examples.examples (i - 1))));
-                        ]
-                      ( elt "option"
-                          ~a:[ disabled true; bool_prop "selected" true ]
-                          [ text "Load example" ]
-                      :: List.map example_option Examples.examples );
-                  ];
+                select
+                  ~a:[ class_ "select is-fullwidth" ]
+                  "Load example"
+                  (fun (_, source) -> Model.ChangeSource source)
+                  (fun (title, _) -> title)
+                  (fun _ -> false)
+                  Examples.examples;
               ];
           ];
       ]
@@ -266,36 +281,34 @@ let view_compiler (model : Model.model) =
         elt "button"
           ~a:
             [
-              class_ "button is-primary is-fullwidth";
+              class_ "button is-info is-fullwidth";
               onclick (fun _ -> Model.LoadSource);
               (* disabled (Result.is_error model.loaded_code); *)
             ]
-          [ text "Run process" ];
+          [ text "Compile & run" ];
         ( match model.loaded_code with
         | Error msg -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
         | Ok _ -> nil );
       ]
   in
-  panel "Code options" [ use_pervasives; load_example; run_process ]
+  panel "Code options" [ use_stdlib; load_example; run_process ]
 
 let view_source model =
   div ~a:[ class_ "columns" ]
     [
-      div ~a:[ class_ "column is-four-fifths" ] [ view_editor model ];
-      div ~a:[ class_ "column is-one-fifth" ] [ view_compiler model ];
+      div ~a:[ class_ "column is-three-quarters" ] [ view_editor model ];
+      div ~a:[ class_ "column is-one-quarter" ] [ view_compiler model ];
     ]
 
 let view_code model (code : Model.loaded_code) =
   div ~a:[ class_ "columns" ]
     [
       div
-        ~a:[ class_ "column is-four-fifths" ]
+        ~a:[ class_ "column is-three-quarters" ]
         [ view_process code.snapshot.process ];
       div
-        ~a:[ class_ "column is-one-fifth" ]
-        [
-          view_steps model code; view_operations model code.snapshot.operations;
-        ];
+        ~a:[ class_ "column is-one-quarter" ]
+        [ view_steps model code; view_history code.snapshot.operations ];
     ]
 
 let view_navbar =

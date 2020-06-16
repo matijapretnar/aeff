@@ -284,3 +284,8 @@ let add_type_definitions state ty_defs =
           Ast.TyNameMap.add ty_name (params, ty_def) state.type_definitions;
       })
     state ty_defs
+
+let check_payload state op expr =
+  let ty1 = Ast.OperationMap.find op state.operations
+  and ty2, eqs = infer_expression state expr in
+  unify state ((ty1, ty2) :: eqs)

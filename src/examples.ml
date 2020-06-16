@@ -1,4 +1,4 @@
-let pervasives =
+let stdlib =
   "let absurd void = (match void with)
 
 (* Booleans *)
