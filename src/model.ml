@@ -137,14 +137,15 @@ let update model = function
             ^ "\n\n\n" ^ model.unparsed_code );
       }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
-  | ChangeInterruptOperation operation -> {model with interrupt_operation = Some operation}
+  | ChangeInterruptOperation operation ->
+      { model with interrupt_operation = Some operation }
   | ParseInterruptPayload input -> (
-      match model.interrupt_operation, model.loaded_code with
+      match (model.interrupt_operation, model.loaded_code) with
       | Some op, Ok code ->
           let model = { model with unparsed_interrupt_payload = input } in
           { model with parsed_interrupt_payload = parse_payload code op input }
       | _, _ -> model )
   | Interrupt -> (
-      match model.interrupt_operation, model.parsed_interrupt_payload with
+      match (model.interrupt_operation, model.parsed_interrupt_payload) with
       | Some op, Ok expr -> apply_to_code_if_loaded (interrupt op expr) model
       | _, _ -> model )

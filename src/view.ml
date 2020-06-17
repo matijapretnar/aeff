@@ -34,10 +34,10 @@ let select ?(a = []) empty_description msg describe_choice selected choices =
 
 let nil = text ""
 
-let step_description path = String.concat ">" path
+let reduction_description _red = "red"
 
-let step_action (path, step) =
-  elt "li" [ button (step_description path) (Model.Step step) ]
+let step_action (red, step) =
+  elt "li" [ button (reduction_description red) (Model.Step step) ]
 
 (* let view_actions (model : Model.model) code =
   let _step_actions = List.map step_action (Model.steps code) in
@@ -74,7 +74,7 @@ let step_action (path, step) =
     ]
     elt "ol" (back_action ::  :: step_actions @ [interrupt_action]) *)
 
-let view_steps (model : Model.model) (code : Model.loaded_code) =
+let view_steps (model : Model.model) (code : Model.loaded_code) steps =
   let view_undo_last_step =
     panel_block
       [
@@ -87,7 +87,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
             ]
           [ text "Undo last step" ];
       ]
-  and view_step (path, step) =
+  and view_step (red, step) =
     panel_block
       [
         elt "button"
@@ -96,7 +96,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
               class_ "button is-outlined is-fullwidth";
               onclick (fun _ -> Model.Step step);
             ]
-          [ text (step_description path) ];
+          [ text (reduction_description red) ];
       ]
   and view_random_steps steps =
     div
@@ -136,9 +136,11 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
         else text "" );
       ]
   in
-  let steps = Model.steps code in
   let send_interrupt =
-    let warn_payload = model.unparsed_interrupt_payload <> "" && Result.is_error model.parsed_interrupt_payload in
+    let warn_payload =
+      model.unparsed_interrupt_payload <> ""
+      && Result.is_error model.parsed_interrupt_payload
+    in
     panel_block
       [
         div ~a:[ class_ "field" ]
@@ -146,46 +148,56 @@ let view_steps (model : Model.model) (code : Model.loaded_code) =
             div
               ~a:[ class_ "field has-addons" ]
               [
-                div ~a:[class_ "control is-expanded"]
-                [
-                  select
-                  ~a:[ class_ "select is-fullwidth" ]
-                  "Interrupt"
-                  (fun operation -> Model.ChangeInterruptOperation operation)
-                  Ast.string_of_operation
-                  (fun operation -> Some operation = model.interrupt_operation)
-                  (Ast.OperationMap.bindings code.loader_state.typechecker.operations |> List.map fst);
-
-                ];
+                div
+                  ~a:[ class_ "control is-expanded" ]
+                  [
+                    select
+                      ~a:[ class_ "select is-fullwidth" ]
+                      "Interrupt"
+                      (fun operation ->
+                        Model.ChangeInterruptOperation operation)
+                      Ast.string_of_operation
+                      (fun operation ->
+                        Some operation = model.interrupt_operation)
+                      ( Ast.OperationMap.bindings
+                          code.loader_state.typechecker.operations
+                      |> List.map fst );
+                  ];
                 elt "p" ~a:[ class_ "control" ]
                   [
                     input
                       ~a:
                         [
-                          class_ (if warn_payload then "input is-danger" else "input");
+                          class_
+                            (if warn_payload then "input is-danger" else "input");
                           type_ "text";
-                          oninput (fun input -> Model.ParseInterruptPayload input);
+                          oninput (fun input ->
+                              Model.ParseInterruptPayload input);
                           str_prop "placeholder" "payload";
                           disabled (Option.is_none model.interrupt_operation);
-                          value model.unparsed_interrupt_payload
+                          value model.unparsed_interrupt_payload;
                         ]
                       [];
                   ];
                 div ~a:[ class_ "control" ]
                   [
-                    let dis = (Option.is_none model.interrupt_operation || Result.is_error model.parsed_interrupt_payload) in
-                    elt "button"
-                      ~a:
-                        [
-                          class_ "button is-info";
-                          onclick (fun _ -> Model.Interrupt);
-                          disabled dis;
-                        ]
-                      [ text "↓" ];
+                    (let dis =
+                       Option.is_none model.interrupt_operation
+                       || Result.is_error model.parsed_interrupt_payload
+                     in
+                     elt "button"
+                       ~a:
+                         [
+                           class_ "button is-info";
+                           onclick (fun _ -> Model.Interrupt);
+                           disabled dis;
+                         ]
+                       [ text "↓" ]);
                   ];
               ];
             ( match model.parsed_interrupt_payload with
-            | Error msg when warn_payload -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
+            | Error msg when warn_payload ->
+                elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
             | _ -> nil );
           ];
       ]
@@ -207,9 +219,9 @@ let view_history ops =
   in
   panel "History" (List.map view_operation ops)
 
-let view_process proc =
-  let txt = Ast.string_of_process proc in
-  div ~a:[ class_ "box" ] [ elt "pre" [ text txt ] ]
+let view_process steps proc =
+  let process_tree = RedexSelectorTM.view_process_with_redexes steps proc in
+  div ~a:[ class_ "box" ] [ elt "pre" process_tree ]
 
 let view_editor (model : Model.model) =
   div ~a:[ class_ "box" ]
@@ -248,8 +260,7 @@ let view_compiler (model : Model.model) =
           ~a:
             [
               type_ "checkbox";
-              onchange_checked (fun use_stdlib ->
-                  Model.UseStdlib use_stdlib);
+              onchange_checked (fun use_stdlib -> Model.UseStdlib use_stdlib);
               bool_prop "checked" model.use_stdlib;
             ]
           [];
@@ -301,14 +312,15 @@ let view_source model =
     ]
 
 let view_code model (code : Model.loaded_code) =
+  let steps = Model.steps code in
   div ~a:[ class_ "columns" ]
     [
       div
         ~a:[ class_ "column is-three-quarters" ]
-        [ view_process code.snapshot.process ];
+        [ view_process steps code.snapshot.process ];
       div
         ~a:[ class_ "column is-one-quarter" ]
-        [ view_steps model code; view_history code.snapshot.operations ];
+        [ view_steps model code steps; view_history code.snapshot.operations ];
     ]
 
 let view_navbar =
