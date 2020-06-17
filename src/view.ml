@@ -1,7 +1,7 @@
 open Vdom
 
-let panel heading blocks =
-  div ~a:[ class_ "panel" ]
+let panel ?(a=[]) heading blocks =
+  div ~a: (class_ "panel" :: a)
     (elt "p" ~a:[ class_ "panel-heading" ] [ text heading ] :: blocks)
 
 let panel_block = div ~a:[ class_ "panel-block" ]
@@ -95,6 +95,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
             [
               class_ "button is-outlined is-fullwidth";
               onclick (fun _ -> Model.Step step);
+              onmousemove (fun _ -> Model.SelectReduction (Some red))
             ]
           [ text (reduction_description red) ];
       ]
@@ -202,7 +203,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
           ];
       ]
   in
-  panel "Interaction"
+  panel "Interaction" ~a:[onmousemove (fun _ -> Model.SelectReduction None)]
     ( view_undo_last_step :: view_random_steps steps :: List.map view_step steps
     @ [ send_interrupt ] )
 
@@ -311,13 +312,13 @@ let view_source model =
       div ~a:[ class_ "column is-one-quarter" ] [ view_compiler model ];
     ]
 
-let view_code model (code : Model.loaded_code) =
+let view_code (model : Model.model) (code : Model.loaded_code) =
   let steps = Model.steps code in
   div ~a:[ class_ "columns" ]
     [
       div
         ~a:[ class_ "column is-three-quarters" ]
-        [ view_process steps code.snapshot.process ];
+        [ view_process model.selected_reduction code.snapshot.process ];
       div
         ~a:[ class_ "column is-one-quarter" ]
         [ view_steps model code steps; view_history code.snapshot.operations ];

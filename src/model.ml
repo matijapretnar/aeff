@@ -14,6 +14,7 @@ type model = {
   use_stdlib : bool;
   unparsed_code : string;
   loaded_code : (loaded_code, string) result;
+  selected_reduction : Runner.reduction option;
   random_step_size : int;
   interrupt_operation : Ast.operation option;
   unparsed_interrupt_payload : string;
@@ -24,6 +25,7 @@ type msg =
   | UseStdlib of bool
   | ChangeSource of string
   | LoadSource
+  | SelectReduction of Runner.reduction option
   | Step of Runner.top_step
   | RandomStep
   | ChangeRandomStepSize of int
@@ -37,6 +39,7 @@ let init =
     use_stdlib = true;
     unparsed_code = "";
     loaded_code = Error "";
+    selected_reduction = None;
     random_step_size = 1;
     interrupt_operation = None;
     unparsed_interrupt_payload = "";
@@ -115,6 +118,7 @@ let parse_source source =
 
 let update model = function
   | UseStdlib use_stdlib -> { model with use_stdlib }
+  | SelectReduction selected_reduction -> {model with selected_reduction}
   | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
   | RandomStep ->
       apply_to_code_if_loaded (make_random_steps model.random_step_size) model

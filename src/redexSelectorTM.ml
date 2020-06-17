@@ -1,171 +1,75 @@
-let rec match_computation_reduction red comp =
-  match (red, comp) with
-  | Interpreter.PromiseCtx red, Ast.Handler (_op, _op_comp, _p, comp) ->
-      match_computation_reduction red comp
-  | Interpreter.InCtx red, Ast.In (_op, _payload, comp) ->
-      match_computation_reduction red comp
-  | Interpreter.OutCtx red, Ast.Out (_op, _payload, comp) ->
-      match_computation_reduction red comp
-  | Interpreter.DoCtx red, Ast.Do (comp1, _comp2) ->
-      match_computation_reduction red comp1
-  | Interpreter.Redex, _comp -> true
-  | _red, _comp -> false
-
-let red match_process_reduction red proc =
-  match (red, proc) with
-  | Runner.LeftCtx red, Ast.Parallel (proc1, _proc2) ->
-      match_process_reduction red proc1
-  | Runner.RightCtx red, Ast.Parallel (_proc1, proc2) ->
-      match_process_reduction red proc2
-  | Runner.InCtx red, Ast.InProc (_op, _payload, proc) ->
-      match_process_reduction red proc
-  | Runner.OutCtx red, Ast.OutProc (_op, _payload, proc) ->
-      match_process_reduction red proc
-  | Runner.RunCtx red, Ast.Run comp -> match_computation_reduction red comp
-  | Runner.Redex, _comp -> true
-  | _red, _proc -> false
-
 let tag_marker = "###"
 
-let index_separator = "/"
-
-let rec print_computation ?max_level reds c ppf =
+let rec print_computation ?max_level red c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  let redex_indices =
-    List.filter_map
-      (function index, Interpreter.Redex -> Some index | _ -> None)
-      reds
-  in
   let separator =
-    match redex_indices with
-    | [] -> ""
-    | _ ->
-        Printf.sprintf "%s%s%s" tag_marker
-          (String.concat index_separator (List.map string_of_int redex_indices))
-          tag_marker
+    match red with
+    | Interpreter.Redex -> tag_marker
+    | _ -> ""
   in
   print "%t%t%t"
     (fun ppf -> Format.pp_print_as ppf 0 separator)
-    (print_computation' ?max_level reds c)
+    (print_computation' ?max_level red c)
     (fun ppf -> Format.pp_print_as ppf 0 separator)
 
-and print_computation' ?max_level reds c ppf =
+and print_computation' ?max_level red c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  match c with
-  | Ast.Do (c1, (Ast.PNonbinding, c2)) ->
-      let reds =
-        List.filter_map
-          (function
-            | index, Interpreter.DoCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+  match red, c with
+  | (Interpreter.DoCtx red), Ast.Do (c1, (Ast.PNonbinding, c2)) ->
       print "@[<hov>%t;@ %t@]"
-        (print_computation reds c1)
+        (print_computation (red) c1)
         (Ast.print_computation c2)
-  | Ast.Do (c1, (pat, c2)) ->
-      let reds =
-        List.filter_map
-          (function
-            | index, Interpreter.DoCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+  | (Interpreter.DoCtx red), Ast.Do (c1, (pat, c2)) ->
       print "@[<hov>let@[<hov>@ %t =@ %t@] in@ %t@]" (Ast.print_pattern pat)
-        (print_computation reds c1)
+        (print_computation (red) c1)
         (Ast.print_computation c2)
-  | Ast.In (op, e, c) ->
-      let reds =
-        List.filter_map
-          (function
-            | index, Interpreter.InCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+  | (Interpreter.InCtx red), Ast.In (op, e, c) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
-        (Ast.print_expression e) (print_computation reds c)
-  | Ast.Out (op, e, c) ->
-      let reds =
-        List.filter_map
-          (function
-            | index, Interpreter.OutCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+        (Ast.print_expression e) (print_computation (red) c)
+  | (Interpreter.OutCtx red), Ast.Out (op, e, c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
-        (Ast.print_expression e) (print_computation reds c)
-  | Ast.Handler (op, (p1, c1), p2, c2) ->
-      let reds =
-        List.filter_map
-          (function
-            | index, Interpreter.PromiseCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+        (Ast.print_expression e) (print_computation (red) c)
+  | (Interpreter.PromiseCtx red), Ast.Handler (op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Ast.Operation.print op) (Ast.print_pattern p1)
         (Ast.print_computation c1) (Ast.Variable.print p2)
-        (print_computation reds c2)
-  | comp -> Ast.print_computation comp ppf
+        (print_computation (red) c2)
+  | _, comp -> Ast.print_computation ?max_level comp ppf
 
-let rec print_process ?max_level reds proc ppf =
+let rec print_process ?max_level red proc ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  let redex_indices =
-    List.filter_map
-      (function index, Runner.Redex -> Some index | _ -> None)
-      reds
-  in
   let separator =
-    match redex_indices with
-    | [] -> ""
-    | _ ->
-        Printf.sprintf "%s%s%s" tag_marker
-          (String.concat index_separator (List.map string_of_int redex_indices))
-          tag_marker
+    match red with
+    | Runner.Redex -> tag_marker
+    | _ -> ""
   in
   print "%t%t%t"
     (fun ppf -> Format.pp_print_as ppf 0 separator)
-    (print_process' ?max_level reds proc)
+    (print_process' ?max_level red proc)
     (fun ppf -> Format.pp_print_as ppf 0 separator)
 
-and print_process' ?max_level reds proc ppf =
+and print_process' ?max_level red proc ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
-  match proc with
-  | Ast.Run comp ->
-      let reds =
-        List.filter_map
-          (function index, Runner.RunCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
-      print ~at_level:1 "run %t" (print_computation ~max_level:0 reds comp)
-  | Ast.Parallel (proc1, proc2) ->
-      let reds1 =
-        List.filter_map
-          (function
-            | index, Runner.LeftCtx red -> Some (index, red) | _ -> None)
-          reds
-      and reds2 =
-        List.filter_map
-          (function
-            | index, Runner.RightCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+  match red, proc with
+  | (Runner.RunCtx red), Ast.Run comp ->
+      print ~at_level:1 "run %t" (print_computation ~max_level:0 (red) comp)
+  | (Runner.LeftCtx red), Ast.Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]"
-        (print_process reds1 proc1)
-        (print_process reds2 proc2)
-  | Ast.InProc (op, expr, proc) ->
-      let reds =
-        List.filter_map
-          (function index, Runner.InCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+        (print_process (red) proc1)
+        (Ast.print_process proc2)
+  | (Runner.RightCtx red), Ast.Parallel (proc1, proc2) ->
+      print "@[<hv>%t@ || @ %t@]"
+        (Ast.print_process proc1)
+        (print_process (red) proc2)
+  | (Runner.InCtx red), Ast.InProc (op, expr, proc) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
-        (print_process reds proc)
-  | Ast.OutProc (op, expr, proc) ->
-      let reds =
-        List.filter_map
-          (function index, Runner.OutCtx red -> Some (index, red) | _ -> None)
-          reds
-      in
+        (print_process (red) proc)
+  | (Runner.OutCtx red), Ast.OutProc (op, expr, proc) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
-        (print_process reds proc)
+        (print_process (red) proc)
+  | _, proc -> Ast.print_process ?max_level proc ppf
 
 let split_string sep str =
   let sep_len = String.length sep and str_len = String.length str in
@@ -181,43 +85,14 @@ let split_string sep str =
     subs := String.sub str !sub_start (str_len - !sub_start) :: !subs;
   List.rev !subs
 
-type code_tag_code_list =
-    | Code of string * tag_code_list
-and tag_code_list =
-    | Empty
-    | Tag of string * Runner.top_step list * code_tag_code_list
-
-let rec code_tag_code_of_split_code procs = function
-    | [] -> assert false
-    | code :: tag_code_list -> Code (code, tag_code_of_split_code procs tag_code_list)
-and tag_code_of_split_code procs = function
-    | [] -> Empty
-    | tag :: code_tag_code_list ->
-        let procs' = List.map (fun index -> List.nth procs (int_of_string index)) (split_string index_separator tag) in
-        Tag (tag, procs', code_tag_code_of_split_code procs code_tag_code_list)
-
-let convert_to_html procs marked_code =
-    let rec find_until tag = function
-    | Code (_code, Empty) -> assert false
-    | Code (code, Tag (tag', _, code_tag_list)) when tag = tag' ->
-        Code (code, Empty), code_tag_list
-    | Code (code, Tag (tag', steps, code_tag_list)) ->
-        let inside, remainder = find_until tag code_tag_list in
-        Code (code, Tag (tag', steps, inside)), remainder
-    in
-    let code_tag_list = marked_code |> split_string tag_marker |> code_tag_code_of_split_code procs in
-    let rec code_tag_code_html = function
-    | Code (code, tag_code_list) -> Vdom.text code :: tag_code_html tag_code_list
-    and tag_code_html = function
-    | Empty -> []
-    | Tag (tag, [step], code_tag_code_list) ->
-        let inside, remainder = find_until tag code_tag_code_list in
-        Vdom.elt "span" ~a:[Vdom.class_ "tag is-info"; Vdom.onclick (fun _ -> Model.Step step)] (code_tag_code_html inside) :: code_tag_code_html remainder
-    | Tag (_, _, _code_tag_code_list) -> assert false
-    in
-    code_tag_code_html code_tag_list
-
-let view_process_with_redexes steps proc =
-  let indexed_reds = List.mapi (fun index (red, _step) -> (index, red)) steps in
-  print_process indexed_reds proc Format.str_formatter;
-  convert_to_html (List.map snd steps) (Format.flush_str_formatter ())
+let view_process_with_redexes red proc =
+    (match red with
+    | None ->
+        Ast.print_process proc Format.str_formatter
+    | Some red ->
+        print_process red proc Format.str_formatter
+    );
+    match split_string tag_marker (Format.flush_str_formatter ()) with
+    | [code] -> [Vdom.text code]
+    | [pre; redex; post] -> [Vdom.text pre; Vdom.elt "strong" ~a:[Vdom.class_ "has-text-info"] [Vdom.text redex]; Vdom.text post]
+    | _ -> assert false
