@@ -1,10 +1,19 @@
+type redex =
+| RunOut
+| ParallelOut1
+| ParallelOut2
+| InRun
+| InParallel
+| InOut
+| TopOut
+
 type reduction =
   | LeftCtx of reduction
   | RightCtx of reduction
   | InCtx of reduction
   | OutCtx of reduction
   | RunCtx of Interpreter.reduction
-  | Redex
+  | Redex of redex
 
 let rec step state = function
   | Ast.Run comp -> (
@@ -14,7 +23,7 @@ let rec step state = function
       in
       match comp with
       | Ast.Out (op, expr, comp') ->
-          (Redex, Ast.OutProc (op, expr, Ast.Run comp')) :: comps'
+          (Redex RunOut, Ast.OutProc (op, expr, Ast.Run comp')) :: comps'
       | _ -> comps' )
   | Ast.Parallel (proc1, proc2) ->
       let proc1_first =
@@ -26,7 +35,7 @@ let rec step state = function
         in
         match proc1 with
         | Ast.OutProc (op, expr, proc1') ->
-            ( Redex,
+            ( Redex ParallelOut1,
               Ast.OutProc
                 (op, expr, Ast.Parallel (proc1', Ast.InProc (op, expr, proc2)))
             )
@@ -41,7 +50,7 @@ let rec step state = function
         in
         match proc2 with
         | Ast.OutProc (op, expr, proc2') ->
-            ( Redex,
+            ( Redex ParallelOut2,
               Ast.OutProc
                 (op, expr, Ast.Parallel (Ast.InProc (op, expr, proc1), proc2'))
             )
@@ -57,14 +66,14 @@ let rec step state = function
           proc
       in
       match proc with
-      | Ast.Run comp -> (Redex, Ast.Run (Ast.In (op, expr, comp))) :: procs'
+      | Ast.Run comp -> (Redex InRun, Ast.Run (Ast.In (op, expr, comp))) :: procs'
       | Ast.Parallel (proc1, proc2) ->
-          ( Redex,
+          ( Redex InParallel,
             Ast.Parallel
               (Ast.InProc (op, expr, proc1), Ast.InProc (op, expr, proc2)) )
           :: procs'
       | Ast.OutProc (op', expr', proc') ->
-          (Redex, Ast.OutProc (op', expr', Ast.InProc (op, expr, proc')))
+          (Redex InOut, Ast.OutProc (op', expr', Ast.InProc (op, expr, proc')))
           :: procs'
       | _ -> procs' )
   | Ast.OutProc (op, expr, proc) ->
@@ -86,7 +95,7 @@ let top_steps state proc =
     step state proc |> List.map (fun (red, proc) -> (red, Step proc))
   in
   match proc with
-  | Ast.OutProc (op, expr, proc) -> (Redex, TopOut (op, expr, proc)) :: steps
+  | Ast.OutProc (op, expr, proc) -> (Redex TopOut, TopOut (op, expr, proc)) :: steps
   | _ -> steps
 
 let incoming_operation proc op expr = Ast.InProc (op, expr, proc)

@@ -4,7 +4,7 @@ let rec print_computation ?max_level red c ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
   let separator =
     match red with
-    | Interpreter.Redex -> tag_marker
+    | Interpreter.Redex _ -> tag_marker
     | _ -> ""
   in
   print "%t%t%t"
@@ -40,7 +40,7 @@ let rec print_process ?max_level red proc ppf =
   let print ?at_level = Utils.print ?max_level ?at_level ppf in
   let separator =
     match red with
-    | Runner.Redex -> tag_marker
+    | Runner.Redex _ -> tag_marker
     | _ -> ""
   in
   print "%t%t%t"

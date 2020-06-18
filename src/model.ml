@@ -14,7 +14,7 @@ type model = {
   use_stdlib : bool;
   unparsed_code : string;
   loaded_code : (loaded_code, string) result;
-  selected_reduction : Runner.reduction option;
+  selected_reduction : int option;
   random_step_size : int;
   interrupt_operation : Ast.operation option;
   unparsed_interrupt_payload : string;
@@ -25,7 +25,7 @@ type msg =
   | UseStdlib of bool
   | ChangeSource of string
   | LoadSource
-  | SelectReduction of Runner.reduction option
+  | SelectReduction of int option
   | Step of Runner.top_step
   | RandomStep
   | ChangeRandomStepSize of int

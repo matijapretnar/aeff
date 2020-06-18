@@ -34,10 +34,47 @@ let select ?(a = []) empty_description msg describe_choice selected choices =
 
 let nil = text ""
 
-let reduction_description _red = "red"
+let view_computation_redex = function
+  | Interpreter.PromiseOut -> "promiseOut"
+  | Interpreter.InReturn -> "inReturn"
+  | Interpreter.InOut -> "inOut"
+  | Interpreter.InPromise -> "inPromise"
+  | Interpreter.InPromise' -> "inPromise"
+  | Interpreter.Match -> "match"
+  | Interpreter.ApplyFun -> "applyFun"
+  | Interpreter.DoReturn -> "doReturn"
+  | Interpreter.DoOut -> "doOut"
+  | Interpreter.DoPromise -> "doPromise"
+  | Interpreter.AwaitFulfill -> "awaitFulfill"
+
+let rec view_computation_reduction = function
+  | Interpreter.PromiseCtx red -> view_computation_reduction red
+  | Interpreter.InCtx red -> view_computation_reduction red
+  | Interpreter.OutCtx red -> view_computation_reduction red
+  | Interpreter.DoCtx red -> view_computation_reduction red
+  | Interpreter.Redex redex -> view_computation_redex redex
+
+let view_process_redex = function
+| Runner.RunOut -> "runOut"
+| Runner.ParallelOut1 -> "parallelOut1"
+| Runner.ParallelOut2 -> "parallelOut2"
+| Runner.InRun -> "inRun"
+| Runner.InParallel -> "inParallel"
+| Runner.InOut -> "inOut"
+| Runner.TopOut -> "topOut"
+
+let rec view_process_reduction = function
+  | Runner.LeftCtx red -> view_process_reduction red
+  | Runner.RightCtx red -> view_process_reduction red
+  | Runner.InCtx red -> view_process_reduction red
+  | Runner.OutCtx red -> view_process_reduction red
+  | Runner.RunCtx red -> view_computation_reduction red
+  | Runner.Redex redex -> view_process_redex redex
+
+
 
 let step_action (red, step) =
-  elt "li" [ button (reduction_description red) (Model.Step step) ]
+  elt "li" [ button (view_process_reduction red) (Model.Step step) ]
 
 (* let view_actions (model : Model.model) code =
   let _step_actions = List.map step_action (Model.steps code) in
@@ -87,7 +124,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
             ]
           [ text "Undo last step" ];
       ]
-  and view_step (red, step) =
+  and view_step i (red, step) =
     panel_block
       [
         elt "button"
@@ -95,9 +132,9 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
             [
               class_ "button is-outlined is-fullwidth";
               onclick (fun _ -> Model.Step step);
-              onmousemove (fun _ -> Model.SelectReduction (Some red))
+              onmousemove (fun _ -> Model.SelectReduction (Some i))
             ]
-          [ text (reduction_description red) ];
+          [ text (view_process_reduction red) ];
       ]
   and view_random_steps steps =
     div
@@ -204,7 +241,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
       ]
   in
   panel "Interaction" ~a:[onmousemove (fun _ -> Model.SelectReduction None)]
-    ( view_undo_last_step :: view_random_steps steps :: List.map view_step steps
+    ( view_undo_last_step :: view_random_steps steps :: List.mapi view_step steps
     @ [ send_interrupt ] )
 
 let view_history ops =
@@ -314,11 +351,16 @@ let view_source model =
 
 let view_code (model : Model.model) (code : Model.loaded_code) =
   let steps = Model.steps code in
+  let selected_red =
+    match model.selected_reduction with
+    | None -> None
+    | Some i -> List.nth_opt steps i |> Option.map fst
+  in
   div ~a:[ class_ "columns" ]
     [
       div
         ~a:[ class_ "column is-three-quarters" ]
-        [ view_process model.selected_reduction code.snapshot.process ];
+        [ view_process selected_red code.snapshot.process ];
       div
         ~a:[ class_ "column is-one-quarter" ]
         [ view_steps model code steps; view_history code.snapshot.operations ];
