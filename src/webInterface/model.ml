@@ -1,3 +1,8 @@
+module Ast = Shared__Ast
+module Loader = Shared__Loader
+module Runner = Shared__Runner
+module Error = Shared__Error
+
 type operation =
   | In of Ast.operation * Ast.expression
   | Out of Ast.operation * Ast.expression
@@ -85,29 +90,14 @@ let parse_step_size input =
   |> Option.to_result ~none:(input ^ " is not an integer")
 
 let parse_payload code op input =
-  try
-    let lexbuf = Lexing.from_string input in
-    let term = Parser.payload Lexer.token lexbuf in
-    let expr' =
-      Desugarer.desugar_pure_expression code.loader_state.desugarer term
-    in
-    ignore (Typechecker.check_payload code.loader_state.typechecker op expr');
-    Ok expr'
-  with
+  try Ok (Loader.parse_payload code.loader_state op input) with
   | Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
   | _ -> Error "Parser error"
 
 let parse_source source =
-  let make_process = function
-    | [] -> Ast.Run (Ast.Return (Ast.Tuple []))
-    | comp :: comps ->
-        List.fold_left
-          (fun proc comp -> Ast.Parallel (proc, Ast.Run comp))
-          (Ast.Run comp) comps
-  in
   try
-    let state = Loader.load_source source in
-    let proc = make_process state.Loader.top_computations in
+    let state = Loader.load_source Loader.initial_state source in
+    let proc = Loader.make_process state in
     Ok
       {
         snapshot = { process = proc; operations = [] };
@@ -118,7 +108,7 @@ let parse_source source =
 
 let update model = function
   | UseStdlib use_stdlib -> { model with use_stdlib }
-  | SelectReduction selected_reduction -> {model with selected_reduction}
+  | SelectReduction selected_reduction -> { model with selected_reduction }
   | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
   | RandomStep ->
       apply_to_code_if_loaded (make_random_steps model.random_step_size) model

@@ -1,0 +1,7 @@
+(library
+ (name shared))
+
+(ocamllex lexer)
+
+(menhir
+ (modules parser))

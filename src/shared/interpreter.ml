@@ -12,18 +12,17 @@ let initial_state =
 exception PatternMismatch
 
 type redex =
-| PromiseOut
-| InReturn
-| InOut
-| InPromise
-| InPromise'
-| Match
-| ApplyFun
-| DoReturn
-| DoOut
-| DoPromise
-| AwaitFulfill
-
+  | PromiseOut
+  | InReturn
+  | InOut
+  | InPromise
+  | InPromise'
+  | Match
+  | ApplyFun
+  | DoReturn
+  | DoOut
+  | DoPromise
+  | AwaitFulfill
 
 type reduction =
   | PromiseCtx of reduction
@@ -114,7 +113,8 @@ let rec step state = function
       in
       match comp with
       | Ast.Out (op', expr', cont') ->
-          (Redex PromiseOut, Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')))
+          ( Redex PromiseOut,
+            Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')) )
           :: comps'
       | _ -> comps' )
   | Ast.In (op, expr, comp) -> (
@@ -127,7 +127,8 @@ let rec step state = function
       match comp with
       | Ast.Return expr -> (Redex InReturn, Ast.Return expr) :: comps'
       | Ast.Out (op', expr', cont') ->
-          (Redex InOut, Ast.Out (op', expr', Ast.In (op, expr, cont'))) :: comps'
+          (Redex InOut, Ast.Out (op', expr', Ast.In (op, expr, cont')))
+          :: comps'
       | Ast.Handler (op', (arg_pat, op_comp), p, comp) when op = op' ->
           let subst = match_pattern_with_expression state arg_pat expr in
           let y = Ast.Variable.fresh "y" in
@@ -141,7 +142,8 @@ let rec step state = function
           in
           (Redex InPromise, comp') :: comps'
       | Ast.Handler (op', op_comp, p, comp) ->
-          (Redex InPromise', Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp)))
+          ( Redex InPromise',
+            Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp)) )
           :: comps'
       | _ -> comps' )
   | Ast.Match (expr, cases) ->
@@ -171,7 +173,8 @@ let rec step state = function
       | Ast.Out (op, expr, comp1) ->
           (Redex DoOut, Ast.Out (op, expr, Ast.Do (comp1, comp2))) :: comps1'
       | Ast.Handler (op, handler, pat, comp1) ->
-          (Redex DoPromise, Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2)))
+          ( Redex DoPromise,
+            Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2)) )
           :: comps1'
       | _ -> comps1' )
   | Ast.Await (expr, (pat, comp)) -> (

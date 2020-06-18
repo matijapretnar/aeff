@@ -1,11 +1,11 @@
 type redex =
-| RunOut
-| ParallelOut1
-| ParallelOut2
-| InRun
-| InParallel
-| InOut
-| TopOut
+  | RunOut
+  | ParallelOut1
+  | ParallelOut2
+  | InRun
+  | InParallel
+  | InOut
+  | TopOut
 
 type reduction =
   | LeftCtx of reduction
@@ -66,7 +66,8 @@ let rec step state = function
           proc
       in
       match proc with
-      | Ast.Run comp -> (Redex InRun, Ast.Run (Ast.In (op, expr, comp))) :: procs'
+      | Ast.Run comp ->
+          (Redex InRun, Ast.Run (Ast.In (op, expr, comp))) :: procs'
       | Ast.Parallel (proc1, proc2) ->
           ( Redex InParallel,
             Ast.Parallel
@@ -95,7 +96,8 @@ let top_steps state proc =
     step state proc |> List.map (fun (red, proc) -> (red, Step proc))
   in
   match proc with
-  | Ast.OutProc (op, expr, proc) -> (Redex TopOut, TopOut (op, expr, proc)) :: steps
+  | Ast.OutProc (op, expr, proc) ->
+      (Redex TopOut, TopOut (op, expr, proc)) :: steps
   | _ -> steps
 
 let incoming_operation proc op expr = Ast.InProc (op, expr, proc)

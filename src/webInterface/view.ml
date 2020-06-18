@@ -1,7 +1,10 @@
+module Ast = Shared__Ast
+module Interpreter = Shared__Interpreter
+module Runner = Shared__Runner
 open Vdom
 
-let panel ?(a=[]) heading blocks =
-  div ~a: (class_ "panel" :: a)
+let panel ?(a = []) heading blocks =
+  div ~a:(class_ "panel" :: a)
     (elt "p" ~a:[ class_ "panel-heading" ] [ text heading ] :: blocks)
 
 let panel_block = div ~a:[ class_ "panel-block" ]
@@ -55,13 +58,13 @@ let rec view_computation_reduction = function
   | Interpreter.Redex redex -> view_computation_redex redex
 
 let view_process_redex = function
-| Runner.RunOut -> "runOut"
-| Runner.ParallelOut1 -> "parallelOut1"
-| Runner.ParallelOut2 -> "parallelOut2"
-| Runner.InRun -> "inRun"
-| Runner.InParallel -> "inParallel"
-| Runner.InOut -> "inOut"
-| Runner.TopOut -> "topOut"
+  | Runner.RunOut -> "runOut"
+  | Runner.ParallelOut1 -> "parallelOut1"
+  | Runner.ParallelOut2 -> "parallelOut2"
+  | Runner.InRun -> "inRun"
+  | Runner.InParallel -> "inParallel"
+  | Runner.InOut -> "inOut"
+  | Runner.TopOut -> "topOut"
 
 let rec view_process_reduction = function
   | Runner.LeftCtx red -> view_process_reduction red
@@ -70,8 +73,6 @@ let rec view_process_reduction = function
   | Runner.OutCtx red -> view_process_reduction red
   | Runner.RunCtx red -> view_computation_reduction red
   | Runner.Redex redex -> view_process_redex redex
-
-
 
 let step_action (red, step) =
   elt "li" [ button (view_process_reduction red) (Model.Step step) ]
@@ -132,7 +133,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
             [
               class_ "button is-outlined is-fullwidth";
               onclick (fun _ -> Model.Step step);
-              onmousemove (fun _ -> Model.SelectReduction (Some i))
+              onmousemove (fun _ -> Model.SelectReduction (Some i));
             ]
           [ text (view_process_reduction red) ];
       ]
@@ -240,8 +241,10 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
           ];
       ]
   in
-  panel "Interaction" ~a:[onmousemove (fun _ -> Model.SelectReduction None)]
-    ( view_undo_last_step :: view_random_steps steps :: List.mapi view_step steps
+  panel "Interaction"
+    ~a:[ onmousemove (fun _ -> Model.SelectReduction None) ]
+    ( view_undo_last_step :: view_random_steps steps
+      :: List.mapi view_step steps
     @ [ send_interrupt ] )
 
 let view_history ops =

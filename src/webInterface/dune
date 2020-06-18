@@ -1,0 +1,9 @@
+(executable
+ (name webInterface)
+ (libraries ocaml-vdom shared)
+ (modes js)
+ (link_flags -no-check-prims)
+ (promote
+  (until-clean)
+  (into ../../web)
+  (only webInterface.bc.js)))

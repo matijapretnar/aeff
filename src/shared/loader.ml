@@ -69,15 +69,33 @@ let execute_command state = function
       in
       { state with typechecker = typechecker_state' }
 
-let load_commands cmds =
-  let state = initial_state in
+let load_commands state cmds =
   let desugarer_state', cmds' =
     Utils.fold_map Desugarer.desugar_command state.desugarer cmds
   in
   let state' = { state with desugarer = desugarer_state' } in
   List.fold_left execute_command state' cmds'
 
-let load_source source =
+let load_source state source =
   let lexbuf = Lexing.from_string source in
   let cmds = parse_commands lexbuf in
-  load_commands cmds
+  load_commands state cmds
+
+let load_file state source =
+  let cmds = Lexer.read_file parse_commands source in
+  load_commands state cmds
+
+let parse_payload state op input =
+  let lexbuf = Lexing.from_string input in
+  let term = Parser.payload Lexer.token lexbuf in
+  let expr' = Desugarer.desugar_pure_expression state.desugarer term in
+  ignore (Typechecker.check_payload state.typechecker op expr');
+  expr'
+
+let make_process state =
+  match state.top_computations with
+  | [] -> Ast.Run (Ast.Return (Ast.Tuple []))
+  | comp :: comps ->
+      List.fold_left
+        (fun proc comp -> Ast.Parallel (proc, Ast.Run comp))
+        (Ast.Run comp) comps
