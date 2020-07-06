@@ -194,14 +194,46 @@ let remote f =
     in
     loop ()
 
+let remoteCallReInvoker () =
+    let callsToReInvoke = ref [] in
+    let rec reInvokerCall () =
+        promise (call (x,callNo) |->
+            callsToReInvoke := !callsToReInvoke @ [(x, callNo)];
+            reInvokerCall ()
+        ) as _ in return <<()>>
+    in
+    let rec reInvokerResult () =
+        promise (result (y, callNo) |->
+            callsToReInvoke := filter (fun (_, callNo') |-> callNo <> callNo') !callsToReInvoke;
+            reInvokerResult ()
+        ) as _ in return <<()>>
+    in
+    let rec reInvokerWrapper (calls:(int * int) list) =
+        match calls with
+        | [] |-> return ()
+        | (x, callNo) :: calls |-> send call (x, callNo); reInvokerWrapper calls
+    in
+    let rec reInvokerCancel () =
+        promise (cancel callNo |->
+            callsToReInvoke := filter (fun (_, callNo') |-> callNo <> callNo') !callsToReInvoke;
+            reInvokerWrapper !callsToReInvoke;
+            reInvokerCancel ()
+        ) as _ in return <<()>>
+    in
+    reInvokerCall ();
+    reInvokerResult ();
+    reInvokerCancel ()
+
+run
+    remoteCallReInvoker ()
+
 run
     let callCounter = ref 0 in
     let result1, cancel1, changeMind1 = callWith callCounter 10 in
     let result2, cancel2, changeMind2 = callWith callCounter 20 in
+    cancel1 ();
     let result3, cancel3, changeMind3 = callWith callCounter 30 in
-    let a = result1 () in
-    cancel2 ();
-    changeMind3 a;
+    changeMind3 (result2 ());
     result3 ()
 
 run

@@ -44,7 +44,7 @@ let remote f =
     in
     loop ()
 
-let reInvoker () =
+let remoteCallReInvoker () =
     let callsToReInvoke = ref [] in
     let rec reInvokerCall () =
         promise (call (x,callNo) |->
@@ -75,6 +75,9 @@ let reInvoker () =
     reInvokerCancel ()
 
 run
+    remoteCallReInvoker ()
+    
+run
     let callCounter = ref 0 in
     let result1, cancel1, changeMind1 = callWith callCounter 10 in
     let result2, cancel2, changeMind2 = callWith callCounter 20 in
@@ -85,6 +88,3 @@ run
 
 run
     remote (fun x |-> 10 * (20 * (30 * x)))
-
-run
-    reInvoker ()
