@@ -198,7 +198,7 @@ let remoteCallReInvoker () =
     let callsToReInvoke = ref [] in
     let rec reInvokerCall () =
         promise (call (x,callNo) |->
-            callsToReInvoke := !callsToReInvoke @ [(x, callNo)];
+            callsToReInvoke := (x, callNo) :: !callsToReInvoke;
             reInvokerCall ()
         ) as _ in return <<()>>
     in
@@ -208,24 +208,21 @@ let remoteCallReInvoker () =
             reInvokerResult ()
         ) as _ in return <<()>>
     in
-    let rec reInvokerWrapper (calls:(int * int) list) =
-        match calls with
-        | [] |-> return ()
-        | (x, callNo) :: calls |-> send call (x, callNo); reInvokerWrapper calls
-    in
     let rec reInvokerCancel () =
+        let rec reInvokerWrapper calls =
+            match calls with
+            | [] |-> return ()
+            | (x, callNo) :: calls |-> send call (x, callNo); reInvokerWrapper calls
+        in
         promise (cancel callNo |->
             callsToReInvoke := filter (fun (_, callNo') |-> callNo <> callNo') !callsToReInvoke;
-            reInvokerWrapper !callsToReInvoke;
+            reInvokerWrapper (reverse !callsToReInvoke);
             reInvokerCancel ()
         ) as _ in return <<()>>
     in
     reInvokerCall ();
     reInvokerResult ();
     reInvokerCancel ()
-
-run
-    remoteCallReInvoker ()
 
 run
     let callCounter = ref 0 in
@@ -235,6 +232,9 @@ run
     let result3, cancel3, changeMind3 = callWith callCounter 30 in
     changeMind3 (result2 ());
     result3 ()
+
+run
+    remoteCallReInvoker ()
 
 run
     remote (fun x |-> 10 * (20 * (30 * x)))"
