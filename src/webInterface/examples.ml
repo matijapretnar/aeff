@@ -158,16 +158,10 @@ let callWith callCounter =
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        let rec awaitLoop () =
-            promise (result (y, callNo') |->
-                if callNo = callNo' then
-                    <<y>>
-                else
-                    awaitLoop ()
-            ) as resultPromise in return resultPromise
-        in
-        let actualPromise = awaitLoop () in
-        let valueThunk () = awaitValue actualPromise in
+        promise (result (y, callNo') when callNo = callNo' |->
+            return <<y>>
+        ) as p in
+        let valueThunk () = awaitValue p in
         let cancelThunk () = send cancel callNo in
         let changeMind x = cancelThunk (); send call (x, callNo) in
         return (valueThunk, cancelThunk, changeMind)
@@ -489,13 +483,13 @@ let preemptive =
 operation go : int
 
 (*
-let rec preempt () =
+let rec waitForStop () =
   promise (stop _ |->
     promise (go _ |->
       return <<()>>
     ) as p in
     await p until <<y>> in
-    preempt ()
+    waitForStop ()
   ) as p in
   p
 *)
