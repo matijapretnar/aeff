@@ -29,9 +29,9 @@ let remote f =
 
 run
     let callCounter = ref 0 in
-    let yt = callWith callCounter 20 in
-    let zt = callWith callCounter 30 in
-    return (yt () * yt () + zt () * zt ())
+    let yt = callWith callCounter 2 in
+    let zt = callWith callCounter 3 in
+    return ((yt () * yt ()) + (zt () * zt ()))
 
 run
-    remote (fun x |-> 10 * (20 * (30 * x)))
+    remote (fun x |-> 4 * (5 * (6 * x)))

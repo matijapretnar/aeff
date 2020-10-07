@@ -167,14 +167,11 @@ let callWith callCounter =
         return (valueThunk, cancelThunk, changeMind)
 
 let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' |->
-        if callNo = callNo' then
-            promise (dummy empty |-> return <<empty>>) as dummyPromise in
-            runBeforeStall ();
-            awaitValue dummyPromise;
-            awaitCancel callNo runBeforeStall
-        else
-            awaitCancel callNo runBeforeStall
+    promise (cancel callNo' when callNo = callNo'|->
+        promise (dummy empty |-> return <<empty>>) as dummyPromise in
+        runBeforeStall ();
+        awaitValue dummyPromise;
+        awaitCancel callNo runBeforeStall
     ) as p in return p
 
 let remote f =
@@ -220,10 +217,10 @@ let remoteCallReInvoker () =
 
 run
     let callCounter = ref 0 in
-    let result1, cancel1, changeMind1 = callWith callCounter 10 in
-    let result2, cancel2, changeMind2 = callWith callCounter 20 in
+    let result1, cancel1, changeMind1 = callWith callCounter 1 in
+    let result2, cancel2, changeMind2 = callWith callCounter 2 in
     cancel1 ();
-    let result3, cancel3, changeMind3 = callWith callCounter 30 in
+    let result3, cancel3, changeMind3 = callWith callCounter 3 in
     changeMind3 (result2 ());
     result3 ()
 
@@ -231,7 +228,7 @@ run
     remoteCallReInvoker ()
 
 run
-    remote (fun x |-> 10 * (20 * (30 * x)))"
+    remote (fun x |-> 4 * (5 * (6 * x)))"
 
 let feed =
   "operation request : int
@@ -483,13 +480,13 @@ let preemptive =
 operation go : int
 
 (*
-let rec waitForStop () =
+let rec preempt () =
   promise (stop _ |->
     promise (go _ |->
       return <<()>>
     ) as p in
     await p until <<y>> in
-    waitForStop ()
+    preempt ()
   ) as p in
   p
 *)
@@ -567,12 +564,12 @@ let remote f =
 
 run
     let callCounter = ref 0 in
-    let yt = callWith callCounter 20 in
-    let zt = callWith callCounter 30 in
-    return (yt () * yt () + zt () * zt ())
+    let yt = callWith callCounter 2 in
+    let zt = callWith callCounter 3 in
+    return ((yt () * yt ()) + (zt () * zt ()))
 
 run
-    remote (fun x |-> 10 * (20 * (30 * x)))"
+    remote (fun x |-> 4 * (5 * (6 * x)))"
 
 let runner =
   "operation randomReq : int
