@@ -1,7 +1,4 @@
-module Ast = Shared__Ast
-module Utils = Shared__Utils
-module Interpreter = Shared__Interpreter
-module Runner = Shared__Runner
+open Shared
 
 let tag_marker = "###"
 

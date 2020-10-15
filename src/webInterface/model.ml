@@ -1,7 +1,4 @@
-module Ast = Shared__Ast
-module Loader = Shared__Loader
-module Runner = Shared__Runner
-module Error = Shared__Error
+open Shared
 
 type operation =
   | In of Ast.operation * Ast.expression

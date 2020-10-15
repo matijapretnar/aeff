@@ -1,7 +1,4 @@
-module Loader = Shared__Loader
-module Runner = Shared__Runner
-module Ast = Shared__Ast
-module Error = Shared__Error
+open Shared
 
 let make_top_step = function
   | Runner.TopOut (op, expr, proc) ->

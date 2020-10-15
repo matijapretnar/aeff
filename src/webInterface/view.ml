@@ -1,6 +1,4 @@
-module Ast = Shared__Ast
-module Interpreter = Shared__Interpreter
-module Runner = Shared__Runner
+open Shared
 open Vdom
 
 let panel ?(a = []) heading blocks =
