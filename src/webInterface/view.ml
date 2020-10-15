@@ -347,7 +347,9 @@ let view_source model =
   div ~a:[ class_ "columns" ]
     [
       div ~a:[ class_ "column is-three-quarters" ] [ view_editor model ];
-      div ~a:[ class_ "column is-one-quarter is-sticky" ] [ view_compiler model ];
+      div
+        ~a:[ class_ "column is-one-quarter is-sticky" ]
+        [ view_compiler model ];
     ]
 
 let view_code (model : Model.model) (code : Model.loaded_code) =
