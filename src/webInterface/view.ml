@@ -1,7 +1,6 @@
 open Vdom
 module Ast = Core.Ast
 module Interpreter = Core.Interpreter
-module Runner = Core.Runner
 
 let panel ?(a = []) heading blocks =
   div ~a:(class_ "panel" :: a)
@@ -55,24 +54,24 @@ let rec view_computation_reduction = function
   | Interpreter.InCtx red -> view_computation_reduction red
   | Interpreter.OutCtx red -> view_computation_reduction red
   | Interpreter.DoCtx red -> view_computation_reduction red
-  | Interpreter.Redex redex -> view_computation_redex redex
+  | Interpreter.ComputationRedex redex -> view_computation_redex redex
 
 let view_process_redex = function
-  | Runner.RunOut -> "runOut"
-  | Runner.ParallelOut1 -> "parallelOut1"
-  | Runner.ParallelOut2 -> "parallelOut2"
-  | Runner.InRun -> "inRun"
-  | Runner.InParallel -> "inParallel"
-  | Runner.InOut -> "inOut"
-  | Runner.TopOut -> "topOut"
+  | Interpreter.RunOut -> "runOut"
+  | Interpreter.ParallelOut1 -> "parallelOut1"
+  | Interpreter.ParallelOut2 -> "parallelOut2"
+  | Interpreter.InRun -> "inRun"
+  | Interpreter.InParallel -> "inParallel"
+  | Interpreter.InOut -> "inOut"
+  | Interpreter.TopOut -> "topOut"
 
 let rec view_process_reduction = function
-  | Runner.LeftCtx red -> view_process_reduction red
-  | Runner.RightCtx red -> view_process_reduction red
-  | Runner.InCtx red -> view_process_reduction red
-  | Runner.OutCtx red -> view_process_reduction red
-  | Runner.RunCtx red -> view_computation_reduction red
-  | Runner.Redex redex -> view_process_redex redex
+  | Interpreter.LeftCtx red -> view_process_reduction red
+  | Interpreter.RightCtx red -> view_process_reduction red
+  | Interpreter.InCtx red -> view_process_reduction red
+  | Interpreter.OutCtx red -> view_process_reduction red
+  | Interpreter.RunCtx red -> view_computation_reduction red
+  | Interpreter.ProcessRedex redex -> view_process_redex redex
 
 let step_action (red, step) =
   elt "li" [ button (view_process_reduction red) (Model.Step step) ]

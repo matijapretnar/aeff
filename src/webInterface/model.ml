@@ -1,7 +1,6 @@
 open Utils
 module Ast = Core.Ast
 module Interpreter = Core.Interpreter
-module Runner = Core.Runner
 module Loader = Core.Loader
 
 type operation =
@@ -34,7 +33,7 @@ type msg =
   | ChangeSource of string
   | LoadSource
   | SelectReduction of int option
-  | Step of Runner.top_step
+  | Step of Interpreter.top_step
   | RandomStep
   | ChangeRandomStepSize of int
   | ChangeInterruptOperation of Ast.operation
@@ -55,8 +54,8 @@ let init =
   }
 
 let step_snapshot snapshot = function
-  | Runner.Step proc' -> { snapshot with process = proc' }
-  | Runner.TopOut (op, expr, proc') ->
+  | Interpreter.Step proc' -> { snapshot with process = proc' }
+  | Interpreter.TopOut (op, expr, proc') ->
       { process = proc'; operations = Out (op, expr) :: snapshot.operations }
 
 let apply_to_code_if_loaded f model =
@@ -64,7 +63,8 @@ let apply_to_code_if_loaded f model =
   | Ok code -> { model with loaded_code = Ok (f code) }
   | Error _ -> model
 
-let steps code = Runner.top_steps code.interpreter_state code.snapshot.process
+let steps code =
+  Interpreter.top_steps code.interpreter_state code.snapshot.process
 
 let move_to_snapshot snapshot code =
   { code with snapshot; history = code.snapshot :: code.history }
@@ -73,7 +73,7 @@ let step_code step code =
   move_to_snapshot (step_snapshot code.snapshot step) code
 
 let interrupt op expr code =
-  let proc' = Runner.incoming_operation code.snapshot.process op expr in
+  let proc' = Interpreter.incoming_operation code.snapshot.process op expr in
   move_to_snapshot
     { process = proc'; operations = In (op, expr) :: code.snapshot.operations }
     code

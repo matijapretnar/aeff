@@ -1,14 +1,13 @@
 open Utils
 module Ast = Core.Ast
 module Interpreter = Core.Interpreter
-module Runner = Core.Runner
 
 let tag_marker = "###"
 
 let rec print_computation ?max_level red c ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
   let separator =
-    match red with Interpreter.Redex _ -> tag_marker | _ -> ""
+    match red with Interpreter.ComputationRedex _ -> tag_marker | _ -> ""
   in
   print "%t%t%t"
     (fun ppf -> Format.pp_print_as ppf 0 separator)
@@ -39,7 +38,9 @@ and print_computation' ?max_level red c ppf =
 
 let rec print_process ?max_level red proc ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
-  let separator = match red with Runner.Redex _ -> tag_marker | _ -> "" in
+  let separator =
+    match red with Interpreter.ProcessRedex _ -> tag_marker | _ -> ""
+  in
   print "%t%t%t"
     (fun ppf -> Format.pp_print_as ppf 0 separator)
     (print_process' ?max_level red proc)
@@ -48,19 +49,19 @@ let rec print_process ?max_level red proc ppf =
 and print_process' ?max_level red proc ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
   match (red, proc) with
-  | Runner.RunCtx red, Ast.Run comp ->
+  | Interpreter.RunCtx red, Ast.Run comp ->
       print ~at_level:1 "run %t" (print_computation ~max_level:0 red comp)
-  | Runner.LeftCtx red, Ast.Parallel (proc1, proc2) ->
+  | Interpreter.LeftCtx red, Ast.Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]" (print_process red proc1)
         (Ast.print_process proc2)
-  | Runner.RightCtx red, Ast.Parallel (proc1, proc2) ->
+  | Interpreter.RightCtx red, Ast.Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]" (Ast.print_process proc1)
         (print_process red proc2)
-  | Runner.InCtx red, Ast.InProc (op, expr, proc) ->
+  | Interpreter.InCtx red, Ast.InProc (op, expr, proc) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
         (print_process red proc)
-  | Runner.OutCtx red, Ast.OutProc (op, expr, proc) ->
+  | Interpreter.OutCtx red, Ast.OutProc (op, expr, proc) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
         (print_process red proc)

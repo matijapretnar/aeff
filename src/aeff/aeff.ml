@@ -1,18 +1,17 @@
 open Utils
 module Ast = Core.Ast
 module Interpreter = Core.Interpreter
-module Runner = Core.Runner
 module Loader = Core.Loader
 
 let make_top_step = function
-  | Runner.TopOut (op, expr, proc) ->
+  | Interpreter.TopOut (op, expr, proc) ->
       Format.printf "↑ %t %t@." (Ast.Operation.print op)
         (Ast.print_expression expr);
       proc
-  | Runner.Step proc -> proc
+  | Interpreter.Step proc -> proc
 
 let rec run (state : Interpreter.state) proc =
-  match Runner.top_steps state proc with
+  match Interpreter.top_steps state proc with
   | [] -> proc
   | steps ->
       let i = Random.int (List.length steps) in
