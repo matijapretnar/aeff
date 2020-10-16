@@ -42,7 +42,7 @@ let initial_state =
     typechecker = Typechecker.initial_state;
     top_computations = [];
   }
-  |> fun state -> Lib.fold load_function state BuiltIn.functions
+  |> fun state -> List.fold load_function state BuiltIn.functions
 
 let execute_command state = function
   | Ast.TyDef ty_defs ->
@@ -73,7 +73,7 @@ let execute_command state = function
 
 let load_commands state cmds =
   let desugarer_state', cmds' =
-    Lib.fold_map Desugarer.desugar_command state.desugarer cmds
+    List.fold_map Desugarer.desugar_command state.desugarer cmds
   in
   let state' = { state with desugarer = desugarer_state' } in
   List.fold_left execute_command state' cmds'

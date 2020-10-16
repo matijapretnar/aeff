@@ -37,7 +37,7 @@ type ty =
   | TyReference of ty  (** [ty ref] *)
 
 let rec print_ty ?max_level print_param p ppf =
-  let print ?at_level = Lib.print ?max_level ?at_level ppf in
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
   match p with
   | TyConst c -> print "%t" (Const.print_ty c)
   | TyApply (ty_name, []) -> print "%t" (TyName.print ty_name)
@@ -47,7 +47,7 @@ let rec print_ty ?max_level print_param p ppf =
         (TyName.print ty_name)
   | TyApply (ty_name, tys) ->
       print ~at_level:1 "%t %t"
-        (Lib.print_tuple (print_ty print_param) tys)
+        (Print.print_tuple (print_ty print_param) tys)
         (TyName.print ty_name)
   | TyParam a -> print "%t" (print_param a)
   | TyArrow (ty1, ty2) ->
@@ -57,7 +57,7 @@ let rec print_ty ?max_level print_param p ppf =
   | TyTuple [] -> print "unit"
   | TyTuple tys ->
       print ~at_level:2 "%t"
-        (Lib.print_sequence " × " (print_ty ~max_level:1 print_param) tys)
+        (Print.print_sequence " × " (print_ty ~max_level:1 print_param) tys)
   | TyPromise ty -> print "⟨%t⟩" (print_ty print_param ty)
   | TyReference ty ->
       print ~at_level:1 "%t ref" (print_ty ~max_level:1 print_param ty)
@@ -75,13 +75,13 @@ let new_print_param () =
           names := TyParamMap.add param symbol !names;
           symbol
     in
-    Lib.print ppf "%s" symbol
+    Print.print ppf "%s" symbol
   in
   print_param
 
 let print_ty_scheme (_params, ty) ppf =
   let print_param = new_print_param () in
-  Lib.print ppf "@[%t@]" (print_ty print_param ty)
+  Print.print ppf "@[%t@]" (print_ty print_param ty)
 
 let rec substitute_ty subst = function
   | TyConst _ as ty -> ty
@@ -295,13 +295,13 @@ type command =
   | TopDo of computation
 
 let rec print_pattern ?max_level p ppf =
-  let print ?at_level = Lib.print ?max_level ?at_level ppf in
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
   match p with
   | PVar x -> print "%t" (Variable.print x)
   | PAs (p, x) -> print "%t as %t" (print_pattern p) (Variable.print x)
   | PAnnotated (p, _ty) -> print_pattern ?max_level p ppf
   | PConst c -> Const.print c ppf
-  | PTuple lst -> Lib.print_tuple print_pattern lst ppf
+  | PTuple lst -> Print.print_tuple print_pattern lst ppf
   | PVariant (lbl, None) when lbl = nil_label -> print "[]"
   | PVariant (lbl, None) -> print "%t" (Label.print lbl)
   | PVariant (lbl, Some (PTuple [ v1; v2 ])) when lbl = cons_label ->
@@ -311,12 +311,12 @@ let rec print_pattern ?max_level p ppf =
   | PNonbinding -> print "_"
 
 let rec print_expression ?max_level e ppf =
-  let print ?at_level = Lib.print ?max_level ?at_level ppf in
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
   match e with
   | Var x -> print "%t" (Variable.print x)
   | Const c -> print "%t" (Const.print c)
   | Annotated (t, _ty) -> print_expression ?max_level t ppf
-  | Tuple lst -> Lib.print_tuple print_expression lst ppf
+  | Tuple lst -> Print.print_tuple print_expression lst ppf
   | Variant (lbl, None) when lbl = nil_label -> print "[]"
   | Variant (lbl, None) -> print "%t" (Label.print lbl)
   | Variant (lbl, Some (Tuple [ v1; v2 ])) when lbl = cons_label ->
@@ -332,7 +332,7 @@ let rec print_expression ?max_level e ppf =
   | Reference r -> print "{ contents = %t }" (print_expression !r)
 
 and print_computation ?max_level c ppf =
-  let print ?at_level = Lib.print ?max_level ?at_level ppf in
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
   match c with
   | Return e -> print ~at_level:1 "return %t" (print_expression ~max_level:0 e)
   | Do (c1, (PNonbinding, c2)) ->
@@ -342,7 +342,7 @@ and print_computation ?max_level c ppf =
         (print_computation c1) (print_computation c2)
   | Match (e, lst) ->
       print "match %t with (@[<hov>%t@])" (print_expression e)
-        (Lib.print_sequence " | " case lst)
+        (Print.print_sequence " | " case lst)
   | Apply (e1, e2) ->
       print ~at_level:1 "@[%t@ %t@]"
         (print_expression ~max_level:1 e1)
@@ -370,7 +370,7 @@ and let_abstraction (p, c) ppf =
 and case a ppf = Format.fprintf ppf "%t" (print_abstraction a)
 
 let rec print_process ?max_level proc ppf =
-  let print ?at_level = Lib.print ?max_level ?at_level ppf in
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
   match proc with
   | Run comp -> print ~at_level:1 "run %t" (print_computation ~max_level:0 comp)
   | Parallel (proc1, proc2) ->

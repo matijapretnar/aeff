@@ -2,7 +2,7 @@
   open Parser
   open Utils
 
-  let reserved = Utils.Lib.StringMap.of_seq @@ List.to_seq [
+  let reserved = Desugarer.StringMap.of_seq @@ List.to_seq [
     ("and", AND);
     ("await", AWAIT);
     ("as", AS);
@@ -91,7 +91,7 @@ rule token = parse
   | float               { FLOAT (float_of_string(Lexing.lexeme lexbuf)) }
   | '"'                 { STRING (string "" lexbuf) }
   | lname               { let s = Lexing.lexeme lexbuf in
-                            match Lib.StringMap.find_opt s reserved with
+                            match Desugarer.StringMap.find_opt s reserved with
                               | Some t -> t
                               | None -> LNAME s
                         }
