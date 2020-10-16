@@ -1,4 +1,8 @@
-open Core
+open Utils
+module Ast = Core.Ast
+module Interpreter = Core.Interpreter
+module Runner = Core.Runner
+module Loader = Core.Loader
 
 type operation =
   | In of Ast.operation * Ast.expression
@@ -89,7 +93,7 @@ let parse_step_size input =
 
 let parse_payload code op input =
   try Ok (code.parse_payload op input) with
-  | Utils.Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
+  | Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
   | _ -> Error "Parser error"
 
 let parse_source source =
@@ -104,7 +108,7 @@ let parse_source source =
         parse_payload = Loader.parse_payload state;
         operations = state.typechecker.operations;
       }
-  with Utils.Error.Error (_, _, msg) -> Error msg
+  with Error.Error (_, _, msg) -> Error msg
 
 let update model = function
   | UseStdlib use_stdlib -> { model with use_stdlib }

@@ -1,5 +1,7 @@
-open Core
 open Utils
+module Ast = Core.Ast
+module Interpreter = Core.Interpreter
+module Runner = Core.Runner
 
 let tag_marker = "###"
 

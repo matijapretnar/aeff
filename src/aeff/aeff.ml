@@ -1,4 +1,8 @@
-open Core
+open Utils
+module Ast = Core.Ast
+module Interpreter = Core.Interpreter
+module Runner = Core.Runner
+module Loader = Core.Loader
 
 let make_top_step = function
   | Runner.TopOut (op, expr, proc) ->
@@ -29,8 +33,8 @@ let main () =
         let proc = run state.interpreter (Loader.make_process state) in
         Format.printf "The process has terminated in the configuration:@.%t@."
           (Ast.print_process proc)
-      with Utils.Error.Error error ->
-        Utils.Error.print error;
+      with Error.Error error ->
+        Error.print error;
         exit 1 )
 
 let _ = main ()

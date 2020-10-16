@@ -1,5 +1,6 @@
 %{
   open Syntax
+  open Utils
   open Utils.Location
 %}
 
@@ -133,7 +134,7 @@ plain_app_term:
     {
       match t.it, ts with
       | Variant (lbl, None), [t] -> Variant (lbl, Some t)
-      | Variant (lbl, _), _ -> Utils.Error.syntax ~loc:(t.at) "Label %s applied to too many argument" lbl
+      | Variant (lbl, _), _ -> Error.syntax ~loc:(t.at) "Label %s applied to too many argument" lbl
       | _, _ ->
         let apply t1 t2 = {it= Apply(t1, t2); at= t1.at} in
         (List.fold_left apply t ts).it
