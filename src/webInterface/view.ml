@@ -196,9 +196,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
                       Ast.string_of_operation
                       (fun operation ->
                         Some operation = model.interrupt_operation)
-                      ( Ast.OperationMap.bindings
-                          code.loader_state.typechecker.operations
-                      |> List.map fst );
+                      (Ast.OperationMap.bindings code.operations |> List.map fst);
                   ];
                 elt "p" ~a:[ class_ "control" ]
                   [

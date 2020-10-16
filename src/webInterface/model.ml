@@ -9,7 +9,9 @@ type snapshot = { process : Ast.process; operations : operation list }
 type loaded_code = {
   snapshot : snapshot;
   history : snapshot list;
-  loader_state : Loader.state;
+  interpreter_state : Interpreter.state;
+  operations : Ast.ty Ast.OperationMap.t;
+  parse_payload : Ast.operation -> string -> Ast.expression;
 }
 
 type model = {
@@ -58,8 +60,7 @@ let apply_to_code_if_loaded f model =
   | Ok code -> { model with loaded_code = Ok (f code) }
   | Error _ -> model
 
-let steps code =
-  Runner.top_steps code.loader_state.interpreter code.snapshot.process
+let steps code = Runner.top_steps code.interpreter_state code.snapshot.process
 
 let move_to_snapshot snapshot code =
   { code with snapshot; history = code.snapshot :: code.history }
@@ -87,7 +88,7 @@ let parse_step_size input =
   |> Option.to_result ~none:(input ^ " is not an integer")
 
 let parse_payload code op input =
-  try Ok (Loader.parse_payload code.loader_state op input) with
+  try Ok (code.parse_payload op input) with
   | Utils.Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
   | _ -> Error "Parser error"
 
@@ -99,7 +100,9 @@ let parse_source source =
       {
         snapshot = { process = proc; operations = [] };
         history = [];
-        loader_state = state;
+        interpreter_state = state.interpreter;
+        parse_payload = Loader.parse_payload state;
+        operations = state.typechecker.operations;
       }
   with Utils.Error.Error (_, _, msg) -> Error msg
 

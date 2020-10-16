@@ -7,8 +7,8 @@ let make_top_step = function
       proc
   | Runner.Step proc -> proc
 
-let rec run (state : Loader.state) proc =
-  match Runner.top_steps state.interpreter proc with
+let rec run (state : Interpreter.state) proc =
+  match Runner.top_steps state proc with
   | [] -> proc
   | steps ->
       let i = Random.int (List.length steps) in
@@ -26,7 +26,7 @@ let main () =
         let state =
           List.fold_left Loader.load_file Loader.initial_state filenames
         in
-        let proc = run state (Loader.make_process state) in
+        let proc = run state.interpreter (Loader.make_process state) in
         Format.printf "The process has terminated in the configuration:@.%t@."
           (Ast.print_process proc)
       with Utils.Error.Error error ->
