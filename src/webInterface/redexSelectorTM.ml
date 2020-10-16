@@ -1,9 +1,10 @@
-open Shared
+open Core
+open Utils
 
 let tag_marker = "###"
 
 let rec print_computation ?max_level red c ppf =
-  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  let print ?at_level = Lib.print ?max_level ?at_level ppf in
   let separator =
     match red with Interpreter.Redex _ -> tag_marker | _ -> ""
   in
@@ -13,7 +14,7 @@ let rec print_computation ?max_level red c ppf =
     (fun ppf -> Format.pp_print_as ppf 0 separator)
 
 and print_computation' ?max_level red c ppf =
-  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  let print ?at_level = Lib.print ?max_level ?at_level ppf in
   match (red, c) with
   | Interpreter.DoCtx red, Ast.Do (c1, (Ast.PNonbinding, c2)) ->
       print "@[<hov>%t;@ %t@]" (print_computation red c1)
@@ -35,7 +36,7 @@ and print_computation' ?max_level red c ppf =
   | _, comp -> Ast.print_computation ?max_level comp ppf
 
 let rec print_process ?max_level red proc ppf =
-  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  let print ?at_level = Lib.print ?max_level ?at_level ppf in
   let separator = match red with Runner.Redex _ -> tag_marker | _ -> "" in
   print "%t%t%t"
     (fun ppf -> Format.pp_print_as ppf 0 separator)
@@ -43,7 +44,7 @@ let rec print_process ?max_level red proc ppf =
     (fun ppf -> Format.pp_print_as ppf 0 separator)
 
 and print_process' ?max_level red proc ppf =
-  let print ?at_level = Utils.print ?max_level ?at_level ppf in
+  let print ?at_level = Lib.print ?max_level ?at_level ppf in
   match (red, proc) with
   | Runner.RunCtx red, Ast.Run comp ->
       print ~at_level:1 "run %t" (print_computation ~max_level:0 red comp)

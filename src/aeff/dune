@@ -1,6 +1,6 @@
 (executable
  (name aeff)
- (libraries shared)
+ (libraries core)
  (promote
   (until-clean)
   (into ../..)))

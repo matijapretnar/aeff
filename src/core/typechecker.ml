@@ -1,3 +1,5 @@
+open Utils
+
 type state = {
   variables : (Ast.ty_param list * Ast.ty) Ast.VariableMap.t;
   operations : Ast.ty Ast.OperationMap.t;

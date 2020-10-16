@@ -1,4 +1,4 @@
-open Shared
+open Core
 
 type operation =
   | In of Ast.operation * Ast.expression
@@ -88,7 +88,7 @@ let parse_step_size input =
 
 let parse_payload code op input =
   try Ok (Loader.parse_payload code.loader_state op input) with
-  | Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
+  | Utils.Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
   | _ -> Error "Parser error"
 
 let parse_source source =
@@ -101,7 +101,7 @@ let parse_source source =
         history = [];
         loader_state = state;
       }
-  with Error.Error (_, _, msg) -> Error msg
+  with Utils.Error.Error (_, _, msg) -> Error msg
 
 let update model = function
   | UseStdlib use_stdlib -> { model with use_stdlib }

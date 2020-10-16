@@ -1,3 +1,5 @@
+open Utils
+
 type state = {
   variables : Ast.expression Ast.VariableMap.t;
   builtin_functions : (Ast.expression -> Ast.computation) Ast.VariableMap.t;

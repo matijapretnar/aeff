@@ -1,6 +1,7 @@
 %{
   open Syntax
   open Utils
+  open Utils.Lib
 %}
 
 %token LPAREN RPAREN LBRACK RBRACK LPROMISE RPROMISE

@@ -18,7 +18,7 @@ let empty_ty_name = "empty"
 
 type ty_param = string
 
-type ty = plain_ty located
+type ty = plain_ty Lib.located
 
 and plain_ty =
   | TyConst of Const.ty
@@ -39,7 +39,7 @@ let nil_label = "$0nil"
 
 let cons_label = "$1cons"
 
-type pattern = plain_pattern located
+type pattern = plain_pattern Lib.located
 
 and plain_pattern =
   | PVar of variable
@@ -50,7 +50,7 @@ and plain_pattern =
   | PConst of Const.t
   | PNonbinding
 
-type term = plain_term located
+type term = plain_term Lib.located
 
 and plain_term =
   | Var of variable  (** variables *)

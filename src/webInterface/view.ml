@@ -1,4 +1,4 @@
-open Shared
+open Core
 open Vdom
 
 let panel ?(a = []) heading blocks =

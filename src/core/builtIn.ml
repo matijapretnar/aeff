@@ -1,3 +1,5 @@
+open Utils
+
 let binary_function f = function
   | Ast.Tuple [ expr1; expr2 ] -> f expr1 expr2
   | expr -> Error.runtime "Pair expected but got %t" (Ast.print_expression expr)

@@ -1,6 +1,7 @@
 (** Desugaring of syntax into the core language. *)
 
 open Utils
+open Utils.Lib
 module S = Syntax
 
 type state = {

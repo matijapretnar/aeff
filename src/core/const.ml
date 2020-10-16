@@ -39,7 +39,7 @@ let infer_ty = function
 let compare c1 c2 =
   let cmp x y =
     let r = Stdlib.compare x y in
-    if r < 0 then Less else if r > 0 then Greater else Equal
+    if r < 0 then Lib.Less else if r > 0 then Lib.Greater else Lib.Equal
   in
   match (c1, c2) with
   | Integer n1, Integer n2 -> cmp n1 n2
