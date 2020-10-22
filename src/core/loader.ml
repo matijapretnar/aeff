@@ -101,3 +101,6 @@ let make_process state =
       List.fold_left
         (fun proc comp -> Ast.Parallel (proc, Ast.Run comp))
         (Ast.Run comp) comps
+
+(** The module Stdlib_aeff is automatically generated from stdlib.aeff. Check the dune file for details. *)
+let stdlib_source = Stdlib_aeff.contents

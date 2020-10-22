@@ -26,5 +26,5 @@ and you can clean up by running
   which loads all the commands in all the listed files and starts evaluating the
   given program, displaying all outgoing signals and the terminal configuration
   (if there is one). Non-deterministic reductions are chosen randomly and there is
-  no option of introducing external interrupts. For running the examples in
-  `examples/`, also include `stdlib.aeff` in the list of files to load.
+  no option of introducing external interrupts. If you do not want to load the
+  standard library, run Æff with the `--no-stdlib` option.

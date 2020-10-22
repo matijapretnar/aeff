@@ -320,7 +320,8 @@ let view_compiler (model : Model.model) =
                   (fun (_, source) -> Model.ChangeSource source)
                   (fun (title, _) -> title)
                   (fun _ -> false)
-                  Examples.examples;
+                  (* The module Examples_aeff is semi-automatically generated from examples/*.aeff. Check the dune file for details. *)
+                  Examples_aeff.examples;
               ];
           ];
       ]

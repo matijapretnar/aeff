@@ -131,7 +131,7 @@ let update model = function
         model with
         loaded_code =
           parse_source
-            ( (if model.use_stdlib then Examples.stdlib else "")
+            ( (if model.use_stdlib then Loader.stdlib_source else "")
             ^ "\n\n\n" ^ model.unparsed_code );
       }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
