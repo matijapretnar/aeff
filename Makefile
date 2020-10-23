@@ -1,5 +1,3 @@
-.PHONY: default release clean
-
 default: format
 	dune build
 
@@ -11,3 +9,5 @@ release: format
 
 clean:
 	dune clean
+
+.PHONY: default format release clean
