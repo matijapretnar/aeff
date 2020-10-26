@@ -57,11 +57,11 @@ and print_process' ?max_level red proc ppf =
   | Interpreter.RightCtx red, Ast.Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]" (Ast.print_process proc1)
         (print_process red proc2)
-  | Interpreter.InCtx red, Ast.InProc (op, expr, proc) ->
+  | Interpreter.InProcCtx red, Ast.InProc (op, expr, proc) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
         (print_process red proc)
-  | Interpreter.OutCtx red, Ast.OutProc (op, expr, proc) ->
+  | Interpreter.OutProcCtx red, Ast.OutProc (op, expr, proc) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
         (print_process red proc)

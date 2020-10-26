@@ -68,8 +68,8 @@ let view_process_redex = function
 let rec view_process_reduction = function
   | Interpreter.LeftCtx red -> view_process_reduction red
   | Interpreter.RightCtx red -> view_process_reduction red
-  | Interpreter.InCtx red -> view_process_reduction red
-  | Interpreter.OutCtx red -> view_process_reduction red
+  | Interpreter.InProcCtx red -> view_process_reduction red
+  | Interpreter.OutProcCtx red -> view_process_reduction red
   | Interpreter.RunCtx red -> view_computation_reduction red
   | Interpreter.ProcessRedex redex -> view_process_redex redex
 
