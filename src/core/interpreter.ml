@@ -127,17 +127,17 @@ let rec step_computation state = function
         (fun red -> OutCtx red)
         (fun comp' -> Ast.Out (op, expr, comp'))
         comp
-  | Ast.Handler (op, op_comp, p, comp) -> (
+  | Ast.Promise (op, op_comp, p, comp) -> (
       let comps' =
         step_in_context step_computation state
           (fun red -> PromiseCtx red)
-          (fun comp' -> Ast.Handler (op, op_comp, p, comp'))
+          (fun comp' -> Ast.Promise (op, op_comp, p, comp'))
           comp
       in
       match comp with
       | Ast.Out (op', expr', cont') ->
           ( ComputationRedex PromiseOut,
-            Ast.Out (op', expr', Ast.Handler (op, op_comp, p, cont')) )
+            Ast.Out (op', expr', Ast.Promise (op, op_comp, p, cont')) )
           :: comps'
       | _ -> comps' )
   | Ast.In (op, expr, comp) -> (
@@ -154,7 +154,7 @@ let rec step_computation state = function
           ( ComputationRedex InOut,
             Ast.Out (op', expr', Ast.In (op, expr, cont')) )
           :: comps'
-      | Ast.Handler (op', (arg_pat, op_comp), p, comp) when op = op' ->
+      | Ast.Promise (op', (arg_pat, op_comp), p, comp) when op = op' ->
           let subst = match_pattern_with_expression state arg_pat expr in
           let y = Ast.Variable.fresh "y" in
           let comp' =
@@ -166,9 +166,9 @@ let rec step_computation state = function
                       (Ast.PVar p, Ast.In (op, expr, comp)) ) ) )
           in
           (ComputationRedex InPromise, comp') :: comps'
-      | Ast.Handler (op', op_comp, p, comp) ->
+      | Ast.Promise (op', op_comp, p, comp) ->
           ( ComputationRedex InPromise',
-            Ast.Handler (op', op_comp, p, Ast.In (op, expr, comp)) )
+            Ast.Promise (op', op_comp, p, Ast.In (op, expr, comp)) )
           :: comps'
       | _ -> comps' )
   | Ast.Match (expr, cases) ->
@@ -198,9 +198,9 @@ let rec step_computation state = function
       | Ast.Out (op, expr, comp1) ->
           (ComputationRedex DoOut, Ast.Out (op, expr, Ast.Do (comp1, comp2)))
           :: comps1'
-      | Ast.Handler (op, handler, pat, comp1) ->
+      | Ast.Promise (op, op_comp, pat, comp1) ->
           ( ComputationRedex DoPromise,
-            Ast.Handler (op, handler, pat, Ast.Do (comp1, comp2)) )
+            Ast.Promise (op, op_comp, pat, Ast.Do (comp1, comp2)) )
           :: comps1'
       | _ -> comps1' )
   | Ast.Await (expr, (pat, comp)) -> (

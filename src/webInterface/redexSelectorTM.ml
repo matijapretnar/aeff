@@ -29,7 +29,7 @@ and print_computation' ?max_level red c ppf =
   | Interpreter.OutCtx red, Ast.Out (op, e, c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression e) (print_computation red c)
-  | Interpreter.PromiseCtx red, Ast.Handler (op, (p1, c1), p2, c2) ->
+  | Interpreter.PromiseCtx red, Ast.Promise (op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Ast.Operation.print op) (Ast.print_pattern p1)
         (Ast.print_computation c1) (Ast.Variable.print p2)

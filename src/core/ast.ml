@@ -153,7 +153,7 @@ and computation =
   | Apply of expression * expression
   | Out of operation * expression * computation
   | In of operation * expression * computation
-  | Handler of operation * abstraction * variable * computation
+  | Promise of operation * abstraction * variable * computation
   | Await of expression * abstraction
 
 and abstraction = pattern * computation
@@ -222,9 +222,9 @@ and refresh_computation vars = function
       Out (op, refresh_expression vars expr, refresh_computation vars comp)
   | In (op, expr, comp) ->
       In (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Handler (op, abs, p, comp) ->
+  | Promise (op, abs, p, comp) ->
       let p' = Variable.refresh p in
-      Handler
+      Promise
         ( op,
           refresh_abstraction vars abs,
           p',
@@ -266,9 +266,9 @@ and substitute_computation subst = function
   | In (op, expr, comp) ->
       In
         (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Handler (op, abs, p, comp) ->
+  | Promise (op, abs, p, comp) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
-      Handler
+      Promise
         ( op,
           substitute_abstraction subst abs,
           p,
@@ -353,7 +353,7 @@ and print_computation ?max_level c ppf =
   | Out (op, e, c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Operation.print op) (print_expression e)
         (print_computation c)
-  | Handler (op, (p1, c1), p2, c2) ->
+  | Promise (op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Operation.print op) (print_pattern p1) (print_computation c1)
         (Variable.print p2) (print_computation c2)

@@ -145,7 +145,7 @@ and desugar_plain_expression ~loc state = function
       let binds, e = desugar_expression state term in
       (binds, Ast.Fulfill e)
   | ( S.Apply _ | S.Match _ | S.Let _ | S.LetRec _ | S.Conditional _
-    | S.Handler _ | S.Await _ | S.Send _ ) as term ->
+    | S.Promise _ | S.Await _ | S.Send _ ) as term ->
       let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (Location.add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
@@ -193,12 +193,12 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.Handler (op, (p, None, c), abs2) ->
+  | S.Promise (op, (p, None, c), abs2) ->
       let op' = lookup_operation ~loc state op in
       let abs1' = desugar_abstraction state (p, c) in
       let p, cont = desugar_promise_abstraction ~loc state abs2 in
-      ([], Ast.Handler (op', abs1', p, cont))
-  | S.Handler (op, (x, Some guard, comp), (p, cont)) ->
+      ([], Ast.Promise (op', abs1', p, cont))
+  | S.Promise (op, (x, Some guard, comp), (p, cont)) ->
       let op = lookup_operation ~loc state op
       and x, guard, comp = desugar_guarded_abstraction state (x, guard, comp)
       and p, cont = desugar_promise_abstraction ~loc state (p, cont) in
@@ -212,7 +212,7 @@ and desugar_plain_computation ~loc state =
               (Ast.RecLambda
                  ( wait_for_guard,
                    ( Ast.PTuple [],
-                     Ast.Handler
+                     Ast.Promise
                        ( op,
                          ( x,
                            Ast.Do
