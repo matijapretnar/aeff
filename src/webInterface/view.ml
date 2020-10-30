@@ -150,8 +150,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
           [ text (view_process_reduction red) ];
       ]
   and view_random_steps steps =
-    div
-      ~a:[ class_ "panel-block"; style "display" "block" ]
+    div ~a:[ class_ "panel-block" ]
       [
         div
           ~a:[ class_ "field has-addons" ]
@@ -319,8 +318,7 @@ let view_compiler (model : Model.model) =
       ]
   in
   let load_example =
-    div
-      ~a:[ class_ "panel-block"; style "display" "block" ]
+    div ~a:[ class_ "panel-block" ]
       [
         div ~a:[ class_ "field" ]
           [
@@ -356,14 +354,16 @@ let view_compiler (model : Model.model) =
   in
   panel "Code options" [ use_stdlib; load_example; run_process ]
 
-let view_source model =
-  div ~a:[ class_ "columns" ]
+let view_contents main aside =
+  div
+    ~a:[ class_ "contents columns" ]
     [
-      div ~a:[ class_ "column is-three-quarters" ] [ view_editor model ];
-      div
-        ~a:[ class_ "column is-one-quarter is-sticky" ]
-        [ view_compiler model ];
+      div ~a:[ class_ "main column is-three-quarters" ] main;
+      div ~a:[ class_ "aside column is-one-quarter" ] aside;
     ]
+
+let view_source model =
+  view_contents [ view_editor model ] [ view_compiler model ]
 
 let view_code (model : Model.model) (code : Model.loaded_code) =
   let steps = Model.steps code in
@@ -372,15 +372,9 @@ let view_code (model : Model.model) (code : Model.loaded_code) =
     | None -> None
     | Some i -> List.nth_opt steps i |> Option.map fst
   in
-  div ~a:[ class_ "columns" ]
-    [
-      div
-        ~a:[ class_ "column is-three-quarters" ]
-        [ view_process selected_red code.snapshot.process ];
-      div
-        ~a:[ class_ "column is-one-quarter is-sticky" ]
-        [ view_steps model code steps; view_history code.snapshot.operations ];
-    ]
+  view_contents
+    [ view_process selected_red code.snapshot.process ]
+    [ view_steps model code steps; view_history code.snapshot.operations ]
 
 let view_navbar =
   let view_title =
