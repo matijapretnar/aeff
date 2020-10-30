@@ -32,6 +32,7 @@ type msg =
   | UseStdlib of bool
   | ChangeSource of string
   | LoadSource
+  | EditSource
   | SelectReduction of int option
   | Step of Interpreter.top_step
   | RandomStep
@@ -134,6 +135,7 @@ let update model = function
             ( (if model.use_stdlib then Loader.stdlib_source else "")
             ^ "\n\n\n" ^ model.unparsed_code );
       }
+  | EditSource -> { model with loaded_code = Error "" }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
   | ChangeInterruptOperation operation ->
       { model with interrupt_operation = Some operation }

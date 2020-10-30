@@ -112,7 +112,20 @@ let step_action (red, step) =
     elt "ol" (back_action ::  :: step_actions @ [interrupt_action]) *)
 
 let view_steps (model : Model.model) (code : Model.loaded_code) steps =
-  let view_undo_last_step =
+  let view_edit_source =
+    panel_block
+      [
+        elt "button"
+          ~a:
+            [
+              class_ "button is-outlined is-fullwidth is-small is-danger";
+              onclick (fun _ -> Model.EditSource);
+              attr "title"
+                "Re-editing source code will abort current evaluation";
+            ]
+          [ text "Re-edit source code" ];
+      ]
+  and view_undo_last_step =
     panel_block
       [
         elt "button"
@@ -240,7 +253,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
   in
   panel "Interaction"
     ~a:[ onmousemove (fun _ -> Model.SelectReduction None) ]
-    ( view_undo_last_step :: view_random_steps steps
+    ( view_edit_source :: view_undo_last_step :: view_random_steps steps
       :: List.mapi view_step steps
     @ [ send_interrupt ] )
 
