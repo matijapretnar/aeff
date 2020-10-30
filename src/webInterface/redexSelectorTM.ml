@@ -4,68 +4,77 @@ module Interpreter = Core.Interpreter
 
 let tag_marker = "###"
 
-let rec print_computation ?max_level red c ppf =
-  let print ?at_level = Print.print ?max_level ?at_level ppf in
-  let separator =
-    match red with Interpreter.ComputationRedex _ -> tag_marker | _ -> ""
-  in
-  print "%t%t%t"
-    (fun ppf -> Format.pp_print_as ppf 0 separator)
-    (print_computation' ?max_level red c)
-    (fun ppf -> Format.pp_print_as ppf 0 separator)
+let print_mark ppf = Format.pp_print_as ppf 0 tag_marker
 
-and print_computation' ?max_level red c ppf =
+let print_computation_redex ?max_level red c ppf =
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
+  match (red, c) with
+  | ( (Interpreter.DoReturn | Interpreter.DoOut | Interpreter.DoPromise),
+      Ast.Do (c1, (pat, c2)) ) ->
+      print "@[<hov>%tlet@[<hov>@ %t =@ %t@]%t in@ %t@]" print_mark
+        (Ast.print_pattern pat) (Ast.print_computation c1) print_mark
+        (Ast.print_computation c2)
+  | _, comp ->
+      print "%t%t%t" print_mark
+        (fun ppf -> Ast.print_computation ?max_level comp ppf)
+        print_mark
+
+let rec print_computation_reduction ?max_level red c ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
   match (red, c) with
   | Interpreter.DoCtx red, Ast.Do (c1, (Ast.PNonbinding, c2)) ->
-      print "@[<hov>%t;@ %t@]" (print_computation red c1)
+      print "@[<hov>%t;@ %t@]"
+        (print_computation_reduction red c1)
         (Ast.print_computation c2)
   | Interpreter.DoCtx red, Ast.Do (c1, (pat, c2)) ->
       print "@[<hov>let@[<hov>@ %t =@ %t@] in@ %t@]" (Ast.print_pattern pat)
-        (print_computation red c1) (Ast.print_computation c2)
+        (print_computation_reduction red c1)
+        (Ast.print_computation c2)
   | Interpreter.InCtx red, Ast.In (op, e, c) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
-        (Ast.print_expression e) (print_computation red c)
+        (Ast.print_expression e)
+        (print_computation_reduction red c)
   | Interpreter.OutCtx red, Ast.Out (op, e, c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
-        (Ast.print_expression e) (print_computation red c)
+        (Ast.print_expression e)
+        (print_computation_reduction red c)
   | Interpreter.PromiseCtx red, Ast.Promise (op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Ast.Operation.print op) (Ast.print_pattern p1)
         (Ast.print_computation c1) (Ast.Variable.print p2)
-        (print_computation red c2)
-  | _, comp -> Ast.print_computation ?max_level comp ppf
+        (print_computation_reduction red c2)
+  | Interpreter.ComputationRedex redex, c ->
+      print_computation_redex ?max_level redex c ppf
+  | _, _ -> assert false
 
-let rec print_process ?max_level red proc ppf =
+let print_process_redex ?max_level _redex proc ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
-  let separator =
-    match red with Interpreter.ProcessRedex _ -> tag_marker | _ -> ""
-  in
-  print "%t%t%t"
-    (fun ppf -> Format.pp_print_as ppf 0 separator)
-    (print_process' ?max_level red proc)
-    (fun ppf -> Format.pp_print_as ppf 0 separator)
+  print "%t%t%t" print_mark (Ast.print_process ?max_level proc) print_mark
 
-and print_process' ?max_level red proc ppf =
+let rec print_process_reduction ?max_level red proc ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
   match (red, proc) with
   | Interpreter.RunCtx red, Ast.Run comp ->
-      print ~at_level:1 "run %t" (print_computation ~max_level:0 red comp)
+      print ~at_level:1 "run %t"
+        (print_computation_reduction ~max_level:0 red comp)
   | Interpreter.LeftCtx red, Ast.Parallel (proc1, proc2) ->
-      print "@[<hv>%t@ || @ %t@]" (print_process red proc1)
+      print "@[<hv>%t@ || @ %t@]"
+        (print_process_reduction red proc1)
         (Ast.print_process proc2)
   | Interpreter.RightCtx red, Ast.Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]" (Ast.print_process proc1)
-        (print_process red proc2)
+        (print_process_reduction red proc2)
   | Interpreter.InProcCtx red, Ast.InProc (op, expr, proc) ->
       print "↓%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
-        (print_process red proc)
+        (print_process_reduction red proc)
   | Interpreter.OutProcCtx red, Ast.OutProc (op, expr, proc) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression expr)
-        (print_process red proc)
-  | _, proc -> Ast.print_process ?max_level proc ppf
+        (print_process_reduction red proc)
+  | Interpreter.ProcessRedex redex, proc ->
+      print_process_redex ?max_level redex proc ppf
+  | _, _ -> assert false
 
 let split_string sep str =
   let sep_len = String.length sep and str_len = String.length str in
@@ -84,7 +93,7 @@ let split_string sep str =
 let view_process_with_redexes red proc =
   ( match red with
   | None -> Ast.print_process proc Format.str_formatter
-  | Some red -> print_process red proc Format.str_formatter );
+  | Some red -> print_process_reduction red proc Format.str_formatter );
   match split_string tag_marker (Format.flush_str_formatter ()) with
   | [ code ] -> [ Vdom.text code ]
   | [ pre; redex; post ] ->
