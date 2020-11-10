@@ -2,7 +2,7 @@
 
 Install dependencies by
 
-    opam install menhir ocaml-vdom
+    opam install menhir ocaml-vdom ocamlformat
 
 and build Æff by running (requires OCaml >= 4.08.0)
 
