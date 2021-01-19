@@ -1,18 +1,6 @@
 operation stop : int
 operation go : int
 
-(*
-let rec waitForStop () =
-  promise (stop _ |->
-    promise (go _ |->
-      return <<()>>
-    ) as p in
-    await p until <<y>> in
-    waitForStop ()
-  ) as p in
-  p
-*)
-
 let rec waitForStop threadID =
   promise (stop threadID' when threadID = threadID' |->
     promise (go threadID' when threadID = threadID' |->
