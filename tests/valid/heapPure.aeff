@@ -1,0 +1,72 @@
+type loc = int
+type val = int
+
+type payloadRec =
+  | LookupReq of loc
+  | UpdateReq of loc * int
+  | AllocReq of val
+
+type payloadRes =
+  | LookupRes of int
+  | UpdateRes of unit
+  | AllocRes of loc
+
+operation opReq : payloadRec * int
+operation opRes : payloadRes * int
+
+let empty = []
+
+let rec lookupHeap ((l', v) :: heap') l =
+  if l = l' then v else lookupHeap heap' l
+
+let rec updateHeap ((l', v') :: heap') l v =
+  if l = l' then (l, v) :: heap' else (l', v') :: updateHeap heap' l v
+
+let allocHeap heap v =
+  let l = length heap in
+  (l, v) :: heap, l
+
+let rec heapRunner heap =
+    promise (opReq (reqPayload, callNo) |->
+        let heap', resPayload =
+            match reqPayload with
+            | LookupReq l |->
+                let v = lookupHeap heap l in
+                return (heap, LookupRes v)
+            | UpdateReq (l, v) |->
+                let heap' = updateHeap heap l v in
+                return (heap', UpdateRes ())
+            | AllocReq v |->
+                let heap', l = allocHeap heap v in
+                return (heap', AllocRes l)
+        in
+        send opRes (resPayload, callNo);
+        heapRunner heap'
+    )
+    as p in return p
+
+let callWith callCounter x =
+    let callNo = !callCounter in
+    send opReq (x, callNo);
+    callCounter := callNo + 1;
+    promise (opRes (y, callNo') when callNo = callNo' |->
+        return <<y>>
+    ) as p in awaitValue p
+
+let lookup callCounter l =
+    match callWith callCounter (LookupReq l) with LookupRes v |-> return v
+let update callCounter l v =
+    match callWith callCounter (UpdateReq (l, v)) with UpdateRes () |-> return ()
+let alloc callCounter v =
+    match callWith callCounter (AllocReq v) with AllocRes l |-> return l
+
+run
+    let callCounter = ref 0 in
+    let l = alloc callCounter 0 in
+    let l' = alloc callCounter 10 in
+    update callCounter l 10;
+    update callCounter l' (lookup callCounter l + 4);
+    return (lookup callCounter l, lookup callCounter l')
+
+run
+    heapRunner []

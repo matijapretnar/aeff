@@ -19,29 +19,42 @@ let rec run (state : Interpreter.state) proc =
       let proc' = make_top_step top_step in
       run state proc'
 
-type config = { filenames : string list; use_stdlib : bool }
+type config = {
+  filenames : string list;
+  load_stdlib : bool;
+  fixed_random_seed : bool;
+}
 
 let parse_args_to_config () =
-  let filenames = ref [] and use_stdlib = ref true in
+  let filenames = ref []
+  and load_stdlib = ref true
+  and fixed_random_seed = ref false in
   let usage = "Run AEff as '" ^ Sys.argv.(0) ^ " [filename.aeff] ...'"
   and anonymous filename = filenames := filename :: !filenames
   and options =
     Arg.align
       [
         ( "--no-stdlib",
-          Arg.Clear use_stdlib,
+          Arg.Clear load_stdlib,
           " Do not load the standard library" );
+        ( "--fixed-random-seed",
+          Arg.Set fixed_random_seed,
+          " Do not initialize the random seed" );
       ]
   in
   Arg.parse options anonymous usage;
-  { filenames = List.rev !filenames; use_stdlib = !use_stdlib }
+  {
+    filenames = List.rev !filenames;
+    load_stdlib = !load_stdlib;
+    fixed_random_seed = !fixed_random_seed;
+  }
 
 let main () =
   let config = parse_args_to_config () in
   try
-    Random.self_init ();
+    if not config.fixed_random_seed then Random.self_init ();
     let state =
-      if config.use_stdlib then
+      if config.load_stdlib then
         Loader.load_source Loader.initial_state Loader.stdlib_source
       else Loader.initial_state
     in

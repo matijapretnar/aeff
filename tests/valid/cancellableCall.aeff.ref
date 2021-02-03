@@ -1,0 +1,199 @@
+val (=) : α × α → bool
+val (<) : α × α → bool
+val (>) : α × α → bool
+val (<=) : α × α → bool
+val (>=) : α × α → bool
+val (<>) : α × α → bool
+val (~-) : int → int
+val (+) : int × int → int
+val (*) : int × int → int
+val (-) : int × int → int
+val (mod) : int × int → int
+val (/) : int × int → int
+val ref : α → α ref
+val (!) : α ref → α
+val (:=) : α ref × α → unit
+val toString : α → string
+val absurd : α → β
+val not : bool → bool
+type option
+val assoc : α → (α × β) list → β option
+val range : int → int → int list
+val reverse : α list → α list
+val map : (α → β) → α list → β list
+val hd : α list → α
+val tl : α list → α list
+val take : (int → α) → int → α list
+val fold_left : (α → β → α) → α → β list → α
+val fold_right : (α → β → β) → α list → β → β
+val iter : (α → β) → α list → unit
+val forall : (α → bool) → α list → bool
+val exists : (α → bool) → α list → bool
+val mem : α → α list → bool
+val filter : (α → bool) → α list → α list
+val complement : α list → α list → α list
+val intersection : α list → α list → α list
+val zip : α list → β list → (α × β) list
+val unzip : (α × β) list → α list × β list
+val (@) : α list × α list → α list
+val length : α list → int
+val nth : α list → int → α
+val abs : int → int
+val min : α → α → α
+val max : α → α → α
+val gcd : int → int → int
+val lcm : int → int → int
+val odd : int → bool
+val even : int → bool
+val id : α → α
+val compose : (α → β) → (γ → α) → γ → β
+val (|>) : α → (α → β) → β
+val ignore : α → unit
+val fst : α × β → α
+val snd : α × β → β
+val return : α → α
+val awaitValue : ⟨α⟩ → α
+operation call : int × int
+operation result : int × int
+operation cancel : int
+operation dummy : empty
+val callWith : int ref → int → (unit → int) × (unit → unit) × 
+               (int → unit)
+val awaitCancel : int → (unit → α) → ⟨β⟩
+val remote : (int → int) → ⟨α⟩
+val remoteCallReInvoker : unit → ⟨unit⟩
+↑ call (1, 0)
+↑ call (2, 1)
+↑ result (120, 0)
+↑ result (240, 1)
+↑ cancel 0
+↑ call (3, 2)
+↑ result (360, 2)
+↑ cancel 2
+↑ call (240, 2)
+↑ result (28800, 2)
+↑ call (3, 2)
+↑ result (360, 2)
+The process has terminated in the configuration:
+run promise (dummy empty ↦ return ⟨empty⟩)
+    as dummyPromise in
+    promise (dummy empty ↦ return ⟨empty⟩)
+    as dummyPromise in
+    promise (cancel callNo' ↦
+             let guardVar = (=) (2, callNo') in
+             match guardVar with (true ↦ promise (dummy empty ↦
+                                                    return ⟨empty⟩)
+                                           as dummyPromise in
+                                           (rec loop ...) ();
+                                           awaitValue dummyPromise;
+                                           let b = (rec awaitCancel ...) 2 in
+                                           b (rec loop ...) | 
+                                  false ↦ (rec waitForGuard ...) ()))
+    as p' in
+    promise (cancel callNo' ↦
+             let guardVar = (=) (2, callNo') in
+             match guardVar with (true ↦ promise (dummy empty ↦
+                                                    return ⟨empty⟩)
+                                           as dummyPromise in
+                                           (rec loop ...) ();
+                                           awaitValue dummyPromise;
+                                           let b = (rec awaitCancel ...) 2 in
+                                           b (rec loop ...) | 
+                                  false ↦ (rec waitForGuard ...) ()))
+    as p' in
+    promise (call (x, callNo) ↦
+             let b = awaitCancel callNo in b (rec loop ...);
+             let y =
+                (fun x ↦ let b = let b = (*) (6, x) in (*) (5, b) in
+                           (*) (4, b))
+                x in ↑result((y, callNo), return ()); (rec loop ...) ())
+    as p in
+    ↓call((3, 2),
+            ↓call((240, 2),
+                    let y =
+                       await dummyPromise until ⟨value⟩ in return value;
+                       let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
+                    let p' = return y in
+                    ↓cancel(2,
+                              promise (call (x, callNo) ↦
+                                       let b = awaitCancel callNo in
+                                       b (rec loop ...);
+                                       let y =
+                                          (fun x ↦ let b =
+                                                        let b = (*) (6, x) in
+                                                        (*) (5, b) in
+                                                     (*) (4, b))
+                                          x in
+                                       ↑result((y, callNo), return ());
+                                       (rec loop ...) ())
+                              as p in
+                              ↓call((3, 2),
+                                      let y =
+                                         await dummyPromise until ⟨value⟩ in
+                                         return value;
+                                         let b = (rec awaitCancel ...) 0 in
+                                         b (rec loop ...) in
+                                      let p' = return y in
+                                      ↓cancel(0,
+                                                promise (cancel callNo' ↦
+                                                         let guardVar =
+                                                            (=) (1, callNo') in
+                                                         match guardVar with (
+                                                         true ↦ promise (
+                                                                  dummy empty ↦
+                                                                  return
+                                                                  ⟨empty⟩)
+                                                                  as dummyPromise in
+                                                                  (rec loop ...)
+                                                                  ();
+                                                                  awaitValue
+                                                                  dummyPromise;
+                                                                  let
+                                                                   b =
+                                                                  (rec awaitCancel ...)
+                                                                  1 in
+                                                                  b
+                                                                  (rec loop ...) | 
+                                                         false ↦ (rec waitForGuard ...)
+                                                                   ()))
+                                                as p' in
+                                                promise (call (x, callNo) ↦
+                                                         let b =
+                                                            awaitCancel
+                                                            callNo in
+                                                         b (rec loop ...);
+                                                         let y =
+                                                            (fun x ↦ 
+                                                            let b =
+                                                               let b =
+                                                                  (*) (6, x) in
+                                                               (*) (5, b) in
+                                                            (*) (4, b)) x in
+                                                         ↑result((y, callNo),
+                                                                   return ());
+                                                         (rec loop ...) ())
+                                                as p in
+                                                return p)))))
+|| 
+run promise (call (x, callNo) ↦
+             let b = (!) { contents = [] } in
+             (:=) ({ contents = [] }, (x, callNo)::b);
+             (rec reInvokerCall ...) ())
+    as _ in
+    promise (result (y, callNo) ↦
+             let b =
+                let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
+                let b = (!) { contents = [] } in b b in
+             (:=) ({ contents = [] }, b); (rec reInvokerResult ...) ())
+    as _ in
+    promise (cancel callNo ↦
+             let b =
+                let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
+                let b = (!) { contents = [] } in b b in
+             (:=) ({ contents = [] }, b);
+             let b = let b = (!) { contents = [] } in reverse b in
+             (rec reInvokerWrapper ...) b; (rec reInvokerCancel ...) ())
+    as _ in
+    return ⟨()⟩
+|| 
+run (return 360)

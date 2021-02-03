@@ -1,0 +1,42 @@
+operation op1 : int
+operation op2 : int
+
+let select f g k =
+  let i = ref 0 in
+  let v1 = ref None in
+  let v2 = ref None in
+  promise (op1 x |->
+    if !i = 0
+    then (let q1 = f x in
+          await q1 until <<y1>> in
+          v1 := Some y1;
+          i := 1;
+          return <<()>>)
+    else return <<()>>) as p1 in
+  promise (op2 x |->
+    if !i = 0
+    then (let q2 = g x in
+          await q2 until <<y2>> in
+          v2 := Some y2;
+          i := 2;
+          return <<()>>)
+    else return <<()>>) as p2 in
+  let rec waitForOp () =
+    if !i = 0 then waitForOp ()
+    else if !i = 1 then (match !v1 with | Some v |-> k <<v>>)
+    else (match !v2 with | Some v |-> k <<v>>)
+  in
+  waitForOp ()
+
+
+run
+  send op1 1
+
+run
+  send op2 2
+
+run
+  select
+    (fun x |-> return <<x + 24>>)
+    (fun x |-> return <<x + 42>>)
+    (fun p |-> await p until <<x>> in return x * x)
