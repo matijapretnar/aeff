@@ -63,27 +63,25 @@ and plain_term =
   | Let of pattern * term * term  (** [let p = t1 in t2] *)
   | LetRec of variable * term * term  (** [let rec f = t1 in t2] *)
   | Match of term * abstraction list
-      (** [match t with p1 |-> t1 | ... | pn |-> tn] *)
+  (** [match t with p1 |-> t1 | ... | pn |-> tn] *)
   | Conditional of term * term * term  (** [if t then t1 else t2] *)
   | Apply of term * term  (** [t1 t2] *)
-  | Handler of operation * guarded_abstraction * abstraction
-      (** [with op (p1 |-> t1) as p2 in t2] *)
+  | Handler of variable option * operation * abstraction * abstraction
+  (** [with op (p1 k |-> t1) as p2 in t2] *)
   | Await of term * abstraction  (** [await t1 until <<p>> in t2] *)
   | Fulfill of term  (** [<<t>>] *)
   | Send of operation * term  (** [send op t] *)
 
 and abstraction = pattern * term
 
-and guarded_abstraction = pattern * term option * term
-
 type ty_def =
   | TySum of (label * ty option) list
-      (** [Label1 of ty1 | Label2 of ty2 | ... | Labeln of tyn | Label' | Label''] *)
+  (** [Label1 of ty1 | Label2 of ty2 | ... | Labeln of tyn | Label' | Label''] *)
   | TyInline of ty  (** [ty] *)
 
 type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
-      (** [type ('a...1) t1 = def1 and ... and ('a...n) tn = defn] *)
+  (** [type ('a...1) t1 = def1 and ... and ('a...n) tn = defn] *)
   | Operation of operation * ty  (** [operation op : ty] *)
   | TopLet of variable * term  (** [let x = t] *)
   | TopLetRec of variable * term  (** [let rec f = t] *)

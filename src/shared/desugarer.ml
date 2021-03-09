@@ -51,19 +51,19 @@ let rec desugar_ty state { it = plain_ty; at = loc } =
 
 and desugar_plain_ty ~loc state = function
   | S.TyApply (ty_name, tys) ->
-      let ty_name' = lookup_ty_name ~loc state ty_name in
-      let tys' = List.map (desugar_ty state) tys in
-      Ast.TyApply (ty_name', tys')
+    let ty_name' = lookup_ty_name ~loc state ty_name in
+    let tys' = List.map (desugar_ty state) tys in
+    Ast.TyApply (ty_name', tys')
   | S.TyParam ty_param ->
-      let ty_param' = lookup_ty_param ~loc state ty_param in
-      Ast.TyParam ty_param'
+    let ty_param' = lookup_ty_param ~loc state ty_param in
+    Ast.TyParam ty_param'
   | S.TyArrow (ty1, ty2) ->
-      let ty1' = desugar_ty state ty1 in
-      let ty2' = desugar_ty state ty2 in
-      Ast.TyArrow (ty1', ty2')
+    let ty1' = desugar_ty state ty1 in
+    let ty2' = desugar_ty state ty2 in
+    Ast.TyArrow (ty1', ty2')
   | S.TyTuple tys ->
-      let tys' = List.map (desugar_ty state) tys in
-      Ast.TyTuple tys'
+    let tys' = List.map (desugar_ty state) tys in
+    Ast.TyTuple tys'
   | S.TyConst c -> Ast.TyConst c
   | S.TyReference ty -> Ast.TyReference (desugar_ty state ty)
   | S.TyPromise ty -> Ast.TyPromise (desugar_ty state ty)
@@ -74,30 +74,30 @@ let rec desugar_pattern state { it = pat; at = loc } =
 
 and desugar_plain_pattern ~loc state = function
   | S.PVar x ->
-      let x' = Ast.Variable.fresh x in
-      ([ (x, x') ], Ast.PVar x')
+    let x' = Ast.Variable.fresh x in
+    ([ (x, x') ], Ast.PVar x')
   | S.PAnnotated (pat, ty) ->
-      let vars, pat' = desugar_pattern state pat
-      and ty' = desugar_ty state ty in
-      (vars, Ast.PAnnotated (pat', ty'))
+    let vars, pat' = desugar_pattern state pat
+    and ty' = desugar_ty state ty in
+    (vars, Ast.PAnnotated (pat', ty'))
   | S.PAs (pat, x) ->
-      let vars, pat' = desugar_pattern state pat in
-      let x' = Ast.Variable.fresh x in
-      ((x, x') :: vars, Ast.PAs (pat', x'))
+    let vars, pat' = desugar_pattern state pat in
+    let x' = Ast.Variable.fresh x in
+    ((x, x') :: vars, Ast.PAs (pat', x'))
   | S.PTuple ps ->
-      let aux p (vars, ps') =
-        let vars', p' = desugar_pattern state p in
-        (vars' @ vars, p' :: ps')
-      in
-      let vars, ps' = List.fold_right aux ps ([], []) in
-      (vars, Ast.PTuple ps')
+    let aux p (vars, ps') =
+      let vars', p' = desugar_pattern state p in
+      (vars' @ vars, p' :: ps')
+    in
+    let vars, ps' = List.fold_right aux ps ([], []) in
+    (vars, Ast.PTuple ps')
   | S.PVariant (lbl, None) ->
-      let lbl' = lookup_label ~loc state lbl in
-      ([], Ast.PVariant (lbl', None))
+    let lbl' = lookup_label ~loc state lbl in
+    ([], Ast.PVariant (lbl', None))
   | S.PVariant (lbl, Some pat) ->
-      let lbl' = lookup_label ~loc state lbl in
-      let vars, pat' = desugar_pattern state pat in
-      (vars, Ast.PVariant (lbl', Some pat'))
+    let lbl' = lookup_label ~loc state lbl in
+    let vars, pat' = desugar_pattern state pat in
+    (vars, Ast.PVariant (lbl', Some pat'))
   | S.PConst c -> ([], Ast.PConst c)
   | S.PNonbinding -> ([], Ast.PNonbinding)
 
@@ -116,39 +116,39 @@ let rec desugar_expression state { it = term; at = loc } =
 
 and desugar_plain_expression ~loc state = function
   | S.Var x ->
-      let x' = lookup_variable ~loc state x in
-      ([], Ast.Var x')
+    let x' = lookup_variable ~loc state x in
+    ([], Ast.Var x')
   | S.Const k -> ([], Ast.Const k)
   | S.Annotated (term, ty) ->
-      let binds, expr = desugar_expression state term in
-      let ty' = desugar_ty state ty in
-      (binds, Ast.Annotated (expr, ty'))
+    let binds, expr = desugar_expression state term in
+    let ty' = desugar_ty state ty in
+    (binds, Ast.Annotated (expr, ty'))
   | S.Lambda a ->
-      let a' = desugar_abstraction state a in
-      ([], Ast.Lambda a')
+    let a' = desugar_abstraction state a in
+    ([], Ast.Lambda a')
   | S.Function cases ->
-      let x = Ast.Variable.fresh "arg" in
-      let cases' = List.map (desugar_abstraction state) cases in
-      ([], Ast.Lambda (Ast.PVar x, Ast.Match (Ast.Var x, cases')))
+    let x = Ast.Variable.fresh "arg" in
+    let cases' = List.map (desugar_abstraction state) cases in
+    ([], Ast.Lambda (Ast.PVar x, Ast.Match (Ast.Var x, cases')))
   | S.Tuple ts ->
-      let binds, es = desugar_expressions state ts in
-      (binds, Ast.Tuple es)
+    let binds, es = desugar_expressions state ts in
+    (binds, Ast.Tuple es)
   | S.Variant (lbl, None) ->
-      let lbl' = lookup_label ~loc state lbl in
-      ([], Ast.Variant (lbl', None))
+    let lbl' = lookup_label ~loc state lbl in
+    ([], Ast.Variant (lbl', None))
   | S.Variant (lbl, Some term) ->
-      let lbl' = lookup_label ~loc state lbl in
-      let binds, expr = desugar_expression state term in
-      (binds, Ast.Variant (lbl', Some expr))
+    let lbl' = lookup_label ~loc state lbl in
+    let binds, expr = desugar_expression state term in
+    (binds, Ast.Variant (lbl', Some expr))
   | S.Fulfill term ->
-      let binds, e = desugar_expression state term in
-      (binds, Ast.Fulfill e)
+    let binds, e = desugar_expression state term in
+    (binds, Ast.Fulfill e)
   | ( S.Apply _ | S.Match _ | S.Let _ | S.LetRec _ | S.Conditional _
     | S.Handler _ | S.Await _ | S.Send _ ) as term ->
-      let x = Ast.Variable.fresh "b" in
-      let comp = desugar_computation state (add_loc ~loc term) in
-      let hoist = (Ast.PVar x, comp) in
-      ([ hoist ], Ast.Var x)
+    let x = Ast.Variable.fresh "b" in
+    let comp = desugar_computation state (add_loc ~loc term) in
+    let hoist = (Ast.PVar x, comp) in
+    ([ hoist ], Ast.Var x)
 
 and desugar_computation state { it = term; at = loc } =
   let binds, comp = desugar_plain_computation ~loc state term in
@@ -162,81 +162,62 @@ and desugar_plain_computation ~loc state =
   in
   function
   | S.Apply ({ it = S.Var "(&&)"; _ }, { it = S.Tuple [ t1; t2 ]; _ }) ->
-      let binds1, e1 = desugar_expression state t1 in
-      let c1 = desugar_computation state t2 in
-      let c2 = Ast.Return (Ast.Const (Const.Boolean false)) in
-      (binds1, if_then_else e1 c1 c2)
+    let binds1, e1 = desugar_expression state t1 in
+    let c1 = desugar_computation state t2 in
+    let c2 = Ast.Return (Ast.Const (Const.Boolean false)) in
+    (binds1, if_then_else e1 c1 c2)
   | S.Apply ({ it = S.Var "(||)"; _ }, { it = S.Tuple [ t1; t2 ]; _ }) ->
-      let binds1, e1 = desugar_expression state t1 in
-      let c1 = Ast.Return (Ast.Const (Const.Boolean true)) in
-      let c2 = desugar_computation state t2 in
-      (binds1, if_then_else e1 c1 c2)
+    let binds1, e1 = desugar_expression state t1 in
+    let c1 = Ast.Return (Ast.Const (Const.Boolean true)) in
+    let c2 = desugar_computation state t2 in
+    (binds1, if_then_else e1 c1 c2)
   | S.Apply (t1, t2) ->
-      let binds1, e1 = desugar_expression state t1 in
-      let binds2, e2 = desugar_expression state t2 in
-      (binds1 @ binds2, Ast.Apply (e1, e2))
+    let binds1, e1 = desugar_expression state t1 in
+    let binds2, e2 = desugar_expression state t2 in
+    (binds1 @ binds2, Ast.Apply (e1, e2))
   | S.Match (t, cs) ->
-      let binds, e = desugar_expression state t in
-      let cs' = List.map (desugar_abstraction state) cs in
-      (binds, Ast.Match (e, cs'))
+    let binds, e = desugar_expression state t in
+    let cs' = List.map (desugar_abstraction state) cs in
+    (binds, Ast.Match (e, cs'))
   | S.Conditional (t, t1, t2) ->
-      let binds, e = desugar_expression state t in
-      let c1 = desugar_computation state t1 in
-      let c2 = desugar_computation state t2 in
-      (binds, if_then_else e c1 c2)
+    let binds, e = desugar_expression state t in
+    let c1 = desugar_computation state t1 in
+    let c2 = desugar_computation state t2 in
+    (binds, if_then_else e c1 c2)
   | S.Let (pat, term1, term2) ->
-      let c1 = desugar_computation state term1 in
-      let c2 = desugar_abstraction state (pat, term2) in
-      ([], Ast.Do (c1, c2))
+    let c1 = desugar_computation state term1 in
+    let c2 = desugar_abstraction state (pat, term2) in
+    ([], Ast.Do (c1, c2))
   | S.LetRec (x, term1, term2) ->
-      let state', f, comp1 = desugar_let_rec_def state (x, term1) in
-      let c = desugar_computation state' term2 in
-      ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.Handler (op, (p, None, c), abs2) ->
-      let op' = lookup_operation ~loc state op in
-      let abs1' = desugar_abstraction state (p, c) in
-      let p, cont = desugar_promise_abstraction ~loc state abs2 in
-      ([], Ast.Handler (op', abs1', p, cont))
-  | S.Handler (op, (x, Some guard, comp), (p, cont)) ->
-      let op = lookup_operation ~loc state op
-      and x, guard, comp = desugar_guarded_abstraction state (x, guard, comp)
-      and p, cont = desugar_promise_abstraction ~loc state (p, cont) in
-      let wait_for_guard = Ast.Variable.fresh "waitForGuard"
-      and p' = Ast.Variable.fresh "p'"
-      and guard_var = Ast.Variable.fresh "guardVar" in
-      let recursive_call = Ast.Apply (Ast.Var wait_for_guard, Ast.Tuple []) in
-      ( [],
-        Ast.Do
-          ( Ast.Return
-              (Ast.RecLambda
-                 ( wait_for_guard,
-                   ( Ast.PTuple [],
-                     Ast.Handler
-                       ( op,
-                         ( x,
-                           Ast.Do
-                             ( guard,
-                               ( Ast.PVar guard_var,
-                                 if_then_else (Ast.Var guard_var) comp
-                                   recursive_call ) ) ),
-                         p',
-                         Ast.Return (Ast.Var p') ) ) )),
-            ( Ast.PVar wait_for_guard,
-              Ast.Do (recursive_call, (Ast.PVar p, cont)) ) ) )
+    let state', f, comp1 = desugar_let_rec_def state (x, term1) in
+    let c = desugar_computation state' term2 in
+    ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
+  | S.Handler (None, op, (p, c), abs2) ->
+    let op' = lookup_operation ~loc state op in
+    let abs1' = desugar_abstraction state (p, c) in
+    let p, cont = desugar_promise_abstraction ~loc state abs2 in
+    ([], Ast.Handler (None, op', abs1', p, cont))
+  | S.Handler (Some k, op, (p, c), abs2) ->
+    let k' = Ast.Variable.fresh k in
+    let state' = add_fresh_variables state [ (k, k') ] in
+    let op' = lookup_operation ~loc state op in
+    let abs1' = desugar_abstraction state' (p, c) in
+    let p, cont = desugar_promise_abstraction ~loc state abs2 in
+    ([], Ast.Handler (Some k', op', abs1', p, cont))
   | S.Await (t, abs) ->
-      let binds, e = desugar_expression state t in
-      let abs' = desugar_abstraction state abs in
-      (binds, Ast.Await (e, abs'))
+    let binds, e = desugar_expression state t in
+    let abs' = desugar_abstraction state abs in
+    (binds, Ast.Await (e, abs'))
   | S.Send (op, t) ->
-      let op' = lookup_operation ~loc state op in
-      let binds, e = desugar_expression state t in
-      (binds, Ast.Out (op', e, Ast.Return (Ast.Tuple [])))
+    let op' = lookup_operation ~loc state op in
+    let binds, e = desugar_expression state t in
+    (binds, Ast.Out (op', e, Ast.Return (Ast.Tuple [])))
   (* The remaining cases are expressions, which we list explicitly to catch any
      future changes. *)
   | ( S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _ | S.Variant _ | S.Lambda _
     | S.Function _ | S.Fulfill _ ) as term ->
-      let binds, expr = desugar_expression state { it = term; at = loc } in
-      (binds, Ast.Return expr)
+    let binds, expr = desugar_expression state { it = term; at = loc } in
+    (binds, Ast.Return expr)
 
 and desugar_abstraction state (pat, term) =
   let vars, pat' = desugar_pattern state pat in
@@ -255,8 +236,8 @@ and desugar_promise_abstraction ~loc state abs2 =
   match desugar_abstraction state abs2 with
   | Ast.PVar p, comp' -> (p, comp')
   | Ast.PNonbinding, comp' ->
-      let p = Ast.Variable.fresh "_" in
-      (p, comp')
+    let p = Ast.Variable.fresh "_" in
+    (p, comp')
   | _ -> Error.syntax ~loc "Variable or underscore expected"
 
 and desugar_let_rec_def state (f, { it = exp; at = loc }) =
@@ -266,13 +247,13 @@ and desugar_let_rec_def state (f, { it = exp; at = loc }) =
     match exp with
     | S.Lambda a -> desugar_abstraction state' a
     | S.Function cs ->
-        let x = Ast.Variable.fresh "rf" in
-        let cs = List.map (desugar_abstraction state') cs in
-        let new_match = Ast.Match (Ast.Var x, cs) in
-        (Ast.PVar x, new_match)
+      let x = Ast.Variable.fresh "rf" in
+      let cs = List.map (desugar_abstraction state') cs in
+      let new_match = Ast.Match (Ast.Var x, cs) in
+      (Ast.PVar x, new_match)
     | _ ->
-        Error.syntax ~loc
-          "This kind of expression is not allowed in a recursive definition"
+      Error.syntax ~loc
+        "This kind of expression is not allowed in a recursive definition"
   in
   let expr = Ast.RecLambda (f', abs') in
   (state', f', expr)
@@ -280,9 +261,9 @@ and desugar_let_rec_def state (f, { it = exp; at = loc }) =
 and desugar_expressions state = function
   | [] -> ([], [])
   | t :: ts ->
-      let binds, e = desugar_expression state t in
-      let ws, es = desugar_expressions state ts in
-      (binds @ ws, e :: es)
+    let binds, e = desugar_expression state t in
+    let ws, es = desugar_expressions state ts in
+    (binds @ ws, e :: es)
 
 let desugar_pure_expression state term =
   let binds, expr = desugar_expression state term in
@@ -307,46 +288,46 @@ let add_fresh_ty_params state vars =
 let desugar_ty_def state = function
   | Syntax.TyInline ty -> (state, Ast.TyInline (desugar_ty state ty))
   | Syntax.TySum variants ->
-      let aux state (label, ty) =
-        let label' = Ast.Label.fresh label in
-        let ty' = Option.map (desugar_ty state) ty in
-        let state' = add_label state label label' in
-        (state', (label', ty'))
-      in
-      let state', variants' = fold_map aux state variants in
-      (state', Ast.TySum variants')
+    let aux state (label, ty) =
+      let label' = Ast.Label.fresh label in
+      let ty' = Option.map (desugar_ty state) ty in
+      let state' = add_label state label label' in
+      (state', (label', ty'))
+    in
+    let state', variants' = fold_map aux state variants in
+    (state', Ast.TySum variants')
 
 let desugar_command state = function
   | Syntax.TyDef defs ->
-      let def_name (_, ty_name, _) =
-        let ty_name' = Ast.TyName.fresh ty_name in
-        (ty_name, ty_name')
-      in
-      let new_names = List.map def_name defs in
-      let state' = add_fresh_ty_names state new_names in
-      let aux (params, _, ty_def) (_, ty_name') (state', defs) =
-        let params' = List.map (fun a -> (a, Ast.TyParam.fresh a)) params in
-        let state'' = add_fresh_ty_params state' params' in
-        let state''', ty_def' = desugar_ty_def state'' ty_def in
-        (state''', (List.map snd params', ty_name', ty_def') :: defs)
-      in
-      let state'', defs' = List.fold_right2 aux defs new_names (state', []) in
-      (state'', Ast.TyDef defs')
+    let def_name (_, ty_name, _) =
+      let ty_name' = Ast.TyName.fresh ty_name in
+      (ty_name, ty_name')
+    in
+    let new_names = List.map def_name defs in
+    let state' = add_fresh_ty_names state new_names in
+    let aux (params, _, ty_def) (_, ty_name') (state', defs) =
+      let params' = List.map (fun a -> (a, Ast.TyParam.fresh a)) params in
+      let state'' = add_fresh_ty_params state' params' in
+      let state''', ty_def' = desugar_ty_def state'' ty_def in
+      (state''', (List.map snd params', ty_name', ty_def') :: defs)
+    in
+    let state'', defs' = List.fold_right2 aux defs new_names (state', []) in
+    (state'', Ast.TyDef defs')
   | Syntax.TopLet (x, term) ->
-      let x' = Ast.Variable.fresh x in
-      let state' = add_fresh_variables state [ (x, x') ] in
-      let expr = desugar_pure_expression state' term in
-      (state', Ast.TopLet (x', expr))
+    let x' = Ast.Variable.fresh x in
+    let state' = add_fresh_variables state [ (x, x') ] in
+    let expr = desugar_pure_expression state' term in
+    (state', Ast.TopLet (x', expr))
   | Syntax.TopDo term ->
-      let comp = desugar_computation state term in
-      (state, Ast.TopDo comp)
+    let comp = desugar_computation state term in
+    (state, Ast.TopDo comp)
   | Syntax.TopLetRec (f, term) ->
-      let state', f, expr = desugar_let_rec_def state (f, term) in
-      (state', Ast.TopLet (f, expr))
+    let state', f, expr = desugar_let_rec_def state (f, term) in
+    (state', Ast.TopLet (f, expr))
   | Syntax.Operation (op, ty) ->
-      let op', state' = add_operation state op in
-      let ty' = desugar_ty state ty in
-      (state', Ast.Operation (op', ty'))
+    let op', state' = add_operation state op in
+    let ty' = desugar_ty state ty in
+    (state', Ast.Operation (op', ty'))
 
 let add_external_variable x state =
   let x' = Ast.Variable.fresh x in
