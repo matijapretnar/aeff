@@ -156,8 +156,9 @@ let rec step_computation state = function
           :: comps'
       | Ast.Promise (k, op', (arg_pat, op_comp), p, comp) when op = op' ->
           let subst = match_pattern_with_expression state arg_pat expr in
-          let y = Ast.Variable.fresh "y" in
           let janez_comp1 = substitute subst op_comp in
+
+          let janez_y = Ast.Variable.fresh "janez_y" in
 
           (* Note sure if some refresh of variable or something like that is missing here. *)
           let janez_comp2 =
@@ -168,8 +169,11 @@ let rec step_computation state = function
                   Ast.Lambda
                     ( Ast.PTuple [],
                       Ast.Promise
-                        (k, op', (arg_pat, op_comp), p, Ast.Return (Ast.Var y))
-                    )
+                        ( k,
+                          op',
+                          (arg_pat, op_comp),
+                          janez_y,
+                          Ast.Return (Ast.Var janez_y) ) )
                 in
                 let janez_subst =
                   match_pattern_with_expression state (Ast.PVar k') f
@@ -177,12 +181,7 @@ let rec step_computation state = function
                 substitute janez_subst janez_comp1
           in
           let comp' =
-            Ast.Do
-              ( janez_comp2,
-                ( Ast.PVar y,
-                  Ast.Do
-                    ( Ast.Return (Ast.Var y),
-                      (Ast.PVar p, Ast.In (op, expr, comp)) ) ) )
+            Ast.Do (janez_comp2, (Ast.PVar p, Ast.In (op, expr, comp)))
           in
           (ComputationRedex InPromise, comp') :: comps'
       | Ast.Promise (k, op', op_comp, p, comp) ->
