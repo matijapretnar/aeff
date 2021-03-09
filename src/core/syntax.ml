@@ -16,6 +16,8 @@ let list_ty_name = "list"
 
 let empty_ty_name = "empty"
 
+let ref_ty_name = "ref"
+
 type ty_param = string
 
 type ty = plain_ty Location.located
