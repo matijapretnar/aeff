@@ -15,8 +15,11 @@ let randomDigit callCounter =
     let callNo = !callCounter in
     send randomReq callNo;
     callCounter := callNo + 1;
-    promise (randomRes (callNo', seed) when callNo = callNo' |->
-        return <<seed mod 10>>
+    promise (randomRes (callNo', seed) k |->
+        if callNo = callNo' then
+            return <<seed mod 10>>
+        else
+            k()
     ) as p in
     awaitValue p
 
