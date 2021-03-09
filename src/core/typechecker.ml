@@ -191,7 +191,10 @@ and infer_computation state = function
       and ty2' = Ast.TyPromise (fresh_ty ()) in
       let state' = extend_variables state [ (p, ty2') ] in
       let ty, eqs2 = infer_computation state' comp in
-      (ty, ((ty1, ty1') :: (ty2, ty2') :: eqs1) @ eqs2)
+      ( ty,
+        (k_ty, Ast.TyArrow (Ast.TyTuple [], ty2))
+        :: (ty1, ty1') :: (ty2, ty2') :: eqs1
+        @ eqs2 )
 
 and infer_abstraction state (pat, comp) =
   let ty, vars, eqs = infer_pattern state pat in
