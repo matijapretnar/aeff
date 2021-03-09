@@ -193,37 +193,18 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.Promise (op, (p, None, c), abs2) ->
+  | S.Promise (None, op, (p, c), abs2) ->
       let op' = lookup_operation ~loc state op in
       let abs1' = desugar_abstraction state (p, c) in
       let p, cont = desugar_promise_abstraction ~loc state abs2 in
-      ([], Ast.Promise (op', abs1', p, cont))
-  | S.Promise (op, (x, Some guard, comp), (p, cont)) ->
-      let op = lookup_operation ~loc state op
-      and x, guard, comp = desugar_guarded_abstraction state (x, guard, comp)
-      and p, cont = desugar_promise_abstraction ~loc state (p, cont) in
-      let wait_for_guard = Ast.Variable.fresh "waitForGuard"
-      and p' = Ast.Variable.fresh "p'"
-      and guard_var = Ast.Variable.fresh "guardVar" in
-      let recursive_call = Ast.Apply (Ast.Var wait_for_guard, Ast.Tuple []) in
-      ( [],
-        Ast.Do
-          ( Ast.Return
-              (Ast.RecLambda
-                 ( wait_for_guard,
-                   ( Ast.PTuple [],
-                     Ast.Promise
-                       ( op,
-                         ( x,
-                           Ast.Do
-                             ( guard,
-                               ( Ast.PVar guard_var,
-                                 if_then_else (Ast.Var guard_var) comp
-                                   recursive_call ) ) ),
-                         p',
-                         Ast.Return (Ast.Var p') ) ) )),
-            ( Ast.PVar wait_for_guard,
-              Ast.Do (recursive_call, (Ast.PVar p, cont)) ) ) )
+      ([], Ast.Promise (None, op', abs1', p, cont))
+  | S.Promise (Some k, op, (p, c), abs2) ->
+      let k' = Ast.Variable.fresh k in
+      let state' = add_fresh_variables state [ (k, k') ] in
+      let op' = lookup_operation ~loc state op in
+      let abs1' = desugar_abstraction state' (p, c) in
+      let p, cont = desugar_promise_abstraction ~loc state abs2 in
+      ([], Ast.Promise (Some k', op', abs1', p, cont))
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in

@@ -174,9 +174,20 @@ and infer_computation state = function
         ((ty1, ty1') :: (ty2, ty2') :: eqs') @ eqs
       in
       (ty2, List.fold_left fold eqs cases)
-  | Ast.Promise (op, abs, p, comp) ->
+  | Ast.Promise (None, op, abs, p, comp) ->
       let ty1 = Ast.OperationMap.find op state.operations
       and ty1', ty2, eqs1 = infer_abstraction state abs
+      and ty2' = Ast.TyPromise (fresh_ty ()) in
+      let state' = extend_variables state [ (p, ty2') ] in
+      let ty, eqs2 = infer_computation state' comp in
+      (ty, ((ty1, ty1') :: (ty2, ty2') :: eqs1) @ eqs2)
+  | Ast.Promise (Some k, op, abs, p, comp) ->
+      let ty1 = Ast.OperationMap.find op state.operations in
+
+      let k_ty = fresh_ty () in
+      let state' = extend_variables state [ (k, k_ty) ] in
+
+      let ty1', ty2, eqs1 = infer_abstraction state' abs
       and ty2' = Ast.TyPromise (fresh_ty ()) in
       let state' = extend_variables state [ (p, ty2') ] in
       let ty, eqs2 = infer_computation state' comp in
