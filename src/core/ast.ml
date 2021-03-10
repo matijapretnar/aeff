@@ -223,15 +223,21 @@ and refresh_computation vars = function
       Out (op, refresh_expression vars expr, refresh_computation vars comp)
   | In (op, expr, comp) ->
       In (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Promise (k, op, abs, p, comp) ->
+  | Promise (None, op, abs, p, comp) ->
       let p' = Variable.refresh p in
-      let k' =
-        match k with None -> None | Some kk -> Some (Variable.refresh kk)
-      in
       Promise
-        ( k',
+        ( None,
           op,
           refresh_abstraction vars abs,
+          p',
+          refresh_computation ((p, p') :: vars) comp )
+  | Promise (Some k, op, abs, p, comp) ->
+      let p' = Variable.refresh p in
+      let k' = Variable.refresh k in
+      Promise
+        ( Some k',
+          op,
+          refresh_abstraction ((k, k') :: vars) abs,
           p',
           refresh_computation ((p, p') :: vars) comp )
   | Await (expr, abs) ->
