@@ -1,0 +1,12 @@
+operation foo : int
+
+
+let ticktock i =
+  promise (foo j k when i = j |->
+        return <<i>> 
+    ) as p in
+    awaitValue p
+
+run send foo 42
+
+run ticktock 42

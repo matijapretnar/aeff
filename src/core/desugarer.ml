@@ -193,34 +193,38 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.Promise (None, op, (p, None, c), abs2) ->
-      let op' = lookup_operation ~loc state op in
-      let abs1' = desugar_abstraction state (p, c) in
-      let p, cont = desugar_promise_abstraction ~loc state abs2 in
-      ([], Ast.Promise (None, op', abs1', p, cont))
-  | S.Promise (Some k, op, (p, None, c), abs2) ->
-      let k' = Ast.Variable.fresh k in
-      let state' = add_fresh_variables state [ (k, k') ] in
-      let op' = lookup_operation ~loc state op in
-      let abs1' = desugar_abstraction state' (p, c) in
-      let p, cont = desugar_promise_abstraction ~loc state abs2 in
-      ([], Ast.Promise (Some k', op', abs1', p, cont))
-  | S.Promise (k, op, (p, Some g, c), abs) -> (
-      let binds1, comp =
-        desugar_plain_computation ~loc state
-          (S.Promise (k, op, (p, None, c), abs))
+  | S.Promise (k, op, (p, guard, c), abs) -> (
+      let k', state' =
+        match k with
+        | None -> (None, state)
+        | Some k' ->
+            let k'' = Ast.Variable.fresh k' in
+            (Some k'', add_fresh_variables state [ (k', k'') ])
       in
-      let binds2, g' = desugar_expression state g in
-      match comp with
-      | Ast.Promise (k', op', (p', c'), v, comp) ->
+
+      let op' = lookup_operation ~loc state op in
+
+      let vars, p' = desugar_pattern state p in
+      let state'' = add_fresh_variables state' vars in
+      let c' = desugar_computation state'' c in
+
+      let p'', cont'' = desugar_promise_abstraction ~loc state abs in
+
+      match guard with
+      | None -> ([], Ast.Promise (k', op', (p', c'), p'', cont''))
+      | Some g ->
+          let b, g' = desugar_expression state'' g in
+
           let k'' =
             match k' with None -> Ast.Variable.fresh "k" | Some k''' -> k'''
           in
           let c'' =
             if_then_else g' c' (Ast.Apply (Ast.Var k'', Ast.Tuple []))
           in
-          (binds1 @ binds2, Ast.Promise (Some k'', op', (p', c''), v, comp))
-      | _ -> assert false )
+          let c''' =
+            List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) b c''
+          in
+          ([], Ast.Promise (Some k'', op', (p', c'''), p'', cont'')) )
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in
