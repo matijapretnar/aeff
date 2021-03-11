@@ -8,10 +8,8 @@ let callWith callCounter =
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        promise (result (y, callNo') k |->
-        if callNo = callNo' then 
-            return <<y>> 
-        else k ()
+        promise (result (y, callNo') when callNo = callNo' |->
+            return <<y>>
         ) as p in
         let valueThunk () = awaitValue p in
         let cancelThunk () = send cancel callNo in
@@ -19,13 +17,11 @@ let callWith callCounter =
         return (valueThunk, cancelThunk, changeMind)
 
 let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' k |->
-        if callNo = callNo' then
-            promise (dummy empty |-> return <<empty>>) as dummyPromise in
-            runBeforeStall ();
-            awaitValue dummyPromise;
-            awaitCancel callNo runBeforeStall
-        else k ()
+    promise (cancel callNo' when callNo = callNo' |->
+        promise (dummy empty |-> return <<empty>>) as dummyPromise in
+        runBeforeStall ();
+        awaitValue dummyPromise;
+        awaitCancel callNo runBeforeStall
     ) as p in return p
 
 let remote f =

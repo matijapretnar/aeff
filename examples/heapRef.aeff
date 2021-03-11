@@ -55,33 +55,24 @@ let lookup callCounter l =
     let callNo = !callCounter in
     send lookupReq (l, callNo);
     callCounter := callNo + 1;
-    promise (lookupRes (v, callNo') k |->
-        if callNo = callNo' then
-            return <<v>>
-        else
-            k()
+    promise (lookupRes (v, callNo') when callNo = callNo' |->
+        return <<v>>
     ) as p in awaitValue p
 
 let update callCounter l v =
     let callNo = !callCounter in
     send updateReq (l, v, callNo);
     callCounter := callNo + 1;
-    promise (updateRes (callNo') k |->
-        if callNo = callNo' then
-            return <<()>>
-        else
-            k()
+    promise (updateRes (callNo') when callNo = callNo' |->
+        return <<()>>
     ) as p in awaitValue p
 
 let alloc callCounter v =
     let callNo = !callCounter in
     send allocReq (v, callNo);
     callCounter := callNo + 1;
-    promise (allocRes (l, callNo') k |->
-        if callNo = callNo' then
-            return <<l>>
-        else
-            k()
+    promise (allocRes (l, callNo') when callNo = callNo' |->
+        return <<l>>
     ) as p in awaitValue p
 
 run

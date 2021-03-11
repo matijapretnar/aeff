@@ -11,11 +11,8 @@ let callWith callCounter =
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        promise (result (y, callNo') k |->
-            if callNo = callNo' then
-                return <<y>>
-            else
-                k()
+        promise (result (y, callNo') when callNo = callNo' |->
+            return <<y>>
         ) as p in
         let valueThunk () = awaitValue p in
         return valueThunk
