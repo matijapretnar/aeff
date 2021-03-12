@@ -65,42 +65,29 @@ val remoteCallReInvoker : unit → ⟨unit⟩
 ↑ call (1, 0)
 ↑ call (2, 1)
 ↑ result (120, 0)
-↑ result (240, 1)
 ↑ cancel 0
 ↑ call (3, 2)
 ↑ result (360, 2)
+↑ call (2, 1)
+↑ result (240, 1)
 ↑ cancel 2
 ↑ call (240, 2)
 ↑ result (28800, 2)
-↑ call (3, 2)
-↑ result (360, 2)
 The process has terminated in the configuration:
 run promise (dummy empty ↦ return ⟨empty⟩)
     as dummyPromise in
     promise (dummy empty ↦ return ⟨empty⟩)
     as dummyPromise in
-    promise (cancel callNo' ↦
-             let guardVar = (=) (2, callNo') in
-             match guardVar with (true ↦ promise (dummy empty ↦
-                                                    return ⟨empty⟩)
-                                           as dummyPromise in
-                                           (rec loop ...) ();
-                                           awaitValue dummyPromise;
-                                           let b = (rec awaitCancel ...) 2 in
-                                           b (rec loop ...) | 
-                                  false ↦ (rec waitForGuard ...) ()))
-    as p' in
-    promise (cancel callNo' ↦
-             let guardVar = (=) (2, callNo') in
-             match guardVar with (true ↦ promise (dummy empty ↦
-                                                    return ⟨empty⟩)
-                                           as dummyPromise in
-                                           (rec loop ...) ();
-                                           awaitValue dummyPromise;
-                                           let b = (rec awaitCancel ...) 2 in
-                                           b (rec loop ...) | 
-                                  false ↦ (rec waitForGuard ...) ()))
-    as p' in
+    promise (cancel callNo' k ↦
+             let b = (=) (2, callNo') in
+             match b with (true ↦ promise (dummy empty ↦
+                                             return ⟨empty⟩)
+                                    as dummyPromise in
+                                    (rec loop ...) ();
+                                    awaitValue dummyPromise;
+                                    let b = (rec awaitCancel ...) 2 in
+                                    b (rec loop ...) | false ↦ k ()))
+    as p in
     promise (call (x, callNo) ↦
              let b = awaitCancel callNo in b (rec loop ...);
              let y =
@@ -108,37 +95,47 @@ run promise (dummy empty ↦ return ⟨empty⟩)
                            (*) (4, b))
                 x in ↑result((y, callNo), return ()); (rec loop ...) ())
     as p in
-    ↓call((3, 2),
-            ↓call((240, 2),
-                    let y =
-                       await dummyPromise until ⟨value⟩ in return value;
-                       let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
-                    let p' = return y in
-                    ↓cancel(2,
-                              promise (call (x, callNo) ↦
-                                       let b = awaitCancel callNo in
-                                       b (rec loop ...);
-                                       let y =
-                                          (fun x ↦ let b =
-                                                        let b = (*) (6, x) in
-                                                        (*) (5, b) in
-                                                     (*) (4, b))
-                                          x in
-                                       ↑result((y, callNo), return ());
-                                       (rec loop ...) ())
-                              as p in
+    ↓call((240, 2),
+            let p =
+               await dummyPromise until ⟨value⟩ in return value;
+               let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
+            ↓cancel(2,
+                      promise (cancel callNo' k ↦
+                               let b = (=) (1, callNo') in
+                               match b with (true ↦ promise (dummy empty ↦
+                                                               return
+                                                               ⟨empty⟩)
+                                                      as dummyPromise in
+                                                      (rec loop ...) ();
+                                                      awaitValue dummyPromise;
+                                                      let b =
+                                                         (rec awaitCancel ...)
+                                                         1 in
+                                                      b (rec loop ...) | 
+                                             false ↦ k ()))
+                      as p in
+                      promise (call (x, callNo) ↦
+                               let b = awaitCancel callNo in b (rec loop ...);
+                               let y =
+                                  (fun x ↦ let b =
+                                                let b = (*) (6, x) in
+                                                (*) (5, b) in (*) (4, b))
+                                  x in
+                               ↑result((y, callNo), return ());
+                               (rec loop ...) ())
+                      as p in
+                      ↓call((2, 1),
                               ↓call((3, 2),
-                                      let y =
+                                      let p =
                                          await dummyPromise until ⟨value⟩ in
                                          return value;
                                          let b = (rec awaitCancel ...) 0 in
                                          b (rec loop ...) in
-                                      let p' = return y in
                                       ↓cancel(0,
-                                                promise (cancel callNo' ↦
-                                                         let guardVar =
+                                                promise (cancel callNo' k ↦
+                                                         let b =
                                                             (=) (1, callNo') in
-                                                         match guardVar with (
+                                                         match b with (
                                                          true ↦ promise (
                                                                   dummy empty ↦
                                                                   return
@@ -154,26 +151,20 @@ run promise (dummy empty ↦ return ⟨empty⟩)
                                                                   1 in
                                                                   b
                                                                   (rec loop ...) | 
-                                                         false ↦ (rec waitForGuard ...)
-                                                                   ()))
-                                                as p' in
-                                                promise (call (x, callNo) ↦
-                                                         let b =
-                                                            awaitCancel
-                                                            callNo in
-                                                         b (rec loop ...);
-                                                         let y =
-                                                            (fun x ↦ 
-                                                            let b =
-                                                               let b =
-                                                                  (*) (6, x) in
-                                                               (*) (5, b) in
-                                                            (*) (4, b)) x in
-                                                         ↑result((y, callNo),
-                                                                   return ());
-                                                         (rec loop ...) ())
+                                                         false ↦ k ()))
                                                 as p in
-                                                return p)))))
+                                                let p =
+                                                   let y =
+                                                      let b =
+                                                         let b = (*) (6, 2) in
+                                                         (*) (5, b) in
+                                                      (*) (4, b) in
+                                                   ↑result((y, 1),
+                                                             return ());
+                                                   (rec loop ...) () in
+                                                ↓call((2, 1),
+                                                        ↓call((1, 0),
+                                                                return p)))))))
 || 
 run promise (call (x, callNo) ↦
              let b = (!) { contents = [] } in
