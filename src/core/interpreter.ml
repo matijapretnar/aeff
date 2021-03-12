@@ -160,7 +160,6 @@ let rec step_computation state = function
 
           let p' = Ast.Variable.fresh "p'" in
 
-          (* Note sure if some refresh of variable or something like that is missing here. *)
           let comp'' =
             match k with
             | None -> comp'

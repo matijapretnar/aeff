@@ -213,7 +213,7 @@ and desugar_plain_computation ~loc state =
       match guard with
       | None -> ([], Ast.Promise (k', op', (p', c'), p'', cont''))
       | Some g ->
-          let b, g' = desugar_expression state'' g in
+          let binds, g' = desugar_expression state'' g in
 
           let k'' =
             match k' with None -> Ast.Variable.fresh "k" | Some k''' -> k'''
@@ -222,7 +222,7 @@ and desugar_plain_computation ~loc state =
             if_then_else g' c' (Ast.Apply (Ast.Var k'', Ast.Tuple []))
           in
           let c''' =
-            List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) b c''
+            List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds c''
           in
           ([], Ast.Promise (Some k'', op', (p', c'''), p'', cont'')) )
   | S.Await (t, abs) ->
