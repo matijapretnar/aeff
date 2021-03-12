@@ -59,8 +59,8 @@ val naiveCallWith : int × int → unit → int × int
 val callWith : int ref → int → unit → int
 val remote : (int → int) → ⟨α⟩
 ↑ call (2, 0)
-↑ call (3, 1)
 ↑ result (240, 0)
+↑ call (3, 1)
 ↑ result (360, 1)
 The process has terminated in the configuration:
 run promise (call (x, callNo) ↦

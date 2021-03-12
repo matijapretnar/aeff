@@ -57,24 +57,30 @@ operation stop : int
 operation go : int
 val waitForStop : int → ⟨α⟩
 The process has terminated in the configuration:
-run promise (stop threadID' ↦
-             let guardVar = (=) (2, threadID') in
-             match guardVar with (true ↦ let waitForGuard =
-                                              return (rec waitForGuard ...) in
-                                           let p = waitForGuard () in
-                                           await p until ⟨_⟩ in
-                                           (rec waitForStop ...) 2 | 
-                                  false ↦ (rec waitForGuard ...) ()))
-    as p' in
+run promise (stop threadID' k ↦
+             let b = (=) (2, threadID') in
+             match b with (true ↦ promise (go threadID' k ↦
+                                             let b = (=) (2, threadID') in
+                                             match b with (true ↦ return ⟨()⟩ | 
+                                                           false ↦ 
+                                                           k ()))
+                                    as p in
+                                    await p until ⟨_⟩ in
+                                    (rec waitForStop ...) 2 | false ↦ 
+                           k ()))
+    as p in
     return 50
 || 
-run promise (stop threadID' ↦
-             let guardVar = (=) (1, threadID') in
-             match guardVar with (true ↦ let waitForGuard =
-                                              return (rec waitForGuard ...) in
-                                           let p = waitForGuard () in
-                                           await p until ⟨_⟩ in
-                                           (rec waitForStop ...) 1 | 
-                                  false ↦ (rec waitForGuard ...) ()))
-    as p' in
+run promise (stop threadID' k ↦
+             let b = (=) (1, threadID') in
+             match b with (true ↦ promise (go threadID' k ↦
+                                             let b = (=) (1, threadID') in
+                                             match b with (true ↦ return ⟨()⟩ | 
+                                                           false ↦ 
+                                                           k ()))
+                                    as p in
+                                    await p until ⟨_⟩ in
+                                    (rec waitForStop ...) 1 | false ↦ 
+                           k ()))
+    as p in
     return 5

@@ -155,7 +155,8 @@ and computation =
   | Apply of expression * expression
   | Out of operation * expression * computation
   | In of operation * expression * computation
-  | Promise of operation * abstraction * variable * computation
+  | Promise of
+      variable option * operation * abstraction * variable * computation
   | Await of expression * abstraction
 
 and abstraction = pattern * computation
@@ -224,11 +225,19 @@ and refresh_computation vars = function
       Out (op, refresh_expression vars expr, refresh_computation vars comp)
   | In (op, expr, comp) ->
       In (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Promise (op, abs, p, comp) ->
+  | Promise (k, op, abs, p, comp) ->
       let p' = Variable.refresh p in
+      let k', vars' =
+        match k with
+        | None -> (None, vars)
+        | Some k'' ->
+            let k''' = Variable.refresh k'' in
+            (Some k''', (k'', k''') :: vars)
+      in
       Promise
-        ( op,
-          refresh_abstraction vars abs,
+        ( k',
+          op,
+          refresh_abstraction vars' abs,
           p',
           refresh_computation ((p, p') :: vars) comp )
   | Await (expr, abs) ->
@@ -268,10 +277,11 @@ and substitute_computation subst = function
   | In (op, expr, comp) ->
       In
         (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Promise (op, abs, p, comp) ->
+  | Promise (k, op, abs, p, comp) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
       Promise
-        ( op,
+        ( k,
+          op,
           substitute_abstraction subst abs,
           p,
           substitute_computation subst' comp )
@@ -355,10 +365,14 @@ and print_computation ?max_level c ppf =
   | Out (op, e, c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (Operation.print op) (print_expression e)
         (print_computation c)
-  | Promise (op, (p1, c1), p2, c2) ->
+  | Promise (None, op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Operation.print op) (print_pattern p1) (print_computation c1)
         (Variable.print p2) (print_computation c2)
+  | Promise (Some k, op, (p1, c1), p2, c2) ->
+      print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
+        (Operation.print op) (print_pattern p1) (Variable.print k)
+        (print_computation c1) (Variable.print p2) (print_computation c2)
   | Await (e, (p, c)) ->
       print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]"
         (print_expression e) (print_pattern p) (print_computation c)

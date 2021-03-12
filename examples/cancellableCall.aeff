@@ -17,7 +17,7 @@ let callWith callCounter =
         return (valueThunk, cancelThunk, changeMind)
 
 let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' when callNo = callNo'|->
+    promise (cancel callNo' when callNo = callNo' |->
         promise (dummy empty |-> return <<empty>>) as dummyPromise in
         runBeforeStall ();
         awaitValue dummyPromise;

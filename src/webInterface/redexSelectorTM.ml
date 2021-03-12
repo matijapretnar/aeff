@@ -38,9 +38,14 @@ let rec print_computation_reduction ?max_level red c ppf =
       print "↑%t(@[<hv>%t,@ %t@])" (Ast.Operation.print op)
         (Ast.print_expression e)
         (print_computation_reduction red c)
-  | Interpreter.PromiseCtx red, Ast.Promise (op, (p1, c1), p2, c2) ->
+  | Interpreter.PromiseCtx red, Ast.Promise (None, op, (p1, c1), p2, c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (Ast.Operation.print op) (Ast.print_pattern p1)
+        (Ast.print_computation c1) (Ast.Variable.print p2)
+        (print_computation_reduction red c2)
+  | Interpreter.PromiseCtx red, Ast.Promise (Some k, op, (p1, c1), p2, c2) ->
+      print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
+        (Ast.Operation.print op) (Ast.print_pattern p1) (Ast.Variable.print k)
         (Ast.print_computation c1) (Ast.Variable.print p2)
         (print_computation_reduction red c2)
   | Interpreter.ComputationRedex redex, c ->
