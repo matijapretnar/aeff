@@ -1,0 +1,38 @@
+type 'm mobile_list = 
+  | Empty 
+  | Something of [|'m|] * 'm mobile_list
+operation the_good : (unit -> int) mobile_list
+
+(*
+type 'm immobile_list = 
+  | Empty 
+  | Something of <<'m>> * 'm immobile_list
+operation the_bad : (unit -> int) immobile_list
+*)
+
+
+type 'm left1 = 
+  | One of [|'m|] 
+  | Two of [|'m|] * 'm right1
+and 'm right1 = 
+  | Three of [|'m|]
+  | Four of [|'m|] * <<'m>> left1
+operation and_the_ugly : int left1
+
+(*
+type 'm left2 = 
+  | One of [|'m|] 
+  | Two of [|'m|] * 'm right2
+and 'm right2 = 
+  | Three of 'm
+  | Four of [|'m|] * <<'m>> left2
+operation bad_and_ugly : int left2
+*)
+
+
+
+type ('a, 'b) foo  = [|'a|] * 'b
+operation bar1 : (<<int>>, int) foo
+(*
+operation bar2 : (int, <<int>>) foo 
+*)
