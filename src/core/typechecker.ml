@@ -1,14 +1,23 @@
 open Utils
 
+type ty_scheme = Ast.ty_param list * Ast.ty
+
 type state = {
-  variables : (Ast.ty_param list * Ast.ty) Ast.VariableMap.t;
+  global_var : ty_scheme Ast.VariableMap.t;
+  local_var : Ast.ty Ast.VariableMap.t list;
   operations : Ast.ty Ast.OpSymMap.t;
   type_definitions : (Ast.ty_param list * Ast.ty_def) Ast.TyNameMap.t;
 }
 
+type constraints = {
+  equations : (Ast.ty * Ast.ty) list;
+  mobile_types : Ast.ty list;
+}
+
 let initial_state =
   {
-    variables = Ast.VariableMap.empty;
+    global_var = Ast.VariableMap.empty;
+    local_var = [ Ast.VariableMap.empty ];
     operations = Ast.OpSymMap.empty;
     type_definitions =
       ( Ast.TyNameMap.empty
@@ -21,6 +30,9 @@ let initial_state =
            ([], Ast.TyInline (Ast.TyConst Const.StringTy))
       |> Ast.TyNameMap.add Ast.float_ty_name
            ([], Ast.TyInline (Ast.TyConst Const.FloatTy))
+      |> (let a = Ast.TyParam.fresh "ref" in
+          Ast.TyNameMap.add Ast.ref_ty_name
+            ([ a ], Ast.TyInline (Ast.TyReference (Ast.TyParam a))))
       |> Ast.TyNameMap.add Ast.empty_ty_name ([], Ast.TySum [])
       |>
       let a = Ast.TyParam.fresh "list" in
@@ -39,15 +51,68 @@ let initial_state =
             ] ) );
   }
 
+let rec is_mobile state (ty : Ast.ty) : bool =
+  match ty with
+  | Ast.TyConst _ -> true
+  | Ast.TyApply (ty_name, tys) ->
+      List.for_all (is_mobile state) tys && is_apply_preserving state [] ty_name
+  | Ast.TyParam _ -> false
+  | Ast.TyArrow _ -> false
+  | Ast.TyTuple tys -> List.for_all (is_mobile state) tys
+  | Ast.TyPromise _ -> false
+  | Ast.TyReference _ -> false
+  | Ast.TyBoxed _ -> true
+
+and is_preserving state (candidates : Ast.ty_name list) ty : bool =
+  match ty with
+  | Ast.TyConst _ -> true
+  | Ast.TyApply (ty_name, tys) ->
+      List.for_all (is_preserving state candidates) tys
+      && is_apply_preserving state candidates ty_name
+  | Ast.TyParam _ -> true
+  | Ast.TyArrow _ -> false
+  | Ast.TyTuple tys -> List.for_all (is_preserving state candidates) tys
+  | Ast.TyPromise _ -> false
+  | Ast.TyReference _ -> false
+  | Ast.TyBoxed _ -> true
+
+and is_apply_preserving state (candidates : Ast.ty_name list)
+    (ty_name : Ast.ty_name) =
+  match List.mem ty_name candidates with
+  | true -> true
+  (* 'a foo = 'a * <<'a>> foo  wee need to check that tys are still semi_mobile *)
+  | false ->
+      let candidates' = ty_name :: candidates in
+      let _params, ty_def = Ast.TyNameMap.find ty_name state.type_definitions in
+      is_ty_def_preserving state candidates' ty_def
+
+and is_ty_def_preserving state (candidates : Ast.ty_name list)
+    (ty_def : Ast.ty_def) : bool =
+  match ty_def with
+  | Ast.TyInline ty -> is_preserving state candidates ty
+  | Ast.TySum tys' ->
+      let tys'' =
+        List.fold_left
+          (fun todo_tys (_lbl, ty) ->
+            match ty with None -> todo_tys | Some ty -> ty :: todo_tys)
+          [] tys'
+      in
+      List.for_all (is_preserving state candidates) tys''
+
 let fresh_ty () =
   let a = Ast.TyParam.fresh "ty" in
   Ast.TyParam a
 
 let extend_variables state vars =
-  List.fold_left
-    (fun state (x, ty) ->
-      { state with variables = Ast.VariableMap.add x ([], ty) state.variables })
-    state vars
+  match state.local_var with
+  | [] -> assert false
+  | head :: tail ->
+      let head' =
+        List.fold_left
+          (fun state (x, ty) -> Ast.VariableMap.add x ty state)
+          head vars
+      in
+      { state with local_var = head' :: tail }
 
 let refreshing_subst params =
   List.fold_left
@@ -104,78 +169,118 @@ let rec infer_pattern state = function
       | None, Some _ | Some _, None ->
           Error.typing "Variant optional argument mismatch" )
 
-let rec infer_expression state = function
-  | Ast.Var x ->
-      let params, ty = Ast.VariableMap.find x state.variables in
+let infer_variable state x : Ast.ty * Ast.ty list =
+  match Ast.VariableMap.find_opt x state.global_var with
+  | Some (params, ty) ->
       let subst = refreshing_subst params in
       (Ast.substitute_ty subst ty, [])
-  | Ast.Const c -> (Ast.TyConst (Const.infer_ty c), [])
+  | None -> (
+      match state.local_var with
+      | [] -> assert false
+      | head :: tail -> (
+          match Ast.VariableMap.find_opt x head with
+          | Some ty -> (ty, [])
+          | None ->
+              let rec find_movable local_var =
+                match local_var with
+                | [] -> assert false
+                | h :: t -> (
+                    match Ast.VariableMap.find_opt x h with
+                    | Some ty -> ty
+                    | None -> find_movable t )
+              in
+              let ty = find_movable tail in
+              (ty, [ ty ]) ) )
+
+let combine constraints1 constraints2 =
+  {
+    equations = constraints1.equations @ constraints2.equations;
+    mobile_types = constraints1.mobile_types @ constraints2.mobile_types;
+  }
+
+let add_eqs constraints eqs =
+  { constraints with equations = eqs @ constraints.equations }
+
+let rec infer_expression state = function
+  | Ast.Var x ->
+      let ty, mobiles = infer_variable state x in
+      (ty, { equations = []; mobile_types = mobiles })
+  | Ast.Const c ->
+      (Ast.TyConst (Const.infer_ty c), { equations = []; mobile_types = [] })
   | Ast.Annotated (expr, ty) ->
-      let ty', eqs = infer_expression state expr in
-      (ty, (ty, ty') :: eqs)
+      let ty', constr = infer_expression state expr in
+      (ty, add_eqs constr [ (ty, ty') ])
   | Ast.Tuple exprs ->
-      let fold expr (tys, eqs) =
-        let ty', eqs' = infer_expression state expr in
-        (ty' :: tys, eqs' @ eqs)
+      let fold expr (tys, constr) =
+        let ty', constr' = infer_expression state expr in
+        (ty' :: tys, combine constr constr')
       in
-      let tys, eqs = List.fold_right fold exprs ([], []) in
-      (Ast.TyTuple tys, eqs)
+      let tys, constr =
+        List.fold_right fold exprs ([], { equations = []; mobile_types = [] })
+      in
+      (Ast.TyTuple tys, constr)
   | Ast.Lambda abs ->
-      let ty, ty', eqs = infer_abstraction state abs in
-      (Ast.TyArrow (ty, ty'), eqs)
+      let ty, ty', constr = infer_abstraction state abs in
+      (Ast.TyArrow (ty, ty'), constr)
   | Ast.RecLambda (f, abs) ->
       let f_ty = fresh_ty () in
       let state' = extend_variables state [ (f, f_ty) ] in
-      let ty, ty', eqs = infer_abstraction state' abs in
+      let ty, ty', constr = infer_abstraction state' abs in
       let out_ty = Ast.TyArrow (ty, ty') in
-      (out_ty, (f_ty, out_ty) :: eqs)
+      (out_ty, add_eqs constr [ (f_ty, out_ty) ])
   | Ast.Fulfill expr ->
-      let ty, eqs = infer_expression state expr in
-      (Ast.TyPromise ty, eqs)
+      let ty, constr = infer_expression state expr in
+      (Ast.TyPromise ty, constr)
   | Ast.Reference expr_ref ->
-      let ty, eqs = infer_expression state !expr_ref in
-      (Ast.TyReference ty, eqs)
+      let ty, constr = infer_expression state !expr_ref in
+      (Ast.TyReference ty, constr)
   | Ast.Variant (lbl, expr) -> (
       let ty_in, ty_out = infer_variant state lbl in
       match (ty_in, expr) with
-      | None, None -> (ty_out, [])
+      | None, None -> (ty_out, { equations = []; mobile_types = [] })
       | Some ty_in, Some expr ->
-          let ty, eqs = infer_expression state expr in
-          (ty_out, (ty_in, ty) :: eqs)
+          let ty, constr = infer_expression state expr in
+          (ty_out, add_eqs constr [ (ty_in, ty) ])
       | None, Some _ | Some _, None ->
           Error.typing "Variant optional argument mismatch" )
+  | Ast.Boxed expr ->
+      let state' =
+        { state with local_var = Ast.VariableMap.empty :: state.local_var }
+      in
+      let ty, constr = infer_expression state' expr in
+      (Ast.TyBoxed ty, constr)
 
 and infer_computation state = function
   | Ast.Return expr ->
       let ty, eqs = infer_expression state expr in
       (ty, eqs)
   | Ast.Do (comp1, comp2) ->
-      let ty1, eqs1 = infer_computation state comp1 in
-      let ty1', ty2, eqs2 = infer_abstraction state comp2 in
-      (ty2, ((ty1, ty1') :: eqs1) @ eqs2)
+      let ty1, constr1 = infer_computation state comp1 in
+      let ty1', ty2, constr2 = infer_abstraction state comp2 in
+      (ty2, combine (add_eqs constr1 [ (ty1, ty1') ]) constr2)
   | Ast.Apply (e1, e2) ->
-      let t1, eqs1 = infer_expression state e1
-      and t2, eqs2 = infer_expression state e2
+      let t1, constr1 = infer_expression state e1
+      and t2, constr2 = infer_expression state e2
       and a = fresh_ty () in
-      (a, ((t1, Ast.TyArrow (t2, a)) :: eqs1) @ eqs2)
+      (a, combine (add_eqs constr1 [ (t1, Ast.TyArrow (t2, a)) ]) constr2)
   | Ast.Operation (Ast.Signal (op, expr), comp) | Ast.Interrupt (op, expr, comp)
     ->
       let ty1 = Ast.OpSymMap.find op state.operations
-      and ty2, eqs1 = infer_expression state expr
-      and ty3, eqs2 = infer_computation state comp in
-      (ty3, ((ty1, ty2) :: eqs1) @ eqs2)
+      and ty2, constr1 = infer_expression state expr
+      and ty3, constr2 = infer_computation state comp in
+      (ty3, combine (add_eqs constr1 [ (ty1, ty2) ]) constr2)
   | Ast.Await (e, abs) ->
-      let pty1, eqs1 = infer_expression state e
-      and ty1, ty2, eqs2 = infer_abstraction state abs in
-      (ty2, ((pty1, Ast.TyPromise ty1) :: eqs1) @ eqs2)
+      let pty1, constr1 = infer_expression state e
+      and ty1, ty2, constr2 = infer_abstraction state abs in
+      (ty2, combine (add_eqs constr1 [ (pty1, Ast.TyPromise ty1) ]) constr2)
   | Ast.Match (e, cases) ->
-      let ty1, eqs = infer_expression state e and ty2 = fresh_ty () in
-      let fold eqs abs =
-        let ty1', ty2', eqs' = infer_abstraction state abs in
-        ((ty1, ty1') :: (ty2, ty2') :: eqs') @ eqs
+      let ty1, constr = infer_expression state e and ty2 = fresh_ty () in
+      let fold constr abs =
+        let ty1', ty2', constr' = infer_abstraction state abs in
+        combine (add_eqs constr' [ (ty1, ty1'); (ty2, ty2') ]) constr
       in
-      (ty2, List.fold_left fold eqs cases)
-  | Ast.Operation (Ast.Promise (k, op, abs, p), comp) ->
+      (ty2, List.fold_left fold constr cases)
+  | Ast.Operation (Promise (k, op, abs, p), comp) ->
       let ty_k = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
       let ty1 = Ast.OpSymMap.find op state.operations in
 
@@ -184,20 +289,31 @@ and infer_computation state = function
         | None -> state
         | Some k' -> extend_variables state [ (k', ty_k) ]
       in
-      let ty1', ty2, eqs1 = infer_abstraction state' abs in
+      let ty1', ty2, constr1 = infer_abstraction state' abs in
 
       let state'' = extend_variables state [ (p, ty_p) ] in
-      let ty, eqs2 = infer_computation state'' comp in
+      let ty, constr2 = infer_computation state'' comp in
       ( ty,
-        (ty_k, Ast.TyArrow (Ast.TyTuple [], ty2))
-        :: (ty1, ty1') :: (ty2, ty_p) :: eqs1
-        @ eqs2 )
+        combine
+          (add_eqs constr1
+             [
+               (ty_k, Ast.TyArrow (Ast.TyTuple [], ty2));
+               (ty1, ty1');
+               (ty2, ty_p);
+             ])
+          constr2 )
+  | Ast.Unbox (expr, abs) ->
+      let ty, constr1 = infer_expression state expr in
+      let ty' = fresh_ty () in
+      let ty_boxed' = Ast.TyBoxed ty' in
+      let ty1, ty2, constr2 = infer_abstraction state abs in
+      (ty2, combine (add_eqs constr1 [ (ty, ty_boxed'); (ty', ty1) ]) constr2)
 
 and infer_abstraction state (pat, comp) =
   let ty, vars, eqs = infer_pattern state pat in
   let state' = extend_variables state vars in
-  let ty', eqs' = infer_computation state' comp in
-  (ty, ty', eqs @ eqs')
+  let ty', constr = infer_computation state' comp in
+  (ty, ty', add_eqs constr eqs)
 
 let subst_equations sbst =
   let subst_equation (t1, t2) =
@@ -215,6 +331,7 @@ let rec occurs a = function
   | Ast.TyTuple tys -> List.exists (occurs a) tys
   | Ast.TyPromise ty -> occurs a ty
   | Ast.TyReference ty -> occurs a ty
+  | Ast.TyBoxed ty -> occurs a ty
 
 let is_transparent_type state ty_name =
   match Ast.TyNameMap.find ty_name state.type_definitions with
@@ -251,6 +368,7 @@ let rec unify state = function
       unify state ((ty1, ty2) :: eqs)
   | (Ast.TyReference ty1, Ast.TyReference ty2) :: eqs ->
       unify state ((ty1, ty2) :: eqs)
+  | (Ast.TyBoxed ty1, Ast.TyBoxed ty2) :: eqs -> unify state ((ty1, ty2) :: eqs)
   | (Ast.TyParam a, t) :: eqs when not (occurs a t) ->
       add_subst a t
         (unify state (subst_equations (Ast.TyParamMap.singleton a t) eqs))
@@ -263,26 +381,40 @@ let rec unify state = function
         (Ast.print_ty print_param t1)
         (Ast.print_ty print_param t2)
 
-let infer state e =
-  let t, eqs = infer_computation state e in
-  let sbst = unify state eqs in
+let rec check_mobile state subst = function
+  | [] -> ()
+  | ty :: tys ->
+      let ty' = Ast.substitute_ty subst ty in
+      if is_mobile state ty' then check_mobile state subst tys
+      else
+        let pp = Ast.new_print_param () in
+        Error.typing "Expected %t (originaly %t) to be mobile."
+          (Ast.print_ty pp ty') (Ast.print_ty pp ty)
+
+let infer state comp =
+  let t, constr = infer_computation state comp in
+  let sbst = unify state constr.equations in
   let t' = Ast.substitute_ty sbst t in
+  check_mobile state sbst constr.mobile_types;
   t'
 
 let add_external_function x ty_sch state =
   Format.printf "@[val %t : %t@]@." (Ast.Variable.print x)
     (Ast.print_ty_scheme ty_sch);
-  { state with variables = Ast.VariableMap.add x ty_sch state.variables }
+  { state with global_var = Ast.VariableMap.add x ty_sch state.global_var }
 
 let add_operation state op ty =
   Format.printf "@[operation %t : %t@]@." (Ast.OpSym.print op)
     (Ast.print_ty_scheme ([], ty));
-  { state with operations = Ast.OpSymMap.add op ty state.operations }
+  if is_preserving state [] ty then
+    { state with operations = Ast.OpSymMap.add op ty state.operations }
+  else Error.typing "Payload of an operation must be of a ground type"
 
 let add_top_definition state x expr =
-  let ty, eqs = infer_expression state expr in
-  let subst = unify state eqs in
+  let ty, constr = infer_expression state expr in
+  let subst = unify state constr.equations in
   let ty' = Ast.substitute_ty subst ty in
+  check_mobile state subst constr.mobile_types;
   let free_vars = Ast.free_vars ty' |> Ast.TyParamSet.elements in
   let ty_sch = (free_vars, ty') in
   add_external_function x ty_sch state
@@ -300,5 +432,7 @@ let add_type_definitions state ty_defs =
 
 let check_payload state op expr =
   let ty1 = Ast.OpSymMap.find op state.operations
-  and ty2, eqs = infer_expression state expr in
-  unify state ((ty1, ty2) :: eqs)
+  and ty2, constr = infer_expression state expr in
+  let subst = unify state (add_eqs constr [ (ty1, ty2) ]).equations in
+  check_mobile state subst constr.mobile_types;
+  subst

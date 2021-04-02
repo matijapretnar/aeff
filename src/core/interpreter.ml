@@ -24,6 +24,7 @@ type computation_redex =
   | DoReturn
   | DoSignal
   | AwaitFulfill
+  | Unbox
 
 type computation_reduction =
   | InterruptCtx of computation_reduction
@@ -189,6 +190,17 @@ let rec step_computation state = function
           let subst = match_pattern_with_expression state pat expr in
           [ (ComputationRedex AwaitFulfill, substitute subst comp) ]
       | _ -> [] )
+  | Ast.Unbox (expr, (pat, comp)) -> (
+      match expr with
+      | Ast.Boxed expr ->
+          let subst = match_pattern_with_expression state pat expr in
+          [ (ComputationRedex Unbox, substitute subst comp) ]
+      | Ast.Var x ->
+          let expr' = Ast.VariableMap.find x state.variables in
+          [ (ComputationRedex Unbox, Ast.Unbox (expr', (pat, comp))) ]
+      | _ ->
+          Error.runtime "Expected boxed expresion but got %t instead."
+            (Ast.print_expression expr) )
 
 and step_in_out state op expr cont = function
   | Ast.Signal (op', expr') ->

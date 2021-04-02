@@ -47,6 +47,7 @@ let view_computation_redex = function
   | Interpreter.DoReturn -> "doReturn"
   | Interpreter.DoSignal -> "doSignal"
   | Interpreter.AwaitFulfill -> "awaitFulfill"
+  | Interpreter.Unbox -> "unbox"
 
 let rec view_computation_reduction = function
   | Interpreter.InterruptCtx red -> view_computation_reduction red

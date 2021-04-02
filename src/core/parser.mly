@@ -17,7 +17,7 @@
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION WHEN
-%token AWAIT UNTIL PROMISE SEND
+%token AWAIT UNTIL PROMISE SEND UNBOX LBOXED RBOXED
 %token RUN LET REC AND IN OPERATION
 %token FUN BAR BARBAR
 %token IF THEN ELSE
@@ -97,6 +97,8 @@ plain_term:
     { Conditional (t_cond, t_true, t_false) }
   | t = plain_comma_term
     { t }
+  | UNBOX t1 = term AS LBOXED p = pattern RBOXED IN t2 = term
+    { Unbox (t1, (p, t2)) }
 
 comma_term: mark_position(plain_comma_term) { $1 }
 plain_comma_term:
@@ -180,6 +182,8 @@ plain_simple_term:
     {
       Fulfill t
     }
+  | LBOXED t = term RBOXED
+    { Boxed t }
   | LPAREN t = plain_term RPAREN
     { t }
   | BEGIN t = plain_term END
@@ -417,6 +421,8 @@ plain_simple_ty:
     { TyApply (t, []) }
   | LPROMISE t = ty RPROMISE
     { TyPromise t }
+  | LBOXED t = ty RBOXED
+    { TyBoxed t }
   | t = PARAM
     { TyParam t }
   | LPAREN t = ty RPAREN

@@ -69,6 +69,7 @@ and desugar_plain_ty ~loc state = function
   | S.TyConst c -> Ast.TyConst c
   | S.TyReference ty -> Ast.TyReference (desugar_ty state ty)
   | S.TyPromise ty -> Ast.TyPromise (desugar_ty state ty)
+  | S.TyBoxed ty -> Ast.TyBoxed (desugar_ty state ty)
 
 let rec desugar_pattern state { it = pat; Location.at = loc } =
   let vars, pat' = desugar_plain_pattern ~loc state pat in
@@ -145,8 +146,11 @@ and desugar_plain_expression ~loc state = function
   | S.Fulfill term ->
       let binds, e = desugar_expression state term in
       (binds, Ast.Fulfill e)
+  | S.Boxed term ->
+      let binds, e = desugar_expression state term in
+      (binds, Ast.Boxed e)
   | ( S.Apply _ | S.Match _ | S.Let _ | S.LetRec _ | S.Conditional _
-    | S.Promise _ | S.Await _ | S.Send _ ) as term ->
+    | S.Promise _ | S.Await _ | S.Send _ | S.Unbox _ ) as term ->
       let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (Location.add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
@@ -235,10 +239,14 @@ and desugar_plain_computation ~loc state =
       let op' = lookup_operation ~loc state op in
       let binds, e = desugar_expression state t in
       (binds, Ast.Operation (Ast.Signal (op', e), Ast.Return (Ast.Tuple [])))
-  (* The remaining cases are expressions, which we list explicitly to catch any
-     future changes. *)
+  | S.Unbox (t, abs) ->
+      let binds, e = desugar_expression state t in
+      let abs' = desugar_abstraction state abs in
+      (binds, Ast.Unbox (e, abs'))
+      (* The remaining cases are expressions, which we list explicitly to catch any
+         future changes. *)
   | ( S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _ | S.Variant _ | S.Lambda _
-    | S.Function _ | S.Fulfill _ ) as term ->
+    | S.Function _ | S.Fulfill _ | S.Boxed _ ) as term ->
       let binds, expr = desugar_expression state { it = term; at = loc } in
       (binds, Ast.Return expr)
 

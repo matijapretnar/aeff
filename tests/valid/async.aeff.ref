@@ -53,10 +53,10 @@ val fst : α × β → α
 val snd : α × β → β
 val return : α → α
 val awaitValue : ⟨α⟩ → α
-operation question : unit → int
+operation question : [(unit → int)]
 operation answer : int
-val get_answer : (unit → int) → ⟨int⟩
-↑ question fun () ↦ (+) (3, 3)
+val get_answer : [(unit → int)] → ⟨int⟩
+↑ question [fun () ↦ (+) (3, 3)]
 ↑ answer 6
 The process has terminated in the configuration:
 run (return ⟨()⟩) ||  run (return 42)

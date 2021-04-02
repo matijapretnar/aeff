@@ -33,6 +33,7 @@
     ("then", THEN);
     ("true", BOOL true);
     ("type", TYPE);
+    ("unbox", UNBOX);
     ("until", UNTIL);
     ("with", WITH);
     ("when", WHEN)
@@ -103,6 +104,8 @@ rule token = parse
   | ')'                 { RPAREN }
   | '['                 { LBRACK }
   | ']'                 { RBRACK }
+  | "[|"                { LBOXED }
+  | "|]"                { RBOXED }
   | "<<"                { LPROMISE }
   | ">>"                { RPROMISE }
   | "::"                { CONS }

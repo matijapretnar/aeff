@@ -30,6 +30,7 @@ and plain_ty =
   | TyPromise of ty  (** [<<ty>>] *)
   | TyReference of ty  (** [ty ref] *)
   | TyTuple of ty list  (** [ty1 * ty2 * ... * tyn] *)
+  | TyBoxed of ty  (** [[ty]] *)
 
 type variable = string
 
@@ -73,6 +74,8 @@ and plain_term =
   | Await of term * abstraction  (** [await t1 until <<p>> in t2] *)
   | Fulfill of term  (** [<<t>>] *)
   | Send of operation * term  (** [send op t] *)
+  | Boxed of term  (** [[t]] *)
+  | Unbox of term * abstraction  (** [unbox t1 as [x] in t2] *)
 
 and abstraction = pattern * term
 
