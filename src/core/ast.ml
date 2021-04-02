@@ -167,6 +167,7 @@ and computation =
 and operation =
   | Signal of opsym * expression
   | Promise of variable option * opsym * abstraction * variable
+  | Spawn of computation
 
 and abstraction = pattern * computation
 
@@ -247,6 +248,9 @@ and refresh_computation vars = function
       Operation
         ( Promise (k', op, refresh_abstraction vars' abs, p'),
           refresh_computation ((p, p') :: vars) comp )
+  | Operation (Spawn comp1, comp2) ->
+      Operation
+        (Spawn (refresh_computation vars comp1), refresh_computation vars comp2)
   | Interrupt (op, expr, comp) ->
       Interrupt (op, refresh_expression vars expr, refresh_computation vars comp)
   | Await (expr, abs) ->
@@ -292,6 +296,10 @@ and substitute_computation subst = function
       Operation
         ( Promise (k, op, substitute_abstraction subst abs, p),
           substitute_computation subst' comp )
+  | Operation (Spawn comp1, comp2) ->
+      Operation
+        ( Spawn (substitute_computation subst comp1),
+          substitute_computation subst comp2 )
   | Interrupt (op, expr, comp) ->
       Interrupt
         (op, substitute_expression subst expr, substitute_computation subst comp)
@@ -386,6 +394,9 @@ and print_computation ?max_level c ppf =
       print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
         (OpSym.print op) (print_pattern p1) (Variable.print k)
         (print_computation c1) (Variable.print p2) (print_computation c2)
+  | Operation (Spawn comp1, comp2) ->
+      print "Spawn (%t);%t\n" (print_computation comp1)
+        (print_computation comp2)
   | Await (e, (p, c)) ->
       print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]"
         (print_expression e) (print_pattern p) (print_computation c)

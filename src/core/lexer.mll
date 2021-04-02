@@ -30,6 +30,7 @@
     ("rec", REC);
     ("run", RUN);
     ("send", SEND);
+    ("spawn", SPAWN);
     ("then", THEN);
     ("true", BOOL true);
     ("type", TYPE);

@@ -25,6 +25,7 @@ type computation_redex =
   | DoSignal
   | AwaitFulfill
   | Unbox
+  | Spawn
 
 type computation_reduction =
   | InterruptCtx of computation_reduction
@@ -34,6 +35,7 @@ type computation_reduction =
 
 type process_redex =
   | RunSignal
+  | RunSpawn
   | ParallelSignal1
   | ParallelSignal2
   | InterruptRun
@@ -230,6 +232,8 @@ and step_in_out state op expr cont = function
   | Ast.Promise (k, op', op_comp, p) ->
       Ast.Operation
         (Ast.Promise (k, op', op_comp, p), Ast.Interrupt (op, expr, cont))
+  | Ast.Spawn comp ->
+      Ast.Operation (Ast.Spawn comp, Ast.Interrupt (op, expr, cont))
 
 let rec step_process state = function
   | Ast.Run comp -> (
@@ -240,6 +244,10 @@ let rec step_process state = function
       match comp with
       | Ast.Operation (Ast.Signal (op, expr), comp') ->
           (ProcessRedex RunSignal, Ast.SignalProc (op, expr, Ast.Run comp'))
+          :: comps'
+      | Ast.Operation (Ast.Spawn comp1, comp2) ->
+          (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp1, Ast.Run comp2))
+          :: (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp2, Ast.Run comp1))
           :: comps'
       | _ -> comps' )
   | Ast.Parallel (proc1, proc2) ->

@@ -18,7 +18,7 @@
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION WHEN
 %token AWAIT UNTIL PROMISE SEND UNBOX LBOXED RBOXED
-%token RUN LET REC AND IN OPERATION
+%token RUN LET REC AND IN OPERATION SPAWN
 %token FUN BAR BARBAR
 %token IF THEN ELSE
 %token PLUS STAR MINUS MINUSDOT
@@ -153,6 +153,8 @@ plain_prefix_term:
     {
       Send (op, t)
     }
+  | SPAWN t = simple_term
+    { Spawn t }
   | t = plain_simple_term
     { t }
 

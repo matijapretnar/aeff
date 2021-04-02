@@ -76,6 +76,7 @@ and plain_term =
   | Send of operation * term  (** [send op t] *)
   | Boxed of term  (** [[t]] *)
   | Unbox of term * abstraction  (** [unbox t1 as [x] in t2] *)
+  | Spawn of term  (** [spawn t] *)
 
 and abstraction = pattern * term
 

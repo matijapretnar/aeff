@@ -1,0 +1,22 @@
+operation task :   int * [|int -> int|]
+operation result : int * int
+
+let boxed_func = [|fun a -> a+a|]
+
+let parallel_map f seznam = 
+    map awaitValue (
+        map (fun e -> 
+                promise (result (x,r) when x = e ->
+                    <<r>>
+                ) as result in
+                spawn(
+                    unbox f as [|f'|] in
+                    send result (e, (f' e))
+                );
+                result
+            )
+        seznam
+    )
+
+
+run parallel_map boxed_func [1;2;3;4;5]

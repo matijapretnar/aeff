@@ -48,6 +48,7 @@ let view_computation_redex = function
   | Interpreter.DoSignal -> "doSignal"
   | Interpreter.AwaitFulfill -> "awaitFulfill"
   | Interpreter.Unbox -> "unbox"
+  | Interpreter.Spawn -> "spawn"
 
 let rec view_computation_reduction = function
   | Interpreter.InterruptCtx red -> view_computation_reduction red
@@ -57,6 +58,7 @@ let rec view_computation_reduction = function
 
 let view_process_redex = function
   | Interpreter.RunSignal -> "runSignal"
+  | Interpreter.RunSpawn -> "runSpawn"
   | Interpreter.ParallelSignal1 -> "parallelSignal1"
   | Interpreter.ParallelSignal2 -> "parallelSignal2"
   | Interpreter.InterruptRun -> "interruptRun"

@@ -151,3 +151,20 @@
    (action
     (diff "select.aeff.ref" "select.aeff.out")))
 
+(rule
+ (deps
+  ../../src/aeff/aeff.exe
+  (source_tree .))
+   (target "spawnProcess.aeff.out")
+    (action
+     (with-outputs-to "%{target}"
+      (with-accepted-exit-codes
+       0
+       (run ../../src/aeff/aeff.exe --fixed-random-seed "./spawnProcess.aeff")))))
+
+(rule
+ (deps "spawnProcess.aeff.out")
+  (alias runtest)
+   (action
+    (diff "spawnProcess.aeff.ref" "spawnProcess.aeff.out")))
+
