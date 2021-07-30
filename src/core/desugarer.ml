@@ -8,7 +8,7 @@ type state = {
   ty_names : Ast.ty_name StringMap.t;
   ty_params : Ast.ty_param StringMap.t;
   variables : Ast.variable StringMap.t;
-  operations : Ast.operation StringMap.t;
+  operations : Ast.opsym StringMap.t;
   labels : Ast.label StringMap.t;
 }
 
@@ -109,7 +109,7 @@ let add_fresh_variables state vars =
   { state with variables = variables' }
 
 let add_operation state op =
-  let op' = Ast.Operation.fresh op in
+  let op' = Ast.OpSym.fresh op in
   (op', { state with operations = StringMap.add op op' state.operations })
 
 let rec desugar_expression state { it = term; Location.at = loc } =
@@ -212,7 +212,7 @@ and desugar_plain_computation ~loc state =
       let p'', cont'' = desugar_promise_abstraction ~loc state abs in
 
       match guard with
-      | None -> ([], Ast.Promise (k', op', (p', c'), p'', cont''))
+      | None -> ([], Ast.Operation (Promise (k', op', (p', c'), p''), cont''))
       | Some g ->
           let binds, g' = desugar_expression state'' g in
 
@@ -225,7 +225,8 @@ and desugar_plain_computation ~loc state =
           let c''' =
             List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds c''
           in
-          ([], Ast.Promise (Some k'', op', (p', c'''), p'', cont'')) )
+          ([], Ast.Operation (Promise (Some k'', op', (p', c'''), p''), cont''))
+      )
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in
@@ -233,7 +234,7 @@ and desugar_plain_computation ~loc state =
   | S.Send (op, t) ->
       let op' = lookup_operation ~loc state op in
       let binds, e = desugar_expression state t in
-      (binds, Ast.Out (op', e, Ast.Return (Ast.Tuple [])))
+      (binds, Ast.Operation (Ast.Signal (op', e), Ast.Return (Ast.Tuple [])))
   (* The remaining cases are expressions, which we list explicitly to catch any
      future changes. *)
   | ( S.Var _ | S.Const _ | S.Annotated _ | S.Tuple _ | S.Variant _ | S.Lambda _
@@ -349,7 +350,7 @@ let desugar_command state = function
   | Syntax.Operation (op, ty) ->
       let op', state' = add_operation state op in
       let ty' = desugar_ty state ty in
-      (state', Ast.Operation (op', ty'))
+      (state', Ast.OpSymDef (op', ty'))
 
 let add_external_variable x state =
   let x' = Ast.Variable.fresh x in

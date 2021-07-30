@@ -65,7 +65,7 @@ let execute_command state = function
   | Ast.TopDo comp ->
       let _ = Typechecker.infer state.typechecker comp in
       { state with top_computations = comp :: state.top_computations }
-  | Ast.Operation (op, ty) ->
+  | Ast.OpSymDef (op, ty) ->
       let typechecker_state' =
         Typechecker.add_operation state.typechecker op ty
       in

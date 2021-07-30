@@ -14,39 +14,37 @@ let initial_state =
 exception PatternMismatch
 
 type computation_redex =
-  | PromiseOut
-  | InReturn
-  | InOut
-  | InPromise
-  | InPromise'
+  | PromiseSignal
+  | InterruptReturn
+  | InterruptSignal
+  | InterruptPromise
+  | InterruptPromise'
   | Match
   | ApplyFun
   | DoReturn
-  | DoOut
-  | DoPromise
+  | DoSignal
   | AwaitFulfill
 
 type computation_reduction =
-  | PromiseCtx of computation_reduction
-  | InCtx of computation_reduction
-  | OutCtx of computation_reduction
+  | InterruptCtx of computation_reduction
+  | SignalCtx of computation_reduction
   | DoCtx of computation_reduction
   | ComputationRedex of computation_redex
 
 type process_redex =
-  | RunOut
-  | ParallelOut1
-  | ParallelOut2
-  | InRun
-  | InParallel
-  | InOut
-  | TopOut
+  | RunSignal
+  | ParallelSignal1
+  | ParallelSignal2
+  | InterruptRun
+  | InterruptParallel
+  | InterruptSignal
+  | TopSignal
 
 type process_reduction =
   | LeftCtx of process_reduction
   | RightCtx of process_reduction
-  | InProcCtx of process_reduction
-  | OutProcCtx of process_reduction
+  | InterruptProcCtx of process_reduction
+  | SignalProcCtx of process_reduction
   | RunCtx of computation_reduction
   | ProcessRedex of process_redex
 
@@ -122,64 +120,38 @@ let step_in_context step state redCtx ctx term =
 
 let rec step_computation state = function
   | Ast.Return _ -> []
-  | Ast.Out (op, expr, comp) ->
-      step_in_context step_computation state
-        (fun red -> OutCtx red)
-        (fun comp' -> Ast.Out (op, expr, comp'))
-        comp
-  | Ast.Promise (k, op, op_comp, p, comp) -> (
+  | Ast.Operation ((Ast.Promise (k, op, op_comp, p) as out), comp) -> (
       let comps' =
         step_in_context step_computation state
-          (fun red -> PromiseCtx red)
-          (fun comp' -> Ast.Promise (k, op, op_comp, p, comp'))
+          (fun red -> SignalCtx red)
+          (fun comp' -> Ast.Operation (out, comp'))
           comp
       in
       match comp with
-      | Ast.Out (op', expr', cont') ->
-          ( ComputationRedex PromiseOut,
-            Ast.Out (op', expr', Ast.Promise (k, op, op_comp, p, cont')) )
+      | Ast.Operation (Ast.Promise _, _) -> comps'
+      | Ast.Operation (out, cont') ->
+          ( ComputationRedex PromiseSignal,
+            Ast.Operation
+              (out, Ast.Operation (Ast.Promise (k, op, op_comp, p), cont')) )
           :: comps'
       | _ -> comps' )
-  | Ast.In (op, expr, comp) -> (
+  | Ast.Operation (out, comp) ->
+      step_in_context step_computation state
+        (fun red -> SignalCtx red)
+        (fun comp' -> Ast.Operation (out, comp'))
+        comp
+  | Ast.Interrupt (op, expr, comp) -> (
       let comps' =
         step_in_context step_computation state
-          (fun red -> InCtx red)
-          (fun comp' -> Ast.In (op, expr, comp'))
+          (fun red -> InterruptCtx red)
+          (fun comp' -> Ast.Interrupt (op, expr, comp'))
           comp
       in
       match comp with
       | Ast.Return expr ->
-          (ComputationRedex InReturn, Ast.Return expr) :: comps'
-      | Ast.Out (op', expr', cont') ->
-          ( ComputationRedex InOut,
-            Ast.Out (op', expr', Ast.In (op, expr, cont')) )
-          :: comps'
-      | Ast.Promise (k, op', (arg_pat, op_comp), p, comp) when op = op' ->
-          let subst = match_pattern_with_expression state arg_pat expr in
-          let comp' = substitute subst op_comp in
-
-          let p' = Ast.Variable.fresh "p'" in
-
-          let comp'' =
-            match k with
-            | None -> comp'
-            | Some k' ->
-                let f =
-                  Ast.Lambda
-                    ( Ast.PTuple [],
-                      Ast.Promise
-                        (k, op', (arg_pat, op_comp), p', Ast.Return (Ast.Var p'))
-                    )
-                in
-                substitute
-                  (match_pattern_with_expression state (Ast.PVar k') f)
-                  comp'
-          in
-          let comp' = Ast.Do (comp'', (Ast.PVar p, Ast.In (op, expr, comp))) in
-          (ComputationRedex InPromise, comp') :: comps'
-      | Ast.Promise (k, op', op_comp, p, comp) ->
-          ( ComputationRedex InPromise',
-            Ast.Promise (k, op', op_comp, p, Ast.In (op, expr, comp)) )
+          (ComputationRedex InterruptReturn, Ast.Return expr) :: comps'
+      | Ast.Operation (out, comp) ->
+          (ComputationRedex InterruptSignal, step_in_out state op expr comp out)
           :: comps'
       | _ -> comps' )
   | Ast.Match (expr, cases) ->
@@ -206,12 +178,9 @@ let rec step_computation state = function
           let pat, comp2' = comp2 in
           let subst = match_pattern_with_expression state pat expr in
           (ComputationRedex DoReturn, substitute subst comp2') :: comps1'
-      | Ast.Out (op, expr, comp1) ->
-          (ComputationRedex DoOut, Ast.Out (op, expr, Ast.Do (comp1, comp2)))
-          :: comps1'
-      | Ast.Promise (k, op, op_comp, pat, comp1) ->
-          ( ComputationRedex DoPromise,
-            Ast.Promise (k, op, op_comp, pat, Ast.Do (comp1, comp2)) )
+      | Ast.Operation (out, comp1') ->
+          ( ComputationRedex DoSignal,
+            Ast.Operation (out, Ast.Do (comp1', comp2)) )
           :: comps1'
       | _ -> comps1' )
   | Ast.Await (expr, (pat, comp)) -> (
@@ -221,6 +190,35 @@ let rec step_computation state = function
           [ (ComputationRedex AwaitFulfill, substitute subst comp) ]
       | _ -> [] )
 
+and step_in_out state op expr cont = function
+  | Ast.Signal (op', expr') ->
+      Ast.Operation (Ast.Signal (op', expr'), Ast.Interrupt (op, expr, cont))
+  | Ast.Promise (k, op', (arg_pat, op_comp), p) when op = op' ->
+      let subst = match_pattern_with_expression state arg_pat expr in
+      let comp' = substitute subst op_comp in
+
+      let p' = Ast.Variable.fresh "p'" in
+
+      let comp'' =
+        match k with
+        | None -> comp'
+        | Some k' ->
+            let f =
+              Ast.Lambda
+                ( Ast.PTuple [],
+                  Ast.Operation
+                    ( Ast.Promise (k, op', (arg_pat, op_comp), p'),
+                      Ast.Return (Ast.Var p') ) )
+            in
+            substitute
+              (match_pattern_with_expression state (Ast.PVar k') f)
+              comp'
+      in
+      Ast.Do (comp'', (Ast.PVar p, Ast.Interrupt (op, expr, cont)))
+  | Ast.Promise (k, op', op_comp, p) ->
+      Ast.Operation
+        (Ast.Promise (k, op', op_comp, p), Ast.Interrupt (op, expr, cont))
+
 let rec step_process state = function
   | Ast.Run comp -> (
       let comps' =
@@ -228,8 +226,9 @@ let rec step_process state = function
         |> List.map (fun (red, comp') -> (RunCtx red, Ast.Run comp'))
       in
       match comp with
-      | Ast.Out (op, expr, comp') ->
-          (ProcessRedex RunOut, Ast.OutProc (op, expr, Ast.Run comp')) :: comps'
+      | Ast.Operation (Ast.Signal (op, expr), comp') ->
+          (ProcessRedex RunSignal, Ast.SignalProc (op, expr, Ast.Run comp'))
+          :: comps'
       | _ -> comps' )
   | Ast.Parallel (proc1, proc2) ->
       let proc1_first =
@@ -240,10 +239,12 @@ let rec step_process state = function
             proc1
         in
         match proc1 with
-        | Ast.OutProc (op, expr, proc1') ->
-            ( ProcessRedex ParallelOut1,
-              Ast.OutProc
-                (op, expr, Ast.Parallel (proc1', Ast.InProc (op, expr, proc2)))
+        | Ast.SignalProc (op, expr, proc1') ->
+            ( ProcessRedex ParallelSignal1,
+              Ast.SignalProc
+                ( op,
+                  expr,
+                  Ast.Parallel (proc1', Ast.InterruptProc (op, expr, proc2)) )
             )
             :: procs'
         | _ -> procs'
@@ -255,42 +256,46 @@ let rec step_process state = function
             proc2
         in
         match proc2 with
-        | Ast.OutProc (op, expr, proc2') ->
-            ( ProcessRedex ParallelOut2,
-              Ast.OutProc
-                (op, expr, Ast.Parallel (Ast.InProc (op, expr, proc1), proc2'))
+        | Ast.SignalProc (op, expr, proc2') ->
+            ( ProcessRedex ParallelSignal2,
+              Ast.SignalProc
+                ( op,
+                  expr,
+                  Ast.Parallel (Ast.InterruptProc (op, expr, proc1), proc2') )
             )
             :: procs'
         | _ -> procs'
       in
       proc1_first @ proc2_first
-  | Ast.InProc (op, expr, proc) -> (
+  | Ast.InterruptProc (op, expr, proc) -> (
       let procs' =
         step_in_context step_process state
-          (fun red -> InProcCtx red)
-          (fun proc' -> Ast.InProc (op, expr, proc'))
+          (fun red -> InterruptProcCtx red)
+          (fun proc' -> Ast.InterruptProc (op, expr, proc'))
           proc
       in
       match proc with
       | Ast.Run comp ->
-          (ProcessRedex InRun, Ast.Run (Ast.In (op, expr, comp))) :: procs'
-      | Ast.Parallel (proc1, proc2) ->
-          ( ProcessRedex InParallel,
-            Ast.Parallel
-              (Ast.InProc (op, expr, proc1), Ast.InProc (op, expr, proc2)) )
+          (ProcessRedex InterruptRun, Ast.Run (Ast.Interrupt (op, expr, comp)))
           :: procs'
-      | Ast.OutProc (op', expr', proc') ->
-          ( ProcessRedex InOut,
-            Ast.OutProc (op', expr', Ast.InProc (op, expr, proc')) )
+      | Ast.Parallel (proc1, proc2) ->
+          ( ProcessRedex InterruptParallel,
+            Ast.Parallel
+              ( Ast.InterruptProc (op, expr, proc1),
+                Ast.InterruptProc (op, expr, proc2) ) )
+          :: procs'
+      | Ast.SignalProc (op', expr', proc') ->
+          ( ProcessRedex InterruptSignal,
+            Ast.SignalProc (op', expr', Ast.InterruptProc (op, expr, proc')) )
           :: procs'
       | _ -> procs' )
-  | Ast.OutProc (op, expr, proc) ->
+  | Ast.SignalProc (op, expr, proc) ->
       step_in_context step_process state
-        (fun red -> OutProcCtx red)
-        (fun proc' -> Ast.OutProc (op, expr, proc'))
+        (fun red -> SignalProcCtx red)
+        (fun proc' -> Ast.SignalProc (op, expr, proc'))
         proc
 
-let incoming_operation proc op expr = Ast.InProc (op, expr, proc)
+let incoming_operation proc op expr = Ast.InterruptProc (op, expr, proc)
 
 let eval_top_let state x expr =
   { state with variables = Ast.VariableMap.add x expr state.variables }
@@ -302,7 +307,7 @@ let add_external_function x def state =
   }
 
 type top_step =
-  | TopOut of Ast.operation * Ast.expression * Ast.process
+  | TopSignal of Ast.opsym * Ast.expression * Ast.process
   | Step of Ast.process
 
 let top_steps state proc =
@@ -310,6 +315,6 @@ let top_steps state proc =
     step_process state proc |> List.map (fun (red, proc) -> (red, Step proc))
   in
   match proc with
-  | Ast.OutProc (op, expr, proc) ->
-      (ProcessRedex TopOut, TopOut (op, expr, proc)) :: steps
+  | Ast.SignalProc (op, expr, proc) ->
+      (ProcessRedex TopSignal, TopSignal (op, expr, proc)) :: steps
   | _ -> steps

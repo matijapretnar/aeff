@@ -4,8 +4,8 @@ module Interpreter = Core.Interpreter
 module Loader = Core.Loader
 
 let make_top_step = function
-  | Interpreter.TopOut (op, expr, proc) ->
-      Format.printf "↑ %t %t@." (Ast.Operation.print op)
+  | Interpreter.TopSignal (op, expr, proc) ->
+      Format.printf "↑ %t %t@." (Ast.OpSym.print op)
         (Ast.print_expression expr);
       proc
   | Interpreter.Step proc -> proc

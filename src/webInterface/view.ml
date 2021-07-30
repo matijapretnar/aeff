@@ -37,39 +37,37 @@ let select ?(a = []) empty_description msg describe_choice selected choices =
 let nil = text ""
 
 let view_computation_redex = function
-  | Interpreter.PromiseOut -> "promiseOut"
-  | Interpreter.InReturn -> "inReturn"
-  | Interpreter.InOut -> "inOut"
-  | Interpreter.InPromise -> "inPromise"
-  | Interpreter.InPromise' -> "inPromise"
+  | Interpreter.PromiseSignal -> "promiseSignal"
+  | Interpreter.InterruptReturn -> "interruptReturn"
+  | Interpreter.InterruptSignal -> "interruptSignal"
+  | Interpreter.InterruptPromise -> "interruptPromise"
+  | Interpreter.InterruptPromise' -> "interruptPromise"
   | Interpreter.Match -> "match"
   | Interpreter.ApplyFun -> "applyFun"
   | Interpreter.DoReturn -> "doReturn"
-  | Interpreter.DoOut -> "doOut"
-  | Interpreter.DoPromise -> "doPromise"
+  | Interpreter.DoSignal -> "doSignal"
   | Interpreter.AwaitFulfill -> "awaitFulfill"
 
 let rec view_computation_reduction = function
-  | Interpreter.PromiseCtx red -> view_computation_reduction red
-  | Interpreter.InCtx red -> view_computation_reduction red
-  | Interpreter.OutCtx red -> view_computation_reduction red
+  | Interpreter.InterruptCtx red -> view_computation_reduction red
+  | Interpreter.SignalCtx red -> view_computation_reduction red
   | Interpreter.DoCtx red -> view_computation_reduction red
   | Interpreter.ComputationRedex redex -> view_computation_redex redex
 
 let view_process_redex = function
-  | Interpreter.RunOut -> "runOut"
-  | Interpreter.ParallelOut1 -> "parallelOut1"
-  | Interpreter.ParallelOut2 -> "parallelOut2"
-  | Interpreter.InRun -> "inRun"
-  | Interpreter.InParallel -> "inParallel"
-  | Interpreter.InOut -> "inOut"
-  | Interpreter.TopOut -> "topOut"
+  | Interpreter.RunSignal -> "runSignal"
+  | Interpreter.ParallelSignal1 -> "parallelSignal1"
+  | Interpreter.ParallelSignal2 -> "parallelSignal2"
+  | Interpreter.InterruptRun -> "interruptRun"
+  | Interpreter.InterruptParallel -> "interruptParallel"
+  | Interpreter.InterruptSignal -> "interruptSignal"
+  | Interpreter.TopSignal -> "topSignal"
 
 let rec view_process_reduction = function
   | Interpreter.LeftCtx red -> view_process_reduction red
   | Interpreter.RightCtx red -> view_process_reduction red
-  | Interpreter.InProcCtx red -> view_process_reduction red
-  | Interpreter.OutProcCtx red -> view_process_reduction red
+  | Interpreter.InterruptProcCtx red -> view_process_reduction red
+  | Interpreter.SignalProcCtx red -> view_process_reduction red
   | Interpreter.RunCtx red -> view_computation_reduction red
   | Interpreter.ProcessRedex redex -> view_process_redex redex
 
@@ -209,7 +207,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
                       Ast.string_of_operation
                       (fun operation ->
                         Some operation = model.interrupt_operation)
-                      (Ast.OperationMap.bindings code.operations |> List.map fst);
+                      (Ast.OpSymMap.bindings code.operations |> List.map fst);
                   ];
                 elt "p" ~a:[ class_ "control" ]
                   [
@@ -237,7 +235,7 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
                        ~a:
                          [
                            class_ "button is-info";
-                           onclick (fun _ -> Model.Interrupt);
+                           onclick (fun _ -> Model.SendInterrupt);
                            disabled dis;
                          ]
                        [ text "↓" ]);
@@ -259,11 +257,11 @@ let view_steps (model : Model.model) (code : Model.loaded_code) steps =
 let view_history ops =
   let view_operation op =
     ( match op with
-    | Model.In (op, expr) ->
-        Format.fprintf Format.str_formatter "↓ %t %t" (Ast.Operation.print op)
+    | Model.Interrupt (op, expr) ->
+        Format.fprintf Format.str_formatter "↓ %t %t" (Ast.OpSym.print op)
           (Ast.print_expression expr)
-    | Model.Out (op, expr) ->
-        Format.fprintf Format.str_formatter "↑ %t %t" (Ast.Operation.print op)
+    | Model.Signal (op, expr) ->
+        Format.fprintf Format.str_formatter "↑ %t %t" (Ast.OpSym.print op)
           (Ast.print_expression expr) );
     elt "a" ~a:[ class_ "panel-block" ] [ text (Format.flush_str_formatter ()) ]
   in

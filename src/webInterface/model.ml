@@ -4,8 +4,8 @@ module Interpreter = Core.Interpreter
 module Loader = Core.Loader
 
 type operation =
-  | In of Ast.operation * Ast.expression
-  | Out of Ast.operation * Ast.expression
+  | Interrupt of Ast.opsym * Ast.expression
+  | Signal of Ast.opsym * Ast.expression
 
 type snapshot = { process : Ast.process; operations : operation list }
 
@@ -13,8 +13,8 @@ type loaded_code = {
   snapshot : snapshot;
   history : snapshot list;
   interpreter_state : Interpreter.state;
-  operations : Ast.ty Ast.OperationMap.t;
-  parse_payload : Ast.operation -> string -> Ast.expression;
+  operations : Ast.ty Ast.OpSymMap.t;
+  parse_payload : Ast.opsym -> string -> Ast.expression;
 }
 
 type model = {
@@ -23,7 +23,7 @@ type model = {
   loaded_code : (loaded_code, string) result;
   selected_reduction : int option;
   random_step_size : int;
-  interrupt_operation : Ast.operation option;
+  interrupt_operation : Ast.opsym option;
   unparsed_interrupt_payload : string;
   parsed_interrupt_payload : (Ast.expression, string) result;
 }
@@ -37,9 +37,9 @@ type msg =
   | Step of Interpreter.top_step
   | RandomStep
   | ChangeRandomStepSize of int
-  | ChangeInterruptOperation of Ast.operation
+  | ChangeInterruptOperation of Ast.opsym
   | ParseInterruptPayload of string
-  | Interrupt
+  | SendInterrupt
   | Back
 
 let init =
@@ -56,8 +56,8 @@ let init =
 
 let step_snapshot snapshot = function
   | Interpreter.Step proc' -> { snapshot with process = proc' }
-  | Interpreter.TopOut (op, expr, proc') ->
-      { process = proc'; operations = Out (op, expr) :: snapshot.operations }
+  | Interpreter.TopSignal (op, expr, proc') ->
+      { process = proc'; operations = Signal (op, expr) :: snapshot.operations }
 
 let apply_to_code_if_loaded f model =
   match model.loaded_code with
@@ -76,7 +76,10 @@ let step_code step code =
 let interrupt op expr code =
   let proc' = Interpreter.incoming_operation code.snapshot.process op expr in
   move_to_snapshot
-    { process = proc'; operations = In (op, expr) :: code.snapshot.operations }
+    {
+      process = proc';
+      operations = Interrupt (op, expr) :: code.snapshot.operations;
+    }
     code
 
 let rec make_random_steps num_steps code =
@@ -145,7 +148,7 @@ let update model = function
           let model = { model with unparsed_interrupt_payload = input } in
           { model with parsed_interrupt_payload = parse_payload code op input }
       | _, _ -> model )
-  | Interrupt -> (
+  | SendInterrupt -> (
       match (model.interrupt_operation, model.parsed_interrupt_payload) with
       | Some op, Ok expr -> apply_to_code_if_loaded (interrupt op expr) model
       | _, _ -> model )

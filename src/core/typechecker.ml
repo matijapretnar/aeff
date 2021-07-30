@@ -2,14 +2,14 @@ open Utils
 
 type state = {
   variables : (Ast.ty_param list * Ast.ty) Ast.VariableMap.t;
-  operations : Ast.ty Ast.OperationMap.t;
+  operations : Ast.ty Ast.OpSymMap.t;
   type_definitions : (Ast.ty_param list * Ast.ty_def) Ast.TyNameMap.t;
 }
 
 let initial_state =
   {
     variables = Ast.VariableMap.empty;
-    operations = Ast.OperationMap.empty;
+    operations = Ast.OpSymMap.empty;
     type_definitions =
       ( Ast.TyNameMap.empty
       |> Ast.TyNameMap.add Ast.bool_ty_name
@@ -158,8 +158,9 @@ and infer_computation state = function
       and t2, eqs2 = infer_expression state e2
       and a = fresh_ty () in
       (a, ((t1, Ast.TyArrow (t2, a)) :: eqs1) @ eqs2)
-  | Ast.Out (op, expr, comp) | Ast.In (op, expr, comp) ->
-      let ty1 = Ast.OperationMap.find op state.operations
+  | Ast.Operation (Ast.Signal (op, expr), comp) | Ast.Interrupt (op, expr, comp)
+    ->
+      let ty1 = Ast.OpSymMap.find op state.operations
       and ty2, eqs1 = infer_expression state expr
       and ty3, eqs2 = infer_computation state comp in
       (ty3, ((ty1, ty2) :: eqs1) @ eqs2)
@@ -174,9 +175,9 @@ and infer_computation state = function
         ((ty1, ty1') :: (ty2, ty2') :: eqs') @ eqs
       in
       (ty2, List.fold_left fold eqs cases)
-  | Ast.Promise (k, op, abs, p, comp) ->
+  | Ast.Operation (Ast.Promise (k, op, abs, p), comp) ->
       let ty_k = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
-      let ty1 = Ast.OperationMap.find op state.operations in
+      let ty1 = Ast.OpSymMap.find op state.operations in
 
       let state' =
         match k with
@@ -274,9 +275,9 @@ let add_external_function x ty_sch state =
   { state with variables = Ast.VariableMap.add x ty_sch state.variables }
 
 let add_operation state op ty =
-  Format.printf "@[operation %t : %t@]@." (Ast.Operation.print op)
+  Format.printf "@[operation %t : %t@]@." (Ast.OpSym.print op)
     (Ast.print_ty_scheme ([], ty));
-  { state with operations = Ast.OperationMap.add op ty state.operations }
+  { state with operations = Ast.OpSymMap.add op ty state.operations }
 
 let add_top_definition state x expr =
   let ty, eqs = infer_expression state expr in
@@ -298,6 +299,6 @@ let add_type_definitions state ty_defs =
     state ty_defs
 
 let check_payload state op expr =
-  let ty1 = Ast.OperationMap.find op state.operations
+  let ty1 = Ast.OpSymMap.find op state.operations
   and ty2, eqs = infer_expression state expr in
   unify state ((ty1, ty2) :: eqs)

@@ -116,13 +116,13 @@ module Variable = Symbol.Make ()
 
 module Label = Symbol.Make ()
 
-module Operation = Symbol.Make ()
+module OpSym = Symbol.Make ()
 
 type variable = Variable.t
 
 type label = Label.t
 
-type operation = Operation.t
+type opsym = OpSym.t
 
 let nil_label = Label.fresh Syntax.nil_label
 
@@ -153,16 +153,18 @@ and computation =
   | Do of computation * abstraction
   | Match of expression * abstraction list
   | Apply of expression * expression
-  | Out of operation * expression * computation
-  | In of operation * expression * computation
-  | Promise of
-      variable option * operation * abstraction * variable * computation
+  | Operation of operation * computation
+  | Interrupt of opsym * expression * computation
   | Await of expression * abstraction
+
+and operation =
+  | Signal of opsym * expression
+  | Promise of variable option * opsym * abstraction * variable
 
 and abstraction = pattern * computation
 
 module VariableMap = Map.Make (Variable)
-module OperationMap = Map.Make (Operation)
+module OpSymMap = Map.Make (OpSym)
 
 let rec remove_pattern_bound_variables subst = function
   | PVar x -> VariableMap.remove x subst
@@ -221,11 +223,11 @@ and refresh_computation vars = function
         (refresh_expression vars expr, List.map (refresh_abstraction vars) cases)
   | Apply (expr1, expr2) ->
       Apply (refresh_expression vars expr1, refresh_expression vars expr2)
-  | Out (op, expr, comp) ->
-      Out (op, refresh_expression vars expr, refresh_computation vars comp)
-  | In (op, expr, comp) ->
-      In (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Promise (k, op, abs, p, comp) ->
+  | Operation (Signal (op, expr), comp) ->
+      Operation
+        ( Signal (op, refresh_expression vars expr),
+          refresh_computation vars comp )
+  | Operation (Promise (k, op, abs, p), comp) ->
       let p' = Variable.refresh p in
       let k', vars' =
         match k with
@@ -234,12 +236,11 @@ and refresh_computation vars = function
             let k''' = Variable.refresh k'' in
             (Some k''', (k'', k''') :: vars)
       in
-      Promise
-        ( k',
-          op,
-          refresh_abstraction vars' abs,
-          p',
+      Operation
+        ( Promise (k', op, refresh_abstraction vars' abs, p'),
           refresh_computation ((p, p') :: vars) comp )
+  | Interrupt (op, expr, comp) ->
+      Interrupt (op, refresh_expression vars expr, refresh_computation vars comp)
   | Await (expr, abs) ->
       Await (refresh_expression vars expr, refresh_abstraction vars abs)
 
@@ -271,20 +272,18 @@ and substitute_computation subst = function
   | Apply (expr1, expr2) ->
       Apply
         (substitute_expression subst expr1, substitute_expression subst expr2)
-  | Out (op, expr, comp) ->
-      Out
-        (op, substitute_expression subst expr, substitute_computation subst comp)
-  | In (op, expr, comp) ->
-      In
-        (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Promise (k, op, abs, p, comp) ->
+  | Operation (Signal (op, expr), comp) ->
+      Operation
+        ( Signal (op, substitute_expression subst expr),
+          substitute_computation subst comp )
+  | Operation (Promise (k, op, abs, p), comp) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
-      Promise
-        ( k,
-          op,
-          substitute_abstraction subst abs,
-          p,
+      Operation
+        ( Promise (k, op, substitute_abstraction subst abs, p),
           substitute_computation subst' comp )
+  | Interrupt (op, expr, comp) ->
+      Interrupt
+        (op, substitute_expression subst expr, substitute_computation subst comp)
   | Await (expr, abs) ->
       Await (substitute_expression subst expr, substitute_abstraction subst abs)
 
@@ -295,14 +294,14 @@ and substitute_abstraction subst (pat, comp) =
 type process =
   | Run of computation
   | Parallel of process * process
-  | OutProc of operation * expression * process
-  | InProc of operation * expression * process
+  | SignalProc of opsym * expression * process
+  | InterruptProc of opsym * expression * process
 
 type ty_def = TySum of (label * ty option) list | TyInline of ty
 
 type command =
   | TyDef of (ty_param list * ty_name * ty_def) list
-  | Operation of operation * ty
+  | OpSymDef of opsym * ty
   | TopLet of variable * expression
   | TopDo of computation
 
@@ -359,19 +358,19 @@ and print_computation ?max_level c ppf =
       print ~at_level:1 "@[%t@ %t@]"
         (print_expression ~max_level:1 e1)
         (print_expression ~max_level:0 e2)
-  | In (op, e, c) ->
-      print "↓%t(@[<hv>%t,@ %t@])" (Operation.print op) (print_expression e)
+  | Interrupt (op, e, c) ->
+      print "↓%t(@[<hv>%t,@ %t@])" (OpSym.print op) (print_expression e)
         (print_computation c)
-  | Out (op, e, c) ->
-      print "↑%t(@[<hv>%t,@ %t@])" (Operation.print op) (print_expression e)
+  | Operation (Signal (op, e), c) ->
+      print "↑%t(@[<hv>%t,@ %t@])" (OpSym.print op) (print_expression e)
         (print_computation c)
-  | Promise (None, op, (p1, c1), p2, c2) ->
+  | Operation (Promise (None, op, (p1, c1), p2), c2) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
-        (Operation.print op) (print_pattern p1) (print_computation c1)
+        (OpSym.print op) (print_pattern p1) (print_computation c1)
         (Variable.print p2) (print_computation c2)
-  | Promise (Some k, op, (p1, c1), p2, c2) ->
+  | Operation (Promise (Some k, op, (p1, c1), p2), c2) ->
       print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
-        (Operation.print op) (print_pattern p1) (Variable.print k)
+        (OpSym.print op) (print_pattern p1) (Variable.print k)
         (print_computation c1) (Variable.print p2) (print_computation c2)
   | Await (e, (p, c)) ->
       print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]"
@@ -391,15 +390,15 @@ let rec print_process ?max_level proc ppf =
   | Run comp -> print ~at_level:1 "run %t" (print_computation ~max_level:0 comp)
   | Parallel (proc1, proc2) ->
       print "@[<hv>%t@ || @ %t@]" (print_process proc1) (print_process proc2)
-  | InProc (op, expr, proc) ->
-      print "↓%t(@[<hv>%t,@ %t@])" (Operation.print op)
-        (print_expression expr) (print_process proc)
-  | OutProc (op, expr, proc) ->
-      print "↑%t(@[<hv>%t,@ %t@])" (Operation.print op)
-        (print_expression expr) (print_process proc)
+  | InterruptProc (op, expr, proc) ->
+      print "↓%t(@[<hv>%t,@ %t@])" (OpSym.print op) (print_expression expr)
+        (print_process proc)
+  | SignalProc (op, expr, proc) ->
+      print "↑%t(@[<hv>%t,@ %t@])" (OpSym.print op) (print_expression expr)
+        (print_process proc)
 
 let string_of_operation op =
-  Operation.print op Format.str_formatter;
+  OpSym.print op Format.str_formatter;
   Format.flush_str_formatter ()
 
 let string_of_expression e =
