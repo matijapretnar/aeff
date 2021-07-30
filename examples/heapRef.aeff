@@ -25,14 +25,14 @@ let allocHeap heap v =
 let heapRunner () =
     let heap = ref empty in
     let rec awaitLookup () =
-        promise (lookupReq (l, callId) |->
+        promise (lookupReq (l, callId) ->
             let v = lookupHeap !heap l in
             send lookupRes (v, callId);
             awaitLookup ()
         ) as p in return p
     in
     let rec awaitUpdate () =
-        promise (updateReq (l, v, callId) |->
+        promise (updateReq (l, v, callId) ->
             let heap' = updateHeap !heap l v in
             send updateRes callId;
             heap := heap';
@@ -40,7 +40,7 @@ let heapRunner () =
         ) as p in return p
     in
     let rec awaitAlloc () =
-        promise (allocReq (v, callId) |->
+        promise (allocReq (v, callId) ->
             let heap', l = allocHeap !heap v in
             send allocRes (l, callId);
             heap := heap';
@@ -55,7 +55,7 @@ let lookup callCounter l =
     let callNo = !callCounter in
     send lookupReq (l, callNo);
     callCounter := callNo + 1;
-    promise (lookupRes (v, callNo') when callNo = callNo' |->
+    promise (lookupRes (v, callNo') when callNo = callNo' ->
         return <<v>>
     ) as p in awaitValue p
 
@@ -63,7 +63,7 @@ let update callCounter l v =
     let callNo = !callCounter in
     send updateReq (l, v, callNo);
     callCounter := callNo + 1;
-    promise (updateRes (callNo') when callNo = callNo' |->
+    promise (updateRes (callNo') when callNo = callNo' ->
         return <<()>>
     ) as p in awaitValue p
 
@@ -71,7 +71,7 @@ let alloc callCounter v =
     let callNo = !callCounter in
     send allocReq (v, callNo);
     callCounter := callNo + 1;
-    promise (allocRes (l, callNo') when callNo = callNo' |->
+    promise (allocRes (l, callNo') when callNo = callNo' ->
         return <<l>>
     ) as p in awaitValue p
 

@@ -17,7 +17,7 @@
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION WHEN
-%token AWAIT UNTIL PROMISE MAPSTO SEND
+%token AWAIT UNTIL PROMISE SEND
 %token RUN LET REC AND IN OPERATION
 %token FUN BAR BARBAR
 %token IF THEN ELSE
@@ -81,13 +81,13 @@ plain_term:
     { Match (t, cases) }
   | FUNCTION cases = cases(case) (* END *)
     { Function cases }
-  | FUN t = lambdas1(MAPSTO)
+  | FUN t = lambdas1(ARROW)
     { t.it }
   | LET def = let_def IN t2 = term
     { let (p, t1) = def in Let (p, t1, t2) }
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
-  | PROMISE LPAREN op = operation p1 = pattern k = option(ident) g = guard MAPSTO t1 = term RPAREN AS p2 = pattern IN t2 = term
+  | PROMISE LPAREN op = operation p1 = pattern k = option(ident) g = guard ARROW t1 = term RPAREN AS p2 = pattern IN t2 = term
     { Promise (k, op, (p1, g, t1), (p2, t2)) }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
@@ -198,7 +198,7 @@ const:
     { Const.of_float f }
 
 case:
-  | p = pattern MAPSTO t = term
+  | p = pattern ARROW t = term
     { (p, t) }
 
 guard:

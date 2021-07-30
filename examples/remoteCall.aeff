@@ -3,15 +3,15 @@ operation result : int * int
 
 let naiveCallWith x =
     send call x;
-    promise (result y |-> return <<y>>) as p in
-    fun () |-> return awaitValue p
+    promise (result y -> return <<y>>) as p in
+    fun () -> return awaitValue p
 
 let callWith callCounter =
-    fun x |->
+    fun x ->
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        promise (result (y, callNo') when callNo = callNo' |->
+        promise (result (y, callNo') when callNo = callNo' ->
             return <<y>>
         ) as p in
         let valueThunk () = awaitValue p in
@@ -19,7 +19,7 @@ let callWith callCounter =
 
 let remote f =
     let rec loop () =
-        promise (call (x, callNo) |->
+        promise (call (x, callNo) ->
             let y = f x in
             send result (y, callNo);
             loop ()
@@ -34,4 +34,4 @@ run
     return ((yt () * yt ()) + (zt () * zt ()))
 
 run
-    remote (fun x |-> 4 * (5 * (6 * x)))
+    remote (fun x -> 4 * (5 * (6 * x)))

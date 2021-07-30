@@ -2,13 +2,13 @@ operation question : unit -> int
 operation answer : int
 
 let get_answer f =
-  promise (answer x |-> <<x>>)
+  promise (answer x -> <<x>>)
   as result in
   send question f;
   result
 
 run
-  let r = get_answer (fun () |-> 3 + 3) in
+  let r = get_answer (fun () -> 3 + 3) in
   let y = 1 + 1 in
   let z = y + y in
   let w = y + z in
@@ -16,7 +16,7 @@ run
   u
 
 run
-  promise (question f |->
+  promise (question f ->
     let y = f () in
     send answer y;
     return <<()>>

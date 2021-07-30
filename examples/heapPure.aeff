@@ -27,16 +27,16 @@ let allocHeap heap v =
   (l, v) :: heap, l
 
 let rec heapRunner heap =
-    promise (opReq (reqPayload, callNo) |->
+    promise (opReq (reqPayload, callNo) ->
         let heap', resPayload =
             match reqPayload with
-            | LookupReq l |->
+            | LookupReq l ->
                 let v = lookupHeap heap l in
                 return (heap, LookupRes v)
-            | UpdateReq (l, v) |->
+            | UpdateReq (l, v) ->
                 let heap' = updateHeap heap l v in
                 return (heap', UpdateRes ())
-            | AllocReq v |->
+            | AllocReq v ->
                 let heap', l = allocHeap heap v in
                 return (heap', AllocRes l)
         in
@@ -49,16 +49,16 @@ let callWith callCounter x =
     let callNo = !callCounter in
     send opReq (x, callNo);
     callCounter := callNo + 1;
-    promise (opRes (y, callNo') when callNo = callNo' |->
+    promise (opRes (y, callNo') when callNo = callNo' ->
         return <<y>>
     ) as p in awaitValue p
 
 let lookup callCounter l =
-    match callWith callCounter (LookupReq l) with LookupRes v |-> return v
+    match callWith callCounter (LookupReq l) with LookupRes v -> return v
 let update callCounter l v =
-    match callWith callCounter (UpdateReq (l, v)) with UpdateRes () |-> return ()
+    match callWith callCounter (UpdateReq (l, v)) with UpdateRes () -> return ()
 let alloc callCounter v =
-    match callWith callCounter (AllocReq v) with AllocRes l |-> return l
+    match callWith callCounter (AllocReq v) with AllocRes l -> return l
 
 run
     let callCounter = ref 0 in

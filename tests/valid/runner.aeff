@@ -3,7 +3,7 @@ operation randomRes : int * int
 
 let lcgRunner modulus a c seed =
     let rec loop seed =
-        promise (randomReq callNo |->
+        promise (randomReq callNo ->
             let seed' = (a * seed + c) mod modulus in
             send randomRes (callNo, seed);
             loop seed'
@@ -15,7 +15,7 @@ let randomDigit callCounter =
     let callNo = !callCounter in
     send randomReq callNo;
     callCounter := callNo + 1;
-    promise (randomRes (callNo', seed) when callNo = callNo' |->
+    promise (randomRes (callNo', seed) when callNo = callNo' ->
         return <<seed mod 10>>
     ) as p in
     awaitValue p

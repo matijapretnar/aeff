@@ -112,7 +112,6 @@ rule token = parse
   | "||"                { BARBAR }
   | ';'                 { SEMI }
   | "->"                { ARROW }
-  | "|->"               { MAPSTO }
   | '='                 { EQUAL }
   | '*'                 { STAR }
   | '+'                 { PLUS }

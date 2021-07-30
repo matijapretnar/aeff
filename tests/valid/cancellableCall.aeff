@@ -4,11 +4,11 @@ operation cancel : int
 operation dummy : empty
 
 let callWith callCounter =
-    fun x |->
+    fun x ->
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        promise (result (y, callNo') when callNo = callNo' |->
+        promise (result (y, callNo') when callNo = callNo' ->
             return <<y>>
         ) as p in
         let valueThunk () = awaitValue p in
@@ -17,8 +17,8 @@ let callWith callCounter =
         return (valueThunk, cancelThunk, changeMind)
 
 let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' when callNo = callNo'|->
-        promise (dummy empty |-> return <<empty>>) as dummyPromise in
+    promise (cancel callNo' when callNo = callNo'->
+        promise (dummy empty -> return <<empty>>) as dummyPromise in
         runBeforeStall ();
         awaitValue dummyPromise;
         awaitCancel callNo runBeforeStall
@@ -26,7 +26,7 @@ let rec awaitCancel callNo runBeforeStall =
 
 let remote f =
     let rec loop () =
-        promise (call (x, callNo) |->
+        promise (call (x, callNo) ->
             awaitCancel callNo loop;
             let y = f x in
             send result (y, callNo);
@@ -38,25 +38,25 @@ let remote f =
 let remoteCallReInvoker () =
     let callsToReInvoke = ref [] in
     let rec reInvokerCall () =
-        promise (call (x,callNo) |->
+        promise (call (x,callNo) ->
             callsToReInvoke := (x, callNo) :: !callsToReInvoke;
             reInvokerCall ()
         ) as _ in return <<()>>
     in
     let rec reInvokerResult () =
-        promise (result (y, callNo) |->
-            callsToReInvoke := filter (fun (_, callNo') |-> callNo <> callNo') !callsToReInvoke;
+        promise (result (y, callNo) ->
+            callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
             reInvokerResult ()
         ) as _ in return <<()>>
     in
     let rec reInvokerCancel () =
         let rec reInvokerWrapper calls =
             match calls with
-            | [] |-> return ()
-            | (x, callNo) :: calls |-> send call (x, callNo); reInvokerWrapper calls
+            | [] -> return ()
+            | (x, callNo) :: calls -> send call (x, callNo); reInvokerWrapper calls
         in
-        promise (cancel callNo |->
-            callsToReInvoke := filter (fun (_, callNo') |-> callNo <> callNo') !callsToReInvoke;
+        promise (cancel callNo ->
+            callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
             reInvokerWrapper (reverse !callsToReInvoke);
             reInvokerCancel ()
         ) as _ in return <<()>>
@@ -78,4 +78,4 @@ run
     remoteCallReInvoker ()
 
 run
-    remote (fun x |-> 4 * (5 * (6 * x)))
+    remote (fun x -> 4 * (5 * (6 * x)))

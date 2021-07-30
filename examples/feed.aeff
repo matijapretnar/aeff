@@ -12,12 +12,12 @@ let client () =
     let currentItem = ref 0 in
 
     send batchSizeRequest ();
-    promise (batchSizeResponse batchSize |-> return <<batchSize>>) as batchSizePromise in
+    promise (batchSizeResponse batchSize -> return <<batchSize>>) as batchSizePromise in
 
     let requestNewData offset =
         requestInProgress := true;
         send request offset;
-        promise (response newBatch |->
+        promise (response newBatch ->
             cachedData := !cachedData @ newBatch;
             requestInProgress := false;
             return <<()>>)
@@ -26,7 +26,7 @@ let client () =
     in
 
     let rec clientLoop batchSize =
-        promise (nextItem () |->
+        promise (nextItem () ->
             let cachedSize = length !cachedData in
             (if (!currentItem > cachedSize - batchSize / 2) && (not !requestInProgress) then
                  requestNewData (cachedSize + 1)
@@ -47,15 +47,15 @@ let client () =
 
 let server batchSize =
     let rec waitForBatchSize () =
-        promise (batchSizeRequest () |->
+        promise (batchSizeRequest () ->
             send batchSizeResponse batchSize;
             waitForBatchSize ())
         as p in
         return p
     in
     let rec waitForRequest () =
-        promise (request offset |->
-            let payload = map (fun x |-> 10 * x) (range offset (offset + batchSize - 1)) in
+        promise (request offset ->
+            let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
             send response payload;
             waitForRequest ())
         as p in
