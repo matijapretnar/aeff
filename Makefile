@@ -10,10 +10,7 @@ release: format
 clean:
 	dune clean
 
-generate_tests: 
-	dune build @generate_tests --auto-promote
+test:
+	dune test
 
-test: generate_tests
-	dune runtest
-
-.PHONY: default format release clean generate_tests test
+.PHONY: default format release clean test
