@@ -805,19 +805,19 @@
   ↑ randomReq 0
   ↑ randomRes (0, 1)
   ↑ randomReq 1
-  ↑ randomRes (1, 436)
+  ↑ randomRes (1, 656)
   ↑ randomReq 2
-  ↑ randomRes (2, 281)
+  ↑ randomRes (2, 607)
   ↑ randomReq 3
-  ↑ randomRes (3, 10)
+  ↑ randomRes (3, 1206)
   The process has terminated in the configuration:
-  run (return (1, 6, 1, 0))
+  run (return (1, 6, 7, 6))
   || 
   run promise (randomReq callNo ↦
                let seed' =
-                  let b = let b = (+) (603, 89) in (*) (567, b) in
+                  let b = let b = (*) (567, 255) in (+) (b, 89) in
                   (mod) (b, 1234) in
-               ↑randomRes((callNo, 603), return ()); (rec loop ...) seed')
+               ↑randomRes((callNo, 255), return ()); (rec loop ...) seed')
       as p in
       return p
   ======================================================================

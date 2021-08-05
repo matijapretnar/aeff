@@ -1,5 +1,4 @@
 open Utils
-module Const = Language.Const
 
 type ty_name = string
 
@@ -19,14 +18,14 @@ let empty_ty_name = "empty"
 
 let ref_ty_name = "ref"
 
-type 'a located = { it : 'a; at : Location.t }
+type 'a annotated = { it : 'a; at : Location.t }
 
 type ty_param = string
 
-type ty = plain_ty located
+type ty = plain_ty annotated
 
 and plain_ty =
-  | TyConst of Const.ty
+  | TyConst of Language.Const.ty
   | TyApply of ty_name * ty list  (** [(ty1, ty2, ..., tyn) type_name] *)
   | TyParam of ty_param  (** ['a] *)
   | TyArrow of ty * ty  (** [ty1 -> ty2] *)
@@ -45,7 +44,7 @@ let nil_label = Language.Ast.nil_label_string
 
 let cons_label = Language.Ast.cons_label_string
 
-type pattern = plain_pattern located
+type pattern = plain_pattern annotated
 
 and plain_pattern =
   | PVar of variable
@@ -53,14 +52,14 @@ and plain_pattern =
   | PAs of pattern * variable
   | PTuple of pattern list
   | PVariant of label * pattern option
-  | PConst of Const.t
+  | PConst of Language.Const.t
   | PNonbinding
 
-type term = plain_term located
+type term = plain_term annotated
 
 and plain_term =
   | Var of variable  (** variables *)
-  | Const of Const.t  (** integers, strings, booleans, and floats *)
+  | Const of Language.Const.t  (** integers, strings, booleans, and floats *)
   | Annotated of term * ty
   | Tuple of term list  (** [(t1, t2, ..., tn)] *)
   | Variant of label * term option  (** [Label] or [Label t] *)
@@ -90,7 +89,9 @@ type ty_def =
       (** [Label1 of ty1 | Label2 of ty2 | ... | Labeln of tyn | Label' | Label''] *)
   | TyInline of ty  (** [ty] *)
 
-type command =
+type command = plain_command annotated
+
+and plain_command =
   | TyDef of (ty_param list * ty_name * ty_def) list
       (** [type ('a...1) t1 = def1 and ... and ('a...n) tn = defn] *)
   | Operation of operation * ty  (** [operation op : ty] *)

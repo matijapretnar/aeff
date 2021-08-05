@@ -1,7 +1,6 @@
 %{
-  open Syntax
+  open SugaredAst
   open Utils
-  open Utils.Location
 %}
 
 %token LPAREN RPAREN LBRACK RBRACK LPROMISE RPROMISE
@@ -13,8 +12,8 @@
 %token <string> STRING
 %token <bool> BOOL
 %token <float> FLOAT
-%token <Syntax.label> UNAME
-%token <Syntax.ty_param> PARAM
+%token <SugaredAst.label> UNAME
+%token <SugaredAst.ty_param> PARAM
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION WHEN
 %token AWAIT UNTIL PROMISE SEND UNBOX LBOXED RBOXED
@@ -41,14 +40,14 @@
 %left  INFIXOP3 STAR MOD LAND LOR LXOR
 %right INFIXOP4 LSL LSR ASR
 
-%start <Syntax.term> payload
-%start <Syntax.command list> commands
+%start <SugaredAst.term> payload
+%start <SugaredAst.command list> commands
 
 %%
 
 (* Toplevel syntax *)
 
-(* If you're going to "optimize" this, please of_lexeme sure we don't require;; at the
+(* If you're going to "optimize" this, please make sure we don't require ;; at the
    end of the file. *)
 commands:
   | EOF
@@ -57,7 +56,8 @@ commands:
      { cmd :: cmds }
 
 (* Things that can be defined on toplevel. *)
-command:
+command: mark_position(plain_command) { $1 }
+plain_command:
   | TYPE defs = separated_nonempty_list(AND, ty_def)
     { TyDef defs }
   | LET x = ident t = lambdas0(EQUAL)
@@ -110,10 +110,10 @@ plain_comma_term:
 binop_term: mark_position(plain_binop_term) { $1 }
 plain_binop_term:
   | t1 = binop_term op = binop t2 = binop_term
-    { let tuple = {it= Tuple [t1; t2]; at= of_lexeme $startpos} in
-      Apply ({it= Var op; at=of_lexeme $startpos}, tuple) }
+    { let tuple = {it= Tuple [t1; t2]; at= Location.of_lexeme $startpos} in
+      Apply ({it= Var op; at=Location.of_lexeme $startpos}, tuple) }
   | t1 = binop_term CONS t2 = binop_term
-    { let tuple = {it= Tuple [t1; t2]; at= of_lexeme $startpos} in
+    { let tuple = {it= Tuple [t1; t2]; at= Location.of_lexeme $startpos} in
       Variant (cons_label, Some tuple) }
   | t = plain_uminus_term
     { t }
@@ -121,10 +121,10 @@ plain_binop_term:
 uminus_term: mark_position(plain_uminus_term) { $1 }
 plain_uminus_term:
   | MINUS t = uminus_term
-    { let op_loc = of_lexeme $startpos($1) in
+    { let op_loc = Location.of_lexeme $startpos($1) in
       Apply ({it= Var "(~-)"; at= op_loc}, t) }
   | MINUSDOT t = uminus_term
-    { let op_loc = of_lexeme $startpos($1) in
+    { let op_loc = Location.of_lexeme $startpos($1) in
       Apply ({it= Var "(~-.)"; at= op_loc}, t) }
   | t = plain_app_term
     { t }
@@ -146,7 +146,7 @@ prefix_term: mark_position(plain_prefix_term) { $1 }
 plain_prefix_term:
   | op = prefixop t = simple_term
     {
-      let op_loc = of_lexeme $startpos(op) in
+      let op_loc = Location.of_lexeme $startpos(op) in
       Apply ({it= Var op; at= op_loc}, t)
     }
   | SEND op = operation t = simple_term
@@ -168,11 +168,11 @@ plain_simple_term:
     { Const cst }
   | LBRACK ts = separated_list(SEMI, comma_term) RBRACK
     {
-      let nil = {it= Variant (Syntax.nil_label, None); at= of_lexeme $endpos} in
+      let nil = {it= Variant (nil_label, None); at= Location.of_lexeme $endpos} in
       let cons t ts =
         let loc = t.at in
         let tuple = {it= Tuple [t; ts];at= loc} in
-        {it= Variant (Syntax.cons_label, Some tuple); at= loc}
+        {it= Variant (cons_label, Some tuple); at= loc}
       in
       (List.fold_right cons ts nil).it
     }
@@ -195,13 +195,13 @@ plain_simple_term:
 
 const:
   | n = INT
-    { Const.of_integer n }
+    { Language.Const.of_integer n }
   | str = STRING
-    { Const.of_string str }
+    { Language.Const.of_string str }
   | b = BOOL
-    { Const.of_boolean b }
+    { Language.Const.of_boolean b }
   | f = FLOAT
-    { Const.of_float f }
+    { Language.Const.of_float f }
 
 case:
   | p = pattern ARROW t = term
@@ -217,19 +217,19 @@ lambdas0(SEP):
   | SEP t = term
     { t }
   | p = simple_pattern t = lambdas0(SEP)
-    { {it= Lambda (p, t); at= of_lexeme $startpos} }
+    { {it= Lambda (p, t); at= Location.of_lexeme $startpos} }
   | COLON ty = ty SEP t = term
-    { {it= Annotated (t, ty); at= of_lexeme $startpos} }
+    { {it= Annotated (t, ty); at= Location.of_lexeme $startpos} }
 
 lambdas1(SEP):
   | p = simple_pattern t = lambdas0(SEP)
-    { {it= Lambda (p, t); at= of_lexeme $startpos} }
+    { {it= Lambda (p, t); at= Location.of_lexeme $startpos} }
 
 let_def:
   | p = pattern EQUAL t = term
     { (p, t) }
   | p = pattern COLON ty= ty EQUAL t = term
-    { (p, {it= Annotated(t, ty); at= of_lexeme $startpos}) }
+    { (p, {it= Annotated(t, ty); at= Location.of_lexeme $startpos}) }
   | x = mark_position(ident) t = lambdas1(EQUAL)
     { ({it= PVar x.it; at= x.at}, t) }
 
@@ -254,8 +254,8 @@ plain_cons_pattern:
   | p = variant_pattern
     { p.it }
   | p1 = variant_pattern CONS p2 = cons_pattern
-    { let ptuple = {it= PTuple [p1; p2]; at= of_lexeme $startpos} in
-      PVariant (Syntax.cons_label, Some ptuple) }
+    { let ptuple = {it= PTuple [p1; p2]; at= Location.of_lexeme $startpos} in
+      PVariant (cons_label, Some ptuple) }
 
 variant_pattern: mark_position(plain_variant_pattern) { $1 }
 plain_variant_pattern:
@@ -276,11 +276,11 @@ plain_simple_pattern:
     { PConst cst }
   | LBRACK ts = separated_list(SEMI, pattern) RBRACK
     {
-      let nil = {it= PVariant (Syntax.nil_label, None);at= of_lexeme $endpos} in
+      let nil = {it= PVariant (nil_label, None);at= Location.of_lexeme $endpos} in
       let cons t ts =
         let loc = t.at in
         let tuple = {it= PTuple [t; ts]; at= loc} in
-        {it= PVariant (Syntax.cons_label, Some tuple); at= loc}
+        {it= PVariant (cons_label, Some tuple); at= loc}
       in
       (List.fold_right cons ts nil).it
     }
@@ -311,7 +311,7 @@ ident:
   | LPAREN op = prefixop RPAREN
     { op }
 
-binop:
+%inline binop:
   | op = binop_symbol
     { "(" ^ op ^ ")" }
 
@@ -373,7 +373,7 @@ cases(case):
 
 mark_position(X):
   x = X
-  { {it= x; at= of_lexeme $startpos}}
+  { {it= x; at= Location.of_lexeme $startpos}}
 
 params:
   |

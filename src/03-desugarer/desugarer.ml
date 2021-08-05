@@ -1,8 +1,8 @@
 (** Desugaring of syntax into the core language. *)
 
 open Utils
-module S = Parser.Syntax
-module Syntax = Parser.Syntax
+module S = Parser.SugaredAst
+module Syntax = Parser.SugaredAst
 module StringMap = Map.Make (String)
 module Ast = Language.Ast
 module Const = Language.Const
@@ -336,7 +336,8 @@ let desugar_ty_def state = function
       let state', variants' = List.fold_map aux state variants in
       (state', Ast.TySum variants')
 
-let desugar_command state = function
+let desugar_command state cmd =
+  match cmd.Syntax.it with
   | Syntax.TyDef defs ->
       let def_name (_, ty_name, _) =
         let ty_name' = Ast.TyName.fresh ty_name in
