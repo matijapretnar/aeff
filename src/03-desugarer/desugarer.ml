@@ -51,7 +51,7 @@ let lookup_operation ~loc state = find_symbol ~loc state.operations
 
 let lookup_label ~loc state = find_symbol ~loc state.labels
 
-let rec desugar_ty state { it = plain_ty; Location.at = loc } =
+let rec desugar_ty state { it = plain_ty; Syntax.at = loc } =
   desugar_plain_ty ~loc state plain_ty
 
 and desugar_plain_ty ~loc state = function
@@ -74,7 +74,7 @@ and desugar_plain_ty ~loc state = function
   | S.TyPromise ty -> Ast.TyPromise (desugar_ty state ty)
   | S.TyBoxed ty -> Ast.TyBoxed (desugar_ty state ty)
 
-let rec desugar_pattern state { it = pat; Location.at = loc } =
+let rec desugar_pattern state { it = pat; Syntax.at = loc } =
   let vars, pat' = desugar_plain_pattern ~loc state pat in
   (vars, pat')
 
@@ -116,7 +116,7 @@ let add_operation state op =
   let op' = Ast.OpSym.fresh op in
   (op', { state with operations = StringMap.add op op' state.operations })
 
-let rec desugar_expression state { it = term; Location.at = loc } =
+let rec desugar_expression state { it = term; Syntax.at = loc } =
   let binds, expr = desugar_plain_expression ~loc state term in
   (binds, expr)
 
@@ -155,7 +155,9 @@ and desugar_plain_expression ~loc state = function
   | ( S.Apply _ | S.Match _ | S.Let _ | S.LetRec _ | S.Conditional _
     | S.Promise _ | S.Await _ | S.Send _ | S.Unbox _ | Spawn _ ) as term ->
       let x = Ast.Variable.fresh "b" in
-      let comp = desugar_computation state (Location.add_loc ~loc term) in
+      let comp =
+        desugar_computation state { Syntax.it = term; Syntax.at = loc }
+      in
       let hoist = (Ast.PVar x, comp) in
       ([ hoist ], Ast.Var x)
 
