@@ -1,0 +1,3 @@
+(library
+ (name desugarer)
+ (libraries parser))

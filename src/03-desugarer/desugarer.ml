@@ -1,8 +1,11 @@
 (** Desugaring of syntax into the core language. *)
 
 open Utils
-module S = Syntax
+module S = Parser.Syntax
+module Syntax = Parser.Syntax
 module StringMap = Map.Make (String)
+module Ast = Language.Ast
+module Const = Language.Const
 
 type state = {
   ty_names : Ast.ty_name StringMap.t;

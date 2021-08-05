@@ -3,4 +3,4 @@
  (libraries core)
  (promote
   (until-clean)
-  (into ../..)))
+  (into ../../..)))

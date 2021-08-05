@@ -1,6 +1,5 @@
 open Utils
-module Ast = Core.Ast
-module Interpreter = Core.Interpreter
+module Ast = Language.Ast
 module Loader = Core.Loader
 
 type operation =

@@ -1,4 +1,5 @@
 open Utils
+module Ast = Language.Ast
 
 type state = {
   variables : Ast.expression Ast.VariableMap.t;
@@ -89,7 +90,7 @@ let rec match_pattern_with_expression state pat expr =
       | Some pat, (label', Some expr) when label = label' ->
           match_pattern_with_expression state pat expr
       | _, _ -> raise PatternMismatch )
-  | Ast.PConst c when Const.equal c (eval_const state expr) ->
+  | Ast.PConst c when Language.Const.equal c (eval_const state expr) ->
       Ast.VariableMap.empty
   | Ast.PNonbinding -> Ast.VariableMap.empty
   | _ -> raise PatternMismatch

@@ -129,9 +129,13 @@ type label = Label.t
 
 type opsym = OpSym.t
 
-let nil_label = Label.fresh Syntax.nil_label
+let nil_label_string = "$0nil"
 
-let cons_label = Label.fresh Syntax.cons_label
+let nil_label = Label.fresh nil_label_string
+
+let cons_label_string = "$1cons"
+
+let cons_label = Label.fresh cons_label_string
 
 type pattern =
   | PVar of variable

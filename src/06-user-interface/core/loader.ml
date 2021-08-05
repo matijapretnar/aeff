@@ -1,8 +1,9 @@
 open Utils
+module Ast = Language.Ast
 
 let parse_commands lexbuf =
-  try Parser.commands Lexer.token lexbuf with
-  | Parser.Error ->
+  try Parser.Grammar.commands Parser.Lexer.token lexbuf with
+  | Parser.Grammar.Error ->
       Error.syntax
         ~loc:(Location.of_lexeme (Lexing.lexeme_start_p lexbuf))
         "parser error"
@@ -42,7 +43,7 @@ let initial_state =
     typechecker = Typechecker.initial_state;
     top_computations = [];
   }
-  |> fun state -> List.fold load_function state BuiltIn.functions
+  |> fun state -> List.fold load_function state Language.BuiltIn.functions
 
 let execute_command state = function
   | Ast.TyDef ty_defs ->
@@ -84,12 +85,12 @@ let load_source state source =
   load_commands state cmds
 
 let load_file state source =
-  let cmds = Lexer.read_file parse_commands source in
+  let cmds = Parser.Lexer.read_file parse_commands source in
   load_commands state cmds
 
 let parse_payload state op input =
   let lexbuf = Lexing.from_string input in
-  let term = Parser.payload Lexer.token lexbuf in
+  let term = Parser.Grammar.payload Parser.Lexer.token lexbuf in
   let expr' = Desugarer.desugar_pure_expression state.desugarer term in
   ignore (Typechecker.check_payload state.typechecker op expr');
   expr'

@@ -1,4 +1,6 @@
 open Utils
+module Ast = Language.Ast
+module Const = Language.Const
 
 type ty_scheme = Ast.ty_param list * Ast.ty
 

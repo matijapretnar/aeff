@@ -1,4 +1,5 @@
 open Utils
+module Const = Language.Const
 
 type ty_name = string
 
@@ -38,9 +39,9 @@ type label = string
 
 type operation = string
 
-let nil_label = "$0nil"
+let nil_label = Language.Ast.nil_label_string
 
-let cons_label = "$1cons"
+let cons_label = Language.Ast.cons_label_string
 
 type pattern = plain_pattern Location.located
 
