@@ -9,64 +9,6 @@
   ======================================================================
   async.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation question : [(unit → int)]
-  operation answer : int
-  val get_answer : [(unit → int)] → ⟨int⟩
   ↑ question [fun () ↦ (+) (3, 3)]
   ↑ answer 6
   The process has terminated in the configuration:
@@ -74,70 +16,6 @@
   ======================================================================
   cancellableCall.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation call : int × int
-  operation result : int × int
-  operation cancel : int
-  operation dummy : empty
-  val callWith : int ref → int → (unit → int) × (unit → unit) × 
-                 (int → unit)
-  val awaitCancel : int → (unit → α) → ⟨β⟩
-  val remote : (int → int) → ⟨α⟩
-  val remoteCallReInvoker : unit → ⟨unit⟩
   ↑ call (1, 0)
   ↑ call (2, 1)
   ↑ result (120, 0)
@@ -267,76 +145,6 @@
   ======================================================================
   heapPure.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  type loc
-  type val
-  type payloadRec
-  type payloadRes
-  operation opReq : payloadRec × int
-  operation opRes : payloadRes × int
-  val empty : α list
-  val lookupHeap : (α × β) list → α → β
-  val updateHeap : (α × β) list → α → β → (α × β) list
-  val allocHeap : (int × α) list → α → (int × α) list × int
-  val heapRunner : (int × int) list → ⟨α⟩
-  val callWith : int ref → payloadRec → payloadRes
-  val lookup : int ref → int → int
-  val update : int ref → int → int → unit
-  val alloc : int ref → int → int
   ↑ opReq (AllocReq 0, 0)
   ↑ opRes (AllocRes 0, 0)
   ↑ opReq (AllocReq 10, 1)
@@ -393,78 +201,6 @@
   ======================================================================
   heapRef.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  type callId
-  type loc
-  type val
-  operation lookupReq : loc × callId
-  operation updateReq : loc × val × callId
-  operation allocReq : val × callId
-  operation lookupRes : val × callId
-  operation updateRes : callId
-  operation allocRes : loc × callId
-  val empty : α list
-  val lookupHeap : (α × β) list → α → β
-  val updateHeap : (α × β) list → α → β → (α × β) list
-  val allocHeap : (int × α) list → α → (int × α) list × int
-  val heapRunner : unit → ⟨α⟩
-  val lookup : int ref → int → int
-  val update : int ref → int → int → unit
-  val alloc : int ref → int → int
   ↑ allocReq (0, 0)
   ↑ allocRes (0, 0)
   ↑ allocReq (10, 1)
@@ -512,64 +248,6 @@
   ======================================================================
   preemptive.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation stop : int
-  operation go : int
-  val waitForStop : int → ⟨α⟩
   The process has terminated in the configuration:
   run promise (stop threadID' k ↦
                let b = (=) (2, threadID') in
@@ -601,64 +279,6 @@
   ======================================================================
   process_with.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation listInterrupt : int list
-  operation productSignal : int
-  val process_with : ⟨α⟩ → (α → β) → (⟨β⟩ → γ) → γ
   ↑ listInterrupt -3::-2::-1::0::1::2::3::[]
   ↑ productSignal 6
   The process has terminated in the configuration:
@@ -666,66 +286,6 @@
   ======================================================================
   remoteCall.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation call : int × int
-  operation result : int × int
-  val naiveCallWith : int × int → unit → int × int
-  val callWith : int ref → int → unit → int
-  val remote : (int → int) → ⟨α⟩
   ↑ call (2, 0)
   ↑ result (240, 0)
   ↑ call (3, 1)
@@ -743,65 +303,6 @@
   ======================================================================
   runner.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation randomReq : int
-  operation randomRes : int × int
-  val lcgRunner : int → int → int → int → ⟨α⟩
-  val randomDigit : int ref → int
   ↑ randomReq 0
   ↑ randomRes (0, 1)
   ↑ randomReq 1
@@ -823,64 +324,6 @@
   ======================================================================
   select.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation op1 : int
-  operation op2 : int
-  val select : (int → ⟨α⟩) → (int → ⟨α⟩) → (⟨α⟩ → β) → β
   ↑ op2 2
   ↑ op1 1
   The process has terminated in the configuration:
@@ -888,65 +331,6 @@
   ======================================================================
   spawnProcess.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  operation task : int × [(int → int)]
-  operation result : int × int
-  val boxed_func : [(int → int)]
-  val parallel_map : [(int → int)] → int list → int list
   ↑ result (1, 2)
   ↑ result (2, 4)
   ↑ result (3, 6)
@@ -963,67 +347,5 @@
   ======================================================================
   theGoodTheBadAndTheUgly.aeff
   ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  val awaitValue : ⟨α⟩ → α
-  type mobile_list
-  operation the_good : (unit → int) mobile_list
-  type left1
-  type right1
-  operation and_the_ugly : int left1
-  type foo
-  operation bar1 : (⟨int⟩, int) foo
   The process has terminated in the configuration:
   run (return ())

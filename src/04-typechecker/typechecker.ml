@@ -429,13 +429,13 @@ let infer state comp =
   t'
 
 let add_external_function x ty_sch state =
-  Format.printf "@[val %t : %t@]@." (Ast.Variable.print x)
-    (Ast.print_ty_scheme ty_sch);
+  (* Format.printf "@[val %t : %t@]@." (Ast.Variable.print x)
+     (Ast.print_ty_scheme ty_sch); *)
   { state with global_var = Ast.VariableMap.add x ty_sch state.global_var }
 
 let add_operation state op ty =
-  Format.printf "@[operation %t : %t@]@." (Ast.OpSym.print op)
-    (Ast.print_ty_scheme ([], ty));
+  (* Format.printf "@[operation %t : %t@]@." (Ast.OpSym.print op)
+     (Ast.print_ty_scheme ([], ty)); *)
   if is_mobile state [] ty then
     { state with operations = Ast.OpSymMap.add op ty state.operations }
   else Error.typing "Payload of an operation must be of a mobile type"
@@ -452,7 +452,7 @@ let add_top_definition state x expr =
 let add_type_definitions state ty_defs =
   List.fold_left
     (fun state (params, ty_name, ty_def) ->
-      Format.printf "@[type %t@]@." (Ast.TyName.print ty_name);
+      (* Format.printf "@[type %t@]@." (Ast.TyName.print ty_name); *)
       {
         state with
         type_definitions =
