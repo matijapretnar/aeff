@@ -1,9 +1,31 @@
+let ( = ) x y = __compare_eq__ (x, y)
+let ( < ) x y = __compare_lt__ (x, y)
+let ( > ) x y = __compare_gt__ (x, y)
+let ( <= ) x y = __compare_le__ (x, y)
+let ( >= ) x y = __compare_ge__ (x, y)
+let ( <> ) x y = __compare_ne__ (x, y)
+let ( + ) x y = __integer_add__ (x, y)
+let ( * ) x y = __integer_mul__ (x, y)
+let ( - ) x y = __integer_sub__ (x, y)
+let ( / ) x y = __integer_div__ (x, y)
+let ( mod ) x y = __integer_mod__ (x, y)
+let ( ~- ) x = __integer_neg__ x
+let ( +. ) x y = __float_add__ (x, y)
+let ( *. ) x y = __float_mul__ (x, y)
+let ( -. ) x y = __float_sub__ (x, y)
+let ( /. ) x y = __float_div__ (x, y)
+let ( ** ) x y = __float_pow__ (x, y)
+let ( ~-. ) x = __float_neg__ x
+let (!) r = __ref_lookup__ r
+let (:=) r x = __ref_update__ (r, x)
+
 let absurd void = (match void with)
 
 (* Booleans *)
 let not x = if x then false else true
 
 type 'a option = None | Some of 'a
+
 let rec assoc x = function
   | [] -> None
   | (key, v) :: lst -> if x = key then Some v else assoc x lst
@@ -81,7 +103,7 @@ let rec unzip = function
     let xs, ys = unzip xys in
     (x :: xs, y :: ys)
 
-let rec (@) (xs, ys) =
+let rec (@) xs ys =
   match xs with
   | [] -> ys
   | x :: xs -> x :: (xs @ ys)

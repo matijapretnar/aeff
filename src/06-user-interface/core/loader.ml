@@ -19,31 +19,34 @@ type state = {
   top_computations : Ast.computation list;
 }
 
-let initial_state =
-  let load_function state (x, ty_sch, def) =
-    let desugarer_state', x' =
-      Desugarer.add_external_variable x state.desugarer
-    in
-    let interpreter_state' =
-      Interpreter.add_external_function x' def state.interpreter
-    in
-    let typechecker_state' =
-      Typechecker.add_external_function x' ty_sch state.typechecker
-    in
-    {
-      state with
-      desugarer = desugarer_state';
-      interpreter = interpreter_state';
-      typechecker = typechecker_state';
-    }
+let load_primitive state prim =
+  let x = Ast.Variable.fresh (Language.Primitives.primitive_name prim) in
+  let desugarer_state' = Desugarer.load_primitive state.desugarer x prim in
+  let typechecker_state' =
+    Typechecker.load_primitive state.typechecker x prim
+  in
+  let interpreter_state' =
+    Interpreter.load_primitive state.interpreter x prim
   in
   {
-    desugarer = Desugarer.initial_state;
-    interpreter = Interpreter.initial_state;
-    typechecker = Typechecker.initial_state;
-    top_computations = [];
+    state with
+    desugarer = desugarer_state';
+    typechecker = typechecker_state';
+    interpreter = interpreter_state';
   }
-  |> fun state -> List.fold_left load_function state Language.BuiltIn.functions
+
+let initial_state =
+  let initial_state_without_primitives =
+    {
+      desugarer = Desugarer.initial_state;
+      typechecker = Typechecker.initial_state;
+      interpreter = Interpreter.initial_state;
+      top_computations = [];
+    }
+  in
+
+  List.fold_left load_primitive initial_state_without_primitives
+    Language.Primitives.primitives
 
 let execute_command state = function
   | Ast.TyDef ty_defs ->

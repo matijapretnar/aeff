@@ -394,6 +394,6 @@ let desugar_command state { Sugared.it = cmd; at = loc } =
       let ty' = desugar_ty state ty in
       (state', Untyped.OpSymDef (op', ty'))
 
-let add_external_variable x state =
-  let x' = Untyped.Variable.fresh x in
-  (add_fresh_variables state (StringMap.singleton x x'), x')
+let load_primitive state x prim =
+  let str = Language.Primitives.primitive_name prim in
+  add_fresh_variables state (StringMap.singleton str x)

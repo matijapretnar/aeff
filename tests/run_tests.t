@@ -9,7 +9,7 @@
   ======================================================================
   async.aeff
   ======================================================================
-  ↑ question [fun () ↦ (+) (3, 3)]
+  ↑ question [fun () ↦ let b = (+) 3 in b 3]
   ↑ answer 6
   The process has terminated in the configuration:
   run (return ⟨()⟩) ||  run (return 42)
@@ -19,11 +19,10 @@
   ↑ call (1, 0)
   ↑ call (2, 1)
   ↑ result (120, 0)
+  ↑ result (240, 1)
   ↑ cancel 0
   ↑ call (3, 2)
   ↑ result (360, 2)
-  ↑ call (2, 1)
-  ↑ result (240, 1)
   ↑ cancel 2
   ↑ call (240, 2)
   ↑ result (28800, 2)
@@ -33,7 +32,7 @@
       promise (dummy empty ↦ return ⟨empty⟩)
       as dummyPromise in
       promise (cancel callNo' k ↦
-               let b = (=) (2, callNo') in
+               let b = let b = (=) 2 in b callNo' in
                match b with (true ↦ promise (dummy empty ↦
                                                return ⟨empty⟩)
                                       as dummyPromise in
@@ -45,8 +44,11 @@
       promise (call (x, callNo) ↦
                let b = awaitCancel callNo in b (rec loop ...);
                let y =
-                  (fun x ↦ let b = let b = (*) (6, x) in (*) (5, b) in
-                             (*) (4, b))
+                  (fun x ↦ let b = (*) 4 in
+                             let b =
+                                let b = (*) 5 in
+                                let b = let b = (*) 6 in b x in b b in 
+                             b b)
                   x in ↑result((y, callNo), return ()); (rec loop ...) ())
       as p in
       ↓call((240, 2),
@@ -54,88 +56,92 @@
                  await dummyPromise until ⟨value⟩ in return value;
                  let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
               ↓cancel(2,
-                        promise (cancel callNo' k ↦
-                                 let b = (=) (1, callNo') in
-                                 match b with (true ↦ promise (dummy empty ↦
-                                                                 return
-                                                                 ⟨empty⟩)
-                                                        as dummyPromise in
-                                                        (rec loop ...) ();
-                                                        awaitValue dummyPromise;
-                                                        let b =
-                                                           (rec awaitCancel ...)
-                                                           1 in
-                                                        b (rec loop ...) | 
-                                               false ↦ k ()))
-                        as p in
                         promise (call (x, callNo) ↦
                                  let b = awaitCancel callNo in b (rec loop ...);
                                  let y =
-                                    (fun x ↦ let b =
-                                                  let b = (*) (6, x) in
-                                                  (*) (5, b) in (*) (4, b))
+                                    (fun x ↦ let b = (*) 4 in
+                                               let b =
+                                                  let b = (*) 5 in
+                                                  let b = let b = (*) 6 in b x in
+                                                  b b in b b)
                                     x in
                                  ↑result((y, callNo), return ());
                                  (rec loop ...) ())
                         as p in
-                        ↓call((2, 1),
-                                ↓call((3, 2),
-                                        let p =
-                                           await dummyPromise until ⟨value⟩ in
-                                           return value;
-                                           let b = (rec awaitCancel ...) 0 in
-                                           b (rec loop ...) in
-                                        ↓cancel(0,
-                                                  promise (cancel callNo' k ↦
-                                                           let b =
-                                                              (=) (1, callNo') in
-                                                           match b with (
-                                                           true ↦ promise (
-                                                                    dummy empty ↦
-                                                                    return
-                                                                    ⟨empty⟩)
-                                                                    as dummyPromise in
-                                                                    (rec loop ...)
-                                                                    ();
-                                                                    awaitValue
-                                                                    dummyPromise;
-                                                                    let
-                                                                     b =
+                        ↓call((3, 2),
+                                let p =
+                                   await dummyPromise until ⟨value⟩ in
+                                   return value;
+                                   let b = (rec awaitCancel ...) 0 in
+                                   b (rec loop ...) in
+                                ↓cancel(0,
+                                          promise (cancel callNo' k ↦
+                                                   let b =
+                                                      let b = (=) 1 in
+                                                      b callNo' in
+                                                   match b with (true ↦ 
+                                                                 promise (
+                                                                 dummy empty ↦
+                                                                 return
+                                                                 ⟨empty⟩)
+                                                                 as dummyPromise in
+                                                                 (rec loop ...)
+                                                                 ();
+                                                                 awaitValue
+                                                                 dummyPromise;
+                                                                 let b =
                                                                     (rec awaitCancel ...)
                                                                     1 in
-                                                                    b
-                                                                    (rec loop ...) | 
-                                                           false ↦ k ()))
-                                                  as p in
-                                                  let p =
-                                                     let y =
-                                                        let b =
-                                                           let b = (*) (6, 2) in
-                                                           (*) (5, b) in
-                                                        (*) (4, b) in
-                                                     ↑result((y, 1),
-                                                               return ());
-                                                     (rec loop ...) () in
-                                                  ↓call((2, 1),
-                                                          ↓call((1, 0),
-                                                                  return p)))))))
+                                                                 b
+                                                                 (rec loop ...) | 
+                                                                 false ↦ 
+                                                                 k ()))
+                                          as p in
+                                          promise (call (x, callNo) ↦
+                                                   let b = awaitCancel callNo in
+                                                   b (rec loop ...);
+                                                   let y =
+                                                      (fun x ↦ let b = (*) 4 in
+                                                                 let b =
+                                                                    let
+                                                                     b = 
+                                                                    (*) 5 in
+                                                                    let
+                                                                     b =
+                                                                    let
+                                                                     b = 
+                                                                    (*) 6 in
+                                                                    b x in 
+                                                                    b b in 
+                                                                 b b)
+                                                      x in
+                                                   ↑result((y, callNo),
+                                                             return ());
+                                                   (rec loop ...) ())
+                                          as p in
+                                          return p))))
   || 
   run promise (call (x, callNo) ↦
-               let b = (!) { contents = [] } in
-               (:=) ({ contents = [] }, (x, callNo)::b);
+               let b = (:=) { contents = [] } in
+               let b = (!) { contents = [] } in b ((x, callNo)::b);
                (rec reInvokerCall ...) ())
       as _ in
       promise (result (y, callNo) ↦
+               let b = (:=) { contents = [] } in
                let b =
-                  let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
-                  let b = (!) { contents = [] } in b b in
-               (:=) ({ contents = [] }, b); (rec reInvokerResult ...) ())
+                  let b =
+                     filter
+                     (fun (_, callNo') ↦ let b = (<>) callNo in b callNo') in
+                  let b = (!) { contents = [] } in b b in b b;
+               (rec reInvokerResult ...) ())
       as _ in
       promise (cancel callNo ↦
+               let b = (:=) { contents = [] } in
                let b =
-                  let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
-                  let b = (!) { contents = [] } in b b in
-               (:=) ({ contents = [] }, b);
+                  let b =
+                     filter
+                     (fun (_, callNo') ↦ let b = (<>) callNo in b callNo') in
+                  let b = (!) { contents = [] } in b b in b b;
                let b = let b = (!) { contents = [] } in reverse b in
                (rec reInvokerWrapper ...) b; (rec reInvokerCancel ...) ())
       as _ in
@@ -230,7 +236,7 @@
                         let b = (!) { contents = (1, 14)::(0, 10)::empty } in
                         updateHeap b in b l in b v in
                ↑updateRes(callId, return ());
-               (:=) ({ contents = (1, 14)::(0, 10)::empty }, heap');
+               let b = (:=) { contents = (1, 14)::(0, 10)::empty } in b heap';
                (rec awaitUpdate ...) ())
       as p in
       promise (allocReq (v, callId) ↦
@@ -239,7 +245,7 @@
                      let b = (!) { contents = (1, 14)::(0, 10)::empty } in
                      allocHeap b in b v in
                ↑allocRes((l, callId), return ());
-               (:=) ({ contents = (1, 14)::(0, 10)::empty }, heap');
+               let b = (:=) { contents = (1, 14)::(0, 10)::empty } in b heap';
                (rec awaitAlloc ...) ())
       as p in
       return p
@@ -250,9 +256,10 @@
   ======================================================================
   The process has terminated in the configuration:
   run promise (stop threadID' k ↦
-               let b = (=) (2, threadID') in
+               let b = let b = (=) 2 in b threadID' in
                match b with (true ↦ promise (go threadID' k ↦
-                                               let b = (=) (2, threadID') in
+                                               let b =
+                                                  let b = (=) 2 in b threadID' in
                                                match b with (true ↦ return ⟨()⟩ | 
                                                              false ↦ 
                                                              k ()))
@@ -264,9 +271,10 @@
       return 50
   || 
   run promise (stop threadID' k ↦
-               let b = (=) (1, threadID') in
+               let b = let b = (=) 1 in b threadID' in
                match b with (true ↦ promise (go threadID' k ↦
-                                               let b = (=) (1, threadID') in
+                                               let b =
+                                                  let b = (=) 1 in b threadID' in
                                                match b with (true ↦ return ⟨()⟩ | 
                                                              false ↦ 
                                                              k ()))
@@ -293,8 +301,11 @@
   The process has terminated in the configuration:
   run promise (call (x, callNo) ↦
                let y =
-                  (fun x ↦ let b = let b = (*) (6, x) in (*) (5, b) in
-                             (*) (4, b))
+                  (fun x ↦ let b = (*) 4 in
+                             let b =
+                                let b = (*) 5 in
+                                let b = let b = (*) 6 in b x in b b in 
+                             b b)
                   x in ↑result((y, callNo), return ()); (rec loop ...) ())
       as p in
       return p
@@ -316,8 +327,10 @@
   || 
   run promise (randomReq callNo ↦
                let seed' =
-                  let b = let b = (*) (567, 255) in (+) (b, 89) in
-                  (mod) (b, 1234) in
+                  let b =
+                     let b =
+                        let b = let b = let b = (*) 567 in b 255 in (+) b in
+                        b 89 in (mod) b in b 1234 in
                ↑randomRes((callNo, 255), return ()); (rec loop ...) seed')
       as p in
       return p
@@ -337,11 +350,11 @@
   ↑ result (4, 8)
   ↑ result (5, 10)
   The process has terminated in the configuration:
-  run (return ()) ||  run (return ()) ||  run (return (2::4::6::8::10::[]))
-  || 
   run (return ())
   || 
   run (return ())
+  || 
+  run (return ()) ||  run (return (2::4::6::8::10::[])) ||  run (return ())
   || 
   run (return ())
   ======================================================================

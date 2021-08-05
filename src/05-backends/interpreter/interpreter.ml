@@ -12,6 +12,15 @@ let initial_state =
     builtin_functions = Ast.VariableMap.empty;
   }
 
+let load_primitive state x prim =
+  {
+    state with
+    builtin_functions =
+      Ast.VariableMap.add x
+        (Primitives.primitive_function prim)
+        state.builtin_functions;
+  }
+
 exception PatternMismatch
 
 type computation_redex =

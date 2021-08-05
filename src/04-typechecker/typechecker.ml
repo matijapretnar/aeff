@@ -433,6 +433,10 @@ let add_external_function x ty_sch state =
      (Ast.print_ty_scheme ty_sch); *)
   { state with global_var = Ast.VariableMap.add x ty_sch state.global_var }
 
+let load_primitive state x prim =
+  let ty_sch = Primitives.primitive_type_scheme prim in
+  add_external_function x ty_sch state
+
 let add_operation state op ty =
   (* Format.printf "@[operation %t : %t@]@." (Ast.OpSym.print op)
      (Ast.print_ty_scheme ([], ty)); *)
