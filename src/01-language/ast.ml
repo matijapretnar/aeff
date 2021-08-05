@@ -119,6 +119,8 @@ let rec free_vars = function
 
 module Variable = Symbol.Make ()
 
+module VariableMap = Map.Make (Variable)
+
 module Label = Symbol.Make ()
 
 module OpSym = Symbol.Make ()
@@ -129,11 +131,11 @@ type label = Label.t
 
 type opsym = OpSym.t
 
-let nil_label_string = "$0nil"
+let nil_label_string = "$nil$"
 
 let nil_label = Label.fresh nil_label_string
 
-let cons_label_string = "$1cons"
+let cons_label_string = "$cons$"
 
 let cons_label = Label.fresh cons_label_string
 
@@ -175,146 +177,7 @@ and operation =
 
 and abstraction = pattern * computation
 
-module VariableMap = Map.Make (Variable)
 module OpSymMap = Map.Make (OpSym)
-
-let rec remove_pattern_bound_variables subst = function
-  | PVar x -> VariableMap.remove x subst
-  | PAnnotated (pat, _) -> remove_pattern_bound_variables subst pat
-  | PAs (pat, x) ->
-      let subst = remove_pattern_bound_variables subst pat in
-      VariableMap.remove x subst
-  | PTuple pats -> List.fold_left remove_pattern_bound_variables subst pats
-  | PVariant (_, None) -> subst
-  | PVariant (_, Some pat) -> remove_pattern_bound_variables subst pat
-  | PConst _ -> subst
-  | PNonbinding -> subst
-
-let rec refresh_pattern = function
-  | PVar x ->
-      let x' = Variable.refresh x in
-      (PVar x', [ (x, x') ])
-  | PAnnotated (pat, _) -> refresh_pattern pat
-  | PAs (pat, x) ->
-      let pat', vars = refresh_pattern pat in
-      let x' = Variable.refresh x in
-      (PAs (pat', x'), (x, x') :: vars)
-  | PTuple pats ->
-      let fold pat (pats', vars) =
-        let pat', vars' = refresh_pattern pat in
-        (pat' :: pats', vars' @ vars)
-      in
-      let pats', vars = List.fold_right fold pats ([], []) in
-      (PTuple pats', vars)
-  | PVariant (lbl, Some pat) ->
-      let pat', vars = refresh_pattern pat in
-      (PVariant (lbl, Some pat'), vars)
-  | (PVariant (_, None) | PConst _ | PNonbinding) as pat -> (pat, [])
-
-let rec refresh_expression vars = function
-  | Var x as expr -> (
-      match List.assoc_opt x vars with None -> expr | Some x' -> Var x' )
-  | Const _ as expr -> expr
-  | Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
-  | Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
-  | Variant (label, expr) ->
-      Variant (label, Option.map (refresh_expression vars) expr)
-  | Lambda abs -> Lambda (refresh_abstraction vars abs)
-  | RecLambda (x, abs) ->
-      let x' = Variable.refresh x in
-      RecLambda (x', refresh_abstraction ((x, x') :: vars) abs)
-  | Fulfill expr -> Fulfill (refresh_expression vars expr)
-  | Reference ref -> Reference ref
-  | Boxed expr -> Boxed (refresh_expression vars expr)
-
-and refresh_computation vars = function
-  | Return expr -> Return (refresh_expression vars expr)
-  | Do (comp, abs) ->
-      Do (refresh_computation vars comp, refresh_abstraction vars abs)
-  | Match (expr, cases) ->
-      Match
-        (refresh_expression vars expr, List.map (refresh_abstraction vars) cases)
-  | Apply (expr1, expr2) ->
-      Apply (refresh_expression vars expr1, refresh_expression vars expr2)
-  | Operation (Signal (op, expr), comp) ->
-      Operation
-        ( Signal (op, refresh_expression vars expr),
-          refresh_computation vars comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
-      let p' = Variable.refresh p in
-      let k', vars' =
-        match k with
-        | None -> (None, vars)
-        | Some k'' ->
-            let k''' = Variable.refresh k'' in
-            (Some k''', (k'', k''') :: vars)
-      in
-      Operation
-        ( Promise (k', op, refresh_abstraction vars' abs, p'),
-          refresh_computation ((p, p') :: vars) comp )
-  | Operation (Spawn comp1, comp2) ->
-      Operation
-        (Spawn (refresh_computation vars comp1), refresh_computation vars comp2)
-  | Interrupt (op, expr, comp) ->
-      Interrupt (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Await (expr, abs) ->
-      Await (refresh_expression vars expr, refresh_abstraction vars abs)
-  | Unbox (expr, abs) ->
-      Unbox (refresh_expression vars expr, refresh_abstraction vars abs)
-
-and refresh_abstraction vars (pat, comp) =
-  let pat', vars' = refresh_pattern pat in
-  (pat', refresh_computation (vars @ vars') comp)
-
-let rec substitute_expression subst = function
-  | Var x as expr -> (
-      match VariableMap.find_opt x subst with None -> expr | Some expr -> expr )
-  | Const _ as expr -> expr
-  | Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
-  | Tuple exprs -> Tuple (List.map (substitute_expression subst) exprs)
-  | Variant (label, expr) ->
-      Variant (label, Option.map (substitute_expression subst) expr)
-  | Lambda abs -> Lambda (substitute_abstraction subst abs)
-  | RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
-  | Fulfill expr -> Fulfill (substitute_expression subst expr)
-  | Reference ref -> Reference ref
-  | Boxed expr -> Boxed (substitute_expression subst expr)
-
-and substitute_computation subst = function
-  | Return expr -> Return (substitute_expression subst expr)
-  | Do (comp, abs) ->
-      Do (substitute_computation subst comp, substitute_abstraction subst abs)
-  | Match (expr, cases) ->
-      Match
-        ( substitute_expression subst expr,
-          List.map (substitute_abstraction subst) cases )
-  | Apply (expr1, expr2) ->
-      Apply
-        (substitute_expression subst expr1, substitute_expression subst expr2)
-  | Operation (Signal (op, expr), comp) ->
-      Operation
-        ( Signal (op, substitute_expression subst expr),
-          substitute_computation subst comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
-      let subst' = remove_pattern_bound_variables subst (PVar p) in
-      Operation
-        ( Promise (k, op, substitute_abstraction subst abs, p),
-          substitute_computation subst' comp )
-  | Operation (Spawn comp1, comp2) ->
-      Operation
-        ( Spawn (substitute_computation subst comp1),
-          substitute_computation subst comp2 )
-  | Interrupt (op, expr, comp) ->
-      Interrupt
-        (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Await (expr, abs) ->
-      Await (substitute_expression subst expr, substitute_abstraction subst abs)
-  | Unbox (expr, abs) ->
-      Unbox (substitute_expression subst expr, substitute_abstraction subst abs)
-
-and substitute_abstraction subst (pat, comp) =
-  let subst' = remove_pattern_bound_variables subst pat in
-  (pat, substitute_computation subst' comp)
 
 type process =
   | Run of computation
@@ -379,7 +242,7 @@ and print_computation ?max_level c ppf =
         (print_computation c1) (print_computation c2)
   | Match (e, lst) ->
       print "match %t with (@[<hov>%t@])" (print_expression e)
-        (Print.print_sequence " | " case lst)
+        (Print.print_sequence " | " print_case lst)
   | Apply (e1, e2) ->
       print ~at_level:1 "@[%t@ %t@]"
         (print_expression ~max_level:1 e1)
@@ -411,10 +274,7 @@ and print_computation ?max_level c ppf =
 and print_abstraction (p, c) ppf =
   Format.fprintf ppf "%t ↦ %t" (print_pattern p) (print_computation c)
 
-and let_abstraction (p, c) ppf =
-  Format.fprintf ppf "%t = %t" (print_pattern p) (print_computation c)
-
-and case a ppf = Format.fprintf ppf "%t" (print_abstraction a)
+and print_case a ppf = Format.fprintf ppf "%t" (print_abstraction a)
 
 let rec print_process ?max_level proc ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
