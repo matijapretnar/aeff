@@ -1,153 +1,116 @@
 open Utils
 module Ast = Language.Ast
-module Loader = Core.Loader
 
-type operation =
-  | Interrupt of Ast.opsym * Ast.expression
-  | Signal of Ast.opsym * Ast.expression
+module Model (Backend : WebBackend.S) = struct
+  module Loader = Loader.Loader (Backend)
 
-type snapshot = { process : Ast.process; operations : operation list }
+  type edit_model = { use_stdlib : bool; unparsed_code : string }
 
-type loaded_code = {
-  snapshot : snapshot;
-  history : snapshot list;
-  interpreter_state : Interpreter.state;
-  operations : Ast.ty Ast.OpSymMap.t;
-  parse_payload : Ast.opsym -> string -> Ast.expression;
-}
+  let edit_init = { use_stdlib = true; unparsed_code = "" }
 
-type model = {
-  use_stdlib : bool;
-  unparsed_code : string;
-  loaded_code : (loaded_code, string) result;
-  selected_reduction : int option;
-  random_step_size : int;
-  interrupt_operation : Ast.opsym option;
-  unparsed_interrupt_payload : string;
-  parsed_interrupt_payload : (Ast.expression, string) result;
-}
+  type edit_msg = UseStdlib of bool | ChangeSource of string
 
-type msg =
-  | UseStdlib of bool
-  | ChangeSource of string
-  | LoadSource
-  | EditSource
-  | SelectReduction of int option
-  | Step of Interpreter.top_step
-  | RandomStep
-  | ChangeRandomStepSize of int
-  | ChangeInterruptOperation of Ast.opsym
-  | ParseInterruptPayload of string
-  | SendInterrupt
-  | Back
+  let edit_update edit_model = function
+    | UseStdlib use_stdlib -> { edit_model with use_stdlib }
+    | ChangeSource input -> { edit_model with unparsed_code = input }
 
-let init =
-  {
-    use_stdlib = true;
-    unparsed_code = "";
-    loaded_code = Error "";
-    selected_reduction = None;
-    random_step_size = 1;
-    interrupt_operation = None;
-    unparsed_interrupt_payload = "";
-    parsed_interrupt_payload = Error "";
+  type run_model = {
+    run_state : Backend.run_state;
+    history : Backend.run_state list;
+    backend_model : Backend.model;
+    selected_step_index : int option;
+    (* You may be wondering why we keep an index rather than the selected step itself.
+       The selected step is displayed when the user moves the mouse over the step button,
+       so on a onmouseover event. However, in the common case, when the user is on the button
+       and is clicking it to proceed, this event is not triggered and so the step is not updated.
+       For that reason, it is easiest to keep track of the selected button index, which does not
+       change when the user clicks the button. *)
+    random_step_size : int;
   }
 
-let step_snapshot snapshot = function
-  | Interpreter.Step proc' -> { snapshot with process = proc' }
-  | Interpreter.TopSignal (op, expr, proc') ->
-      { process = proc'; operations = Signal (op, expr) :: snapshot.operations }
-
-let apply_to_code_if_loaded f model =
-  match model.loaded_code with
-  | Ok code -> { model with loaded_code = Ok (f code) }
-  | Error _ -> model
-
-let steps code =
-  Interpreter.top_steps code.interpreter_state code.snapshot.process
-
-let move_to_snapshot snapshot code =
-  { code with snapshot; history = code.snapshot :: code.history }
-
-let step_code step code =
-  move_to_snapshot (step_snapshot code.snapshot step) code
-
-let interrupt op expr code =
-  let proc' = Interpreter.incoming_operation code.snapshot.process op expr in
-  move_to_snapshot
+  let run_init run_state =
     {
-      process = proc';
-      operations = Interrupt (op, expr) :: code.snapshot.operations;
+      run_state;
+      history = [];
+      backend_model = Backend.init;
+      selected_step_index = None;
+      random_step_size = 1;
     }
-    code
 
-let rec make_random_steps num_steps code =
-  match (num_steps, steps code) with
-  | 0, _ | _, [] -> code
-  | _, steps ->
-      let i = Random.int (List.length steps) in
-      let _, top_step = List.nth steps i in
-      let code' = step_code top_step code in
-      make_random_steps (num_steps - 1) code'
+  type run_msg =
+    | SelectStepIndex of int option
+    | MakeStep of Backend.step
+    | RandomStep
+    | ChangeRandomStepSize of int
+    | Back
+    | BackendMsg of Backend.msg
 
-let parse_step_size input =
-  input |> int_of_string_opt
-  |> Option.to_result ~none:(input ^ " is not an integer")
+  let run_model_make_step run_model (step : Backend.step) =
+    {
+      run_model with
+      run_state = step.next_state ();
+      history = run_model.run_state :: run_model.history;
+    }
 
-let parse_payload code op input =
-  try Ok (code.parse_payload op input) with
-  | Error.Error (_, kind, msg) -> Error (kind ^ ": " ^ msg)
-  | _ -> Error "Parser error"
+  let rec run_model_make_random_steps run_model num_steps =
+    match (num_steps, Backend.steps run_model.run_state) with
+    | 0, _ | _, [] -> run_model
+    | _, steps ->
+        let i = Random.int (List.length steps) in
+        let step = List.nth steps i in
+        let run_model' = run_model_make_step run_model step in
+        run_model_make_random_steps run_model' (num_steps - 1)
 
-let parse_source source =
-  try
-    let state = Loader.load_source Loader.initial_state source in
-    let proc = Loader.make_process state in
-    Ok
-      {
-        snapshot = { process = proc; operations = [] };
-        history = [];
-        interpreter_state = state.interpreter;
-        parse_payload = Loader.parse_payload state;
-        operations = state.typechecker.operations;
-      }
-  with Error.Error (_, _, msg) -> Error msg
+  let run_update run_model = function
+    | SelectStepIndex selected_step_index ->
+        { run_model with selected_step_index }
+    | MakeStep step -> run_model_make_step run_model step
+    | RandomStep ->
+        run_model_make_random_steps run_model run_model.random_step_size
+    | Back -> (
+        match run_model.history with
+        | run_state' :: history' ->
+            { run_model with run_state = run_state'; history = history' }
+        | _ -> run_model)
+    | ChangeRandomStepSize random_step_size ->
+        { run_model with random_step_size }
+    | BackendMsg msg ->
+        {
+          run_model with
+          backend_model = Backend.update_model run_model.backend_model msg;
+          run_state = Backend.update_run_state run_model.run_state msg;
+        }
 
-let update model = function
-  | UseStdlib use_stdlib -> { model with use_stdlib }
-  | SelectReduction selected_reduction -> { model with selected_reduction }
-  | Step top_step -> apply_to_code_if_loaded (step_code top_step) model
-  | RandomStep ->
-      apply_to_code_if_loaded (make_random_steps model.random_step_size) model
-  | Back -> (
-      match model.loaded_code with
-      | Ok ({ history = snapshot' :: history'; _ } as code) ->
-          {
-            model with
-            loaded_code =
-              Ok { code with snapshot = snapshot'; history = history' };
-          }
-      | _ -> model)
-  | ChangeSource input -> { model with unparsed_code = input }
-  | LoadSource ->
-      {
-        model with
-        loaded_code =
-          parse_source
-            ((if model.use_stdlib then Loader.stdlib_source else "")
-            ^ "\n\n\n" ^ model.unparsed_code);
-      }
-  | EditSource -> { model with loaded_code = Error "" }
-  | ChangeRandomStepSize random_step_size -> { model with random_step_size }
-  | ChangeInterruptOperation operation ->
-      { model with interrupt_operation = Some operation }
-  | ParseInterruptPayload input -> (
-      match (model.interrupt_operation, model.loaded_code) with
-      | Some op, Ok code ->
-          let model = { model with unparsed_interrupt_payload = input } in
-          { model with parsed_interrupt_payload = parse_payload code op input }
-      | _, _ -> model)
-  | SendInterrupt -> (
-      match (model.interrupt_operation, model.parsed_interrupt_payload) with
-      | Some op, Ok expr -> apply_to_code_if_loaded (interrupt op expr) model
-      | _, _ -> model)
+  type model = {
+    edit_model : edit_model;
+    run_model : (run_model, string) result;
+  }
+
+  let init = { edit_model = edit_init; run_model = Error "" }
+
+  type msg = EditMsg of edit_msg | RunCode | RunMsg of run_msg | EditCode
+
+  let update model = function
+    | EditMsg edit_msg ->
+        { model with edit_model = edit_update model.edit_model edit_msg }
+    | RunMsg run_msg -> (
+        match model.run_model with
+        | Ok run_model ->
+            { model with run_model = Ok (run_update run_model run_msg) }
+        | Error _ -> model)
+    | RunCode ->
+        let run_model =
+          try
+            let source =
+              (if model.edit_model.use_stdlib then Loader.stdlib_source else "")
+              ^ "\n\n\n" ^ model.edit_model.unparsed_code
+            in
+            let state = Loader.load_source Loader.initial_state source in
+            let run_state = Backend.run state.backend in
+            let run_model = run_init run_state in
+            Ok run_model
+          with Error.Error (_, _, msg) -> Error msg
+        in
+        { model with run_model }
+    | EditCode -> { model with run_model = Error "" }
+end

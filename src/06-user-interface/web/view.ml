@@ -1,409 +1,278 @@
 open Vdom
 module Ast = Language.Ast
 
-let panel ?(a = []) heading blocks =
-  div ~a:(class_ "panel" :: a)
-    (elt "p" ~a:[ class_ "panel-heading" ] [ text heading ] :: blocks)
+module View (Backend : WebBackend.S) = struct
+  module Model = Model.Model (Backend)
 
-let panel_block = div ~a:[ class_ "panel-block" ]
+  (* Auxiliary definitions *)
+  let panel ?(a = []) heading blocks =
+    div ~a:(class_ "panel" :: a)
+      (elt "p" ~a:[ class_ "panel-heading" ] [ text heading ] :: blocks)
 
-let button txt msg =
-  input [] ~a:[ onclick (fun _ -> msg); type_button; value txt ]
+  let panel_block = div ~a:[ class_ "panel-block" ]
 
-let disabled_button txt = input [] ~a:[ type_button; value txt; disabled true ]
+  let button txt msg =
+    input [] ~a:[ onclick (fun _ -> msg); type_button; value txt ]
 
-let select ?(a = []) empty_description msg describe_choice selected choices =
-  let view_choice choice =
-    elt "option"
-      ~a:[ bool_prop "selected" (selected choice) ]
-      [ text (describe_choice choice) ]
-  in
-  div ~a
-    [
-      elt "select"
-        ~a:[ onchange_index (fun i -> msg (List.nth choices (i - 1))) ]
-        (elt "option"
-           ~a:
-             [
-               disabled true;
-               bool_prop "selected"
-                 (List.for_all (fun choice -> not (selected choice)) choices);
-             ]
-           [ text empty_description ]
-        :: List.map view_choice choices);
-    ]
+  let disabled_button txt =
+    input [] ~a:[ type_button; value txt; disabled true ]
 
-let nil = text ""
-
-let view_computation_redex = function
-  | Interpreter.PromiseSignal -> "promiseSignal"
-  | Interpreter.InterruptReturn -> "interruptReturn"
-  | Interpreter.InterruptSignal -> "interruptSignal"
-  | Interpreter.InterruptPromise -> "interruptPromise"
-  | Interpreter.InterruptPromise' -> "interruptPromise"
-  | Interpreter.Match -> "match"
-  | Interpreter.ApplyFun -> "applyFun"
-  | Interpreter.DoReturn -> "doReturn"
-  | Interpreter.DoSignal -> "doSignal"
-  | Interpreter.AwaitFulfill -> "awaitFulfill"
-  | Interpreter.Unbox -> "unbox"
-  | Interpreter.Spawn -> "spawn"
-
-let rec view_computation_reduction = function
-  | Interpreter.InterruptCtx red -> view_computation_reduction red
-  | Interpreter.SignalCtx red -> view_computation_reduction red
-  | Interpreter.DoCtx red -> view_computation_reduction red
-  | Interpreter.ComputationRedex redex -> view_computation_redex redex
-
-let view_process_redex = function
-  | Interpreter.RunSignal -> "runSignal"
-  | Interpreter.RunSpawn -> "runSpawn"
-  | Interpreter.ParallelSignal1 -> "parallelSignal1"
-  | Interpreter.ParallelSignal2 -> "parallelSignal2"
-  | Interpreter.InterruptRun -> "interruptRun"
-  | Interpreter.InterruptParallel -> "interruptParallel"
-  | Interpreter.InterruptSignal -> "interruptSignal"
-  | Interpreter.TopSignal -> "topSignal"
-
-let rec view_process_reduction = function
-  | Interpreter.LeftCtx red -> view_process_reduction red
-  | Interpreter.RightCtx red -> view_process_reduction red
-  | Interpreter.InterruptProcCtx red -> view_process_reduction red
-  | Interpreter.SignalProcCtx red -> view_process_reduction red
-  | Interpreter.RunCtx red -> view_computation_reduction red
-  | Interpreter.ProcessRedex redex -> view_process_redex redex
-
-let step_action (red, step) =
-  elt "li" [ button (view_process_reduction red) (Model.Step step) ]
-
-(* let view_actions (model : Model.model) code =
-   let _step_actions = List.map step_action (Model.steps code) in
-   let random_action =
-       valid_button
-           ~input_placeholder:"Number of random steps to make"
-           ~input_value:model.unparsed_step_size
-           ~input_msg:(fun input -> Model.ChangeStepSize input)
-           ~submit_msg:(fun _ -> Model.RandomStep)
-           ~submit_value:"Step randomly"
-           model.random_step_size
-   and _back_action =
-       match code.history with
-       | [] -> disabled_button "back"
-       | _ -> button "back" Model.Back
-   and _interrupt_action =
-       valid_button
-           ~input_placeholder:"Interrupt, eg. \"op 10\""
-           ~input_value:model.unparsed_interrupt
-           ~input_msg:(fun input -> Model.ParseInterrupt input)
-           ~submit_msg:(fun _ -> Model.Interrupt)
-           ~submit_value:"interrupt"
-           model.parsed_interrupt
-   in
-     elt "nav" ~a:[class_ "level"] [
-       div ~a:[class_ "level-left"] [
-         div ~a:[class_ "level-item"] [
-           elt "button" ~a:[class_ "button is-danger"] [text "back"]
-         ]
-       ];
-       div ~a:[class_ "level-right"] [
-         random_action
-       ]
-     ]
-     elt "ol" (back_action ::  :: step_actions @ [interrupt_action]) *)
-
-let view_steps (model : Model.model) (code : Model.loaded_code) steps =
-  let view_edit_source =
-    panel_block
-      [
-        elt "button"
-          ~a:
-            [
-              class_ "button is-outlined is-fullwidth is-small is-danger";
-              onclick (fun _ -> Model.EditSource);
-              attr "title"
-                "Re-editing source code will abort current evaluation";
-            ]
-          [ text "Re-edit source code" ];
-      ]
-  and view_undo_last_step =
-    panel_block
-      [
-        elt "button"
-          ~a:
-            [
-              class_ "button is-outlined is-fullwidth is-small";
-              onclick (fun _ -> Model.Back);
-              disabled (code.history = []);
-            ]
-          [ text "Undo last step" ];
-      ]
-  and view_step i (red, step) =
-    panel_block
-      [
-        elt "button"
-          ~a:
-            [
-              class_ "button is-outlined is-fullwidth";
-              onclick (fun _ -> Model.Step step);
-              onmousemove (fun _ -> Model.SelectReduction (Some i));
-            ]
-          [ text (view_process_reduction red) ];
-      ]
-  and view_random_steps steps =
-    div
-      ~a:[ class_ "panel-block" ]
-      [
-        div
-          ~a:[ class_ "field has-addons" ]
-          [
-            div
-              ~a:[ class_ "control is-expanded" ]
-              [
-                select
-                  ~a:[ class_ "select is-fullwidth is-info" ]
-                  "Step size"
-                  (fun step_size -> Model.ChangeRandomStepSize step_size)
-                  string_of_int
-                  (fun step_size -> step_size = model.random_step_size)
-                  [ 1; 2; 4; 8; 16; 32; 64; 128; 256; 512; 1024 ];
-              ];
-            div
-              ~a:[ class_ "control" ]
-              [
-                elt "button"
-                  ~a:
-                    [
-                      class_ "button is-info";
-                      onclick (fun _ -> Model.RandomStep);
-                      disabled (steps = []);
-                    ]
-                  [ text "random steps" ];
-              ];
-          ];
-        (if steps = [] then
-           elt "p"
-             ~a:[ class_ "help" ]
-             [
-               text "Computation has terminated, no further steps are possible.";
-             ]
-         else text "");
-      ]
-  in
-  let send_interrupt =
-    let warn_payload =
-      model.unparsed_interrupt_payload <> ""
-      && Result.is_error model.parsed_interrupt_payload
+  let select ?(a = []) empty_description msg describe_choice selected choices =
+    let view_choice choice =
+      elt "option"
+        ~a:[ bool_prop "selected" (selected choice) ]
+        [ text (describe_choice choice) ]
     in
-    panel_block
+    div ~a
       [
-        div
-          ~a:[ class_ "field" ]
-          [
-            div
-              ~a:[ class_ "field has-addons" ]
-              [
-                div
-                  ~a:[ class_ "control is-expanded" ]
-                  [
-                    select
-                      ~a:[ class_ "select is-fullwidth" ]
-                      "Interrupt"
-                      (fun operation ->
-                        Model.ChangeInterruptOperation operation)
-                      Ast.string_of_operation
-                      (fun operation ->
-                        Some operation = model.interrupt_operation)
-                      (Ast.OpSymMap.bindings code.operations |> List.map fst);
-                  ];
-                elt "p"
-                  ~a:[ class_ "control" ]
-                  [
-                    input
-                      ~a:
-                        [
-                          class_
-                            (if warn_payload then "input is-danger" else "input");
-                          type_ "text";
-                          oninput (fun input ->
-                              Model.ParseInterruptPayload input);
-                          str_prop "placeholder" "payload";
-                          disabled (Option.is_none model.interrupt_operation);
-                          value model.unparsed_interrupt_payload;
-                        ]
-                      [];
-                  ];
-                div
-                  ~a:[ class_ "control" ]
-                  [
-                    (let dis =
-                       Option.is_none model.interrupt_operation
-                       || Result.is_error model.parsed_interrupt_payload
-                     in
-                     elt "button"
-                       ~a:
-                         [
-                           class_ "button is-info";
-                           onclick (fun _ -> Model.SendInterrupt);
-                           disabled dis;
-                         ]
-                       [ text "↓" ]);
-                  ];
-              ];
-            (match model.parsed_interrupt_payload with
-            | Error msg when warn_payload ->
-                elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
-            | _ -> nil);
-          ];
+        elt "select"
+          ~a:[ onchange_index (fun i -> msg (List.nth choices (i - 1))) ]
+          (elt "option"
+             ~a:
+               [
+                 disabled true;
+                 bool_prop "selected"
+                   (List.for_all (fun choice -> not (selected choice)) choices);
+               ]
+             [ text empty_description ]
+          :: List.map view_choice choices);
       ]
-  in
-  panel "Interaction"
-    ~a:[ onmousemove (fun _ -> Model.SelectReduction None) ]
-    (view_edit_source :: view_undo_last_step :: view_random_steps steps
-     :: List.mapi view_step steps
-    @ [ send_interrupt ])
 
-let view_history ops =
-  let view_operation op =
-    (match op with
-    | Model.Interrupt (op, expr) ->
-        Format.fprintf Format.str_formatter "↓ %t %t" (Ast.OpSym.print op)
-          (Ast.print_expression expr)
-    | Model.Signal (op, expr) ->
-        Format.fprintf Format.str_formatter "↑ %t %t" (Ast.OpSym.print op)
-          (Ast.print_expression expr));
-    elt "a" ~a:[ class_ "panel-block" ] [ text (Format.flush_str_formatter ()) ]
-  in
-  panel "History" (List.map view_operation ops)
+  let nil = text ""
 
-let view_process steps proc =
-  let process_tree = RedexSelectorTM.view_process_with_redexes steps proc in
-  div ~a:[ class_ "box" ] [ elt "pre" process_tree ]
-
-let view_editor (model : Model.model) =
-  div
-    ~a:[ class_ "box" ]
-    [
-      elt "textarea"
-        ~a:
-          [
-            class_ "textarea has-fixed-size";
-            oninput (fun input -> Model.ChangeSource input);
-            int_prop "rows"
-              (max 10
-                 (String.split_on_char '\n' model.unparsed_code |> List.length));
-          ]
-        [ text model.unparsed_code ];
-    ]
-
-(* let _view (model : Model.model) =
-   match model.loaded_code with
-   | Ok code ->
-       div
-         [
-           input ~a:[type_ "range"; int_attr "min" 0; int_attr "max" 10; int_attr "step" 2; onmousedown (fun event -> Model.ParseInterrupt (string_of_int event.x))] [];
-           (* elt "progress" ~a:[type_ "range"; value (string_of_int model.random_step_size); int_attr "max" 10; oninput (fun input -> Model.ChangeStepSize input)] []; *)
-           editor model;
-           actions model code;
-           view_operations code.snapshot.operations;
-           view_process code.snapshot.process;
-         ]
-   | Error msg -> div [ editor model; text msg ] *)
-
-let view_compiler (model : Model.model) =
-  let use_stdlib =
-    elt "label"
-      ~a:[ class_ "panel-block" ]
+  let view_contents main aside =
+    div
+      ~a:[ class_ "contents columns" ]
       [
-        input
+        div ~a:[ class_ "main column is-three-quarters" ] main;
+        div ~a:[ class_ "aside column is-one-quarter" ] aside;
+      ]
+
+  (* Edit view *)
+
+  let view_editor (model : Model.edit_model) =
+    div
+      ~a:[ class_ "box" ]
+      [
+        elt "textarea"
           ~a:
             [
-              type_ "checkbox";
-              onchange_checked (fun use_stdlib -> Model.UseStdlib use_stdlib);
-              bool_prop "checked" model.use_stdlib;
+              class_ "textarea has-fixed-size";
+              oninput (fun input -> Model.ChangeSource input);
+              int_prop "rows"
+                (max 10
+                   (String.split_on_char '\n' model.unparsed_code |> List.length));
             ]
-          [];
-        text "Load standard library";
+          [ text model.unparsed_code ];
       ]
-  in
-  let load_example =
-    div
-      ~a:[ class_ "panel-block" ]
-      [
-        div
-          ~a:[ class_ "field" ]
-          [
-            div
-              ~a:[ class_ "control is-expanded" ]
+
+  (* let _view (model : Model.model) =
+     match model.loaded_code with
+     | Ok code ->
+         div
+           [
+             input ~a:[type_ "range"; int_attr "min" 0; int_attr "max" 10; int_attr "step" 2; onmousedown (fun event -> Model.ParseInterrupt (string_of_int event.x))] [];
+             (* elt "progress" ~a:[type_ "range"; value (string_of_int model.random_step_size); int_attr "max" 10; oninput (fun input -> Model.ChangeStepSize input)] []; *)
+             editor model;
+             actions model code;
+             view_operations code.snapshot.operations;
+             view_process code.snapshot.process;
+           ]
+     | Error msg -> div [ editor model; text msg ] *)
+
+  let view_compiler (model : Model.model) =
+    let use_stdlib =
+      elt "label"
+        ~a:[ class_ "panel-block" ]
+        [
+          input
+            ~a:
               [
-                select
-                  ~a:[ class_ "select is-fullwidth" ]
-                  "Load example"
-                  (fun (_, source) -> Model.ChangeSource source)
-                  (fun (title, _) -> title)
-                  (fun _ -> false)
-                  (* The module Examples_aeff is semi-automatically generated from examples/*.aeff. Check the dune file for details. *)
-                  Examples_aeff.examples;
-              ];
-          ];
-      ]
-  and run_process =
-    panel_block
-      [
-        elt "button"
-          ~a:
+                type_ "checkbox";
+                onchange_checked (fun use_stdlib ->
+                    Model.EditMsg (Model.UseStdlib use_stdlib));
+                bool_prop "checked" model.edit_model.use_stdlib;
+              ]
+            [];
+          text "Load standard library";
+        ]
+    in
+    let load_example =
+      div
+        ~a:[ class_ "panel-block" ]
+        [
+          div
+            ~a:[ class_ "field" ]
             [
-              class_ "button is-info is-fullwidth";
-              onclick (fun _ -> Model.LoadSource);
-              (* disabled (Result.is_error model.loaded_code); *)
-            ]
-          [ text "Compile & run" ];
-        (match model.loaded_code with
-        | Error msg -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
-        | Ok _ -> nil);
-      ]
-  in
-  panel "Code options" [ use_stdlib; load_example; run_process ]
+              div
+                ~a:[ class_ "control is-expanded" ]
+                [
+                  select
+                    ~a:[ class_ "select is-fullwidth" ]
+                    "Load example"
+                    (fun (_, source) -> Model.EditMsg (ChangeSource source))
+                    (fun (title, _) -> title)
+                    (fun _ -> false)
+                    (* The module Examples_aeff is semi-automatically generated from examples/*.aeff. Check the dune file for details. *)
+                    Examples_aeff.examples;
+                ];
+            ];
+        ]
+    and run_process =
+      panel_block
+        [
+          elt "button"
+            ~a:
+              [
+                class_ "button is-info is-fullwidth";
+                onclick (fun _ -> Model.RunCode);
+                (* disabled (Result.is_error model.loaded_code); *)
+              ]
+            [ text "Compile & run" ];
+          (match model.run_model with
+          | Error msg -> elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
+          | Ok _ -> nil);
+        ]
+    in
+    panel "Code options" [ use_stdlib; load_example; run_process ]
 
-let view_contents main aside =
-  div
-    ~a:[ class_ "contents columns" ]
-    [
-      div ~a:[ class_ "main column is-three-quarters" ] main;
-      div ~a:[ class_ "aside column is-one-quarter" ] aside;
-    ]
-
-let view_source model =
-  view_contents [ view_editor model ] [ view_compiler model ]
-
-let view_code (model : Model.model) (code : Model.loaded_code) =
-  let steps = Model.steps code in
-  let selected_red =
-    match model.selected_reduction with
-    | None -> None
-    | Some i -> List.nth_opt steps i |> Option.map fst
-  in
-  view_contents
-    [ view_process selected_red code.snapshot.process ]
-    [ view_steps model code steps; view_history code.snapshot.operations ]
-
-let view_navbar =
-  let view_title =
-    div
-      ~a:[ class_ "navbar-brand" ]
+  let edit_view (model : Model.model) =
+    view_contents
       [
-        elt "a"
-          ~a:[ class_ "navbar-item" ]
-          [ elt "p" ~a:[ class_ "title" ] [ text "Æff" ] ];
+        map
+          (fun edit_msg -> Model.EditMsg edit_msg)
+          (view_editor model.edit_model);
       ]
-  in
+      [ view_compiler model ]
 
-  elt "navbar" ~a:[ class_ "navbar" ] [ view_title ]
+  (* Run view *)
 
-let view (model : Model.model) =
-  div
-    [
-      view_navbar;
-      (match model.loaded_code with
-      | Error _ -> view_source model
-      | Ok code -> view_code model code);
-    ]
+  let view_steps (run_model : Model.run_model) steps =
+    let view_edit_source =
+      panel_block
+        [
+          elt "button"
+            ~a:
+              [
+                class_ "button is-outlined is-fullwidth is-small is-danger";
+                onclick (fun _ -> Model.EditCode);
+                attr "title"
+                  "Re-editing source code will abort current evaluation";
+              ]
+            [ text "Re-edit source code" ];
+        ]
+    and view_undo_last_step =
+      panel_block
+        [
+          elt "button"
+            ~a:
+              [
+                class_ "button is-outlined is-fullwidth is-small";
+                onclick (fun _ -> Model.RunMsg Model.Back);
+                disabled (run_model.history = []);
+              ]
+            [ text "Undo last step" ];
+        ]
+    and view_step i step =
+      panel_block
+        [
+          elt "button"
+            ~a:
+              [
+                class_ "button is-outlined is-fullwidth";
+                onclick (fun _ -> Model.RunMsg (Model.MakeStep step));
+                onmousemove (fun _ ->
+                    Model.RunMsg (Model.SelectStepIndex (Some i)));
+              ]
+            [
+              Vdom.map
+                (fun step -> Model.RunMsg (Model.MakeStep step))
+                (Backend.view_step_label step.label);
+            ];
+        ]
+    and view_random_steps steps =
+      div
+        ~a:[ class_ "panel-block" ]
+        [
+          div
+            ~a:[ class_ "field has-addons" ]
+            [
+              div
+                ~a:[ class_ "control is-expanded" ]
+                [
+                  select
+                    ~a:[ class_ "select is-fullwidth is-info" ]
+                    "Step size"
+                    (fun step_size ->
+                      Model.RunMsg (Model.ChangeRandomStepSize step_size))
+                    string_of_int
+                    (fun step_size -> step_size = run_model.random_step_size)
+                    [ 1; 2; 4; 8; 16; 32; 64; 128; 256; 512; 1024 ];
+                ];
+              div
+                ~a:[ class_ "control" ]
+                [
+                  elt "button"
+                    ~a:
+                      [
+                        class_ "button is-info";
+                        onclick (fun _ -> Model.RunMsg Model.RandomStep);
+                        disabled (steps = []);
+                      ]
+                    [ text "random steps" ];
+                ];
+            ];
+          (if steps = [] then
+             elt "p"
+               ~a:[ class_ "help" ]
+               [
+                 text
+                   "Computation has terminated, no further steps are possible.";
+               ]
+           else text "");
+        ]
+    in
+    panel "Interaction"
+      ~a:[ onmousemove (fun _ -> Model.RunMsg (Model.SelectStepIndex None)) ]
+      (view_edit_source :: view_undo_last_step :: view_random_steps steps
+     :: List.mapi view_step steps)
+
+  let run_view (run_model : Model.run_model) =
+    let steps = Backend.steps run_model.run_state in
+    let selected_step =
+      Option.map (List.nth steps) run_model.selected_step_index
+    in
+    view_contents
+      [
+        Backend.view_run_state run_model.backend_model run_model.run_state
+          (Option.map (fun step -> step.Backend.label) selected_step);
+      ]
+      ([ view_steps run_model steps ]
+      @ [
+          Vdom.map
+            (fun msg -> Model.RunMsg (Model.BackendMsg msg))
+            (Backend.view_model run_model.backend_model);
+        ])
+
+  let view_navbar =
+    let view_title =
+      div
+        ~a:[ class_ "navbar-brand" ]
+        [
+          elt "a"
+            ~a:[ class_ "navbar-item" ]
+            [ elt "p" ~a:[ class_ "title" ] [ text "Millet" ] ];
+        ]
+    in
+
+    elt "navbar" ~a:[ class_ "navbar" ] [ view_title ]
+
+  let view (model : Model.model) =
+    div
+      [
+        view_navbar;
+        (match model.run_model with
+        | Error _ -> edit_view model
+        | Ok run_model -> run_view run_model);
+      ]
+end

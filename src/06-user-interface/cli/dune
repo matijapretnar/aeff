@@ -1,6 +1,6 @@
 (executable
- (name aeff)
- (libraries core)
+ (name cli)
+ (libraries cliInterpreter loader)
  (promote
   (until-clean)
   (into ../../..)))
