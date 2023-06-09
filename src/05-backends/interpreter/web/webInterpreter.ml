@@ -1,21 +1,155 @@
 include Interpreter
 open Vdom
 
-type msg = HighlightRedex of bool
-type model = { highlight_redex : bool }
+type msg =
+  | HighlightRedex of bool
+  | ChangeInterruptOperation of Ast.opsym
+  | ParseInterruptPayload of string
+  | SendInterrupt
 
-let init = { highlight_redex = true }
+type model = {
+  highlight_redex : bool;
+  interrupt_operation : Ast.opsym option;
+  unparsed_interrupt_payload : string;
+  parsed_interrupt_payload : (Ast.expression, string) result;
+}
 
-let update_model _model = function
-  | HighlightRedex show -> { highlight_redex = show }
+let init =
+  {
+    highlight_redex = true;
+    interrupt_operation = None;
+    unparsed_interrupt_payload = "";
+    parsed_interrupt_payload = Error "";
+  }
 
-let update_run_state run_state _msg = run_state
+let update_model model = function
+  | HighlightRedex show -> { model with highlight_redex = show }
+  | ChangeInterruptOperation op -> { model with interrupt_operation = Some op }
+  | ParseInterruptPayload input ->
+      {
+        model with
+        unparsed_interrupt_payload = input;
+        parsed_interrupt_payload = Error ("Can't parse " ^ input);
+      }
+  | SendInterrupt -> model
+
+let update_run_state model run_state = function
+  | SendInterrupt -> (
+      match (model.interrupt_operation, model.parsed_interrupt_payload) with
+      | Some op, Ok expr -> Interpreter.incoming_operation run_state op expr
+      | _, _ -> run_state)
+  | HighlightRedex _ | ChangeInterruptOperation _ | ParseInterruptPayload _ ->
+      run_state
+
+let panel ?(a = []) heading blocks =
+  div ~a:(class_ "panel" :: a)
+    (elt "p" ~a:[ class_ "panel-heading" ] [ text heading ] :: blocks)
+
+let panel_block = div ~a:[ class_ "panel-block" ]
+let nil = text ""
+
+let select ?(a = []) empty_description msg describe_choice selected choices =
+  let view_choice choice =
+    elt "option"
+      ~a:[ bool_prop "selected" (selected choice) ]
+      [ text (describe_choice choice) ]
+  in
+  div ~a
+    [
+      elt "select"
+        ~a:[ onchange_index (fun i -> msg (List.nth choices (i - 1))) ]
+        (elt "option"
+           ~a:
+             [
+               disabled true;
+               bool_prop "selected"
+                 (List.for_all (fun choice -> not (selected choice)) choices);
+             ]
+           [ text empty_description ]
+        :: List.map view_choice choices);
+    ]
+
+let view_sent_operations ops =
+  let view_operation op =
+    (match op with
+    | Interpreter.Interrupt (op, expr) ->
+        Format.fprintf Format.str_formatter "↓ %t %t" (Ast.OpSym.print op)
+          (Ast.print_expression expr)
+    | Interpreter.Signal (op, expr) ->
+        Format.fprintf Format.str_formatter "↑ %t %t" (Ast.OpSym.print op)
+          (Ast.print_expression expr));
+    elt "a" ~a:[ class_ "panel-block" ] [ text (Format.flush_str_formatter ()) ]
+  in
+  panel "History" (List.map view_operation ops)
+
+let view_send_interrupt model opsyms =
+  let warn_payload =
+    model.unparsed_interrupt_payload <> ""
+    && Result.is_error model.parsed_interrupt_payload
+  in
+  panel_block
+    [
+      div
+        ~a:[ class_ "field" ]
+        [
+          div
+            ~a:[ class_ "field has-addons" ]
+            [
+              div
+                ~a:[ class_ "control is-expanded" ]
+                [
+                  select
+                    ~a:[ class_ "select is-fullwidth" ]
+                    "Interrupt"
+                    (fun operation -> ChangeInterruptOperation operation)
+                    Ast.string_of_operation
+                    (fun operation ->
+                      Some operation = model.interrupt_operation)
+                    opsyms;
+                ];
+              elt "p"
+                ~a:[ class_ "control" ]
+                [
+                  input
+                    ~a:
+                      [
+                        class_
+                          (if warn_payload then "input is-danger" else "input");
+                        type_ "text";
+                        oninput (fun input -> ParseInterruptPayload input);
+                        str_prop "placeholder" "payload";
+                        disabled (Option.is_none model.interrupt_operation);
+                        value model.unparsed_interrupt_payload;
+                      ]
+                    [];
+                ];
+              div
+                ~a:[ class_ "control" ]
+                [
+                  (let dis =
+                     Option.is_none model.interrupt_operation
+                     || Result.is_error model.parsed_interrupt_payload
+                   in
+                   elt "button"
+                     ~a:
+                       [
+                         class_ "button is-info";
+                         onclick (fun _ -> SendInterrupt);
+                         disabled dis;
+                       ]
+                     [ text "↓" ]);
+                ];
+            ];
+          (match model.parsed_interrupt_payload with
+          | Error msg when warn_payload ->
+              elt "p" ~a:[ class_ "help is-danger" ] [ text msg ]
+          | _ -> nil);
+        ];
+    ]
 
 let view_model model =
-  div
-    ~a:[ class_ "panel" ]
+  panel "Options"
     [
-      elt "p" ~a:[ class_ "panel-heading" ] [ text "Options" ];
       elt "label"
         ~a:[ class_ "panel-block" ]
         [
@@ -87,4 +221,11 @@ let view_run_state model (run_state : run_state) step_label =
     RedexSelectorTM.view_process_with_redexes model.highlight_redex reduction
       run_state.process
   in
-  div ~a:[ class_ "box" ] [ elt "pre" process_tree ]
+
+  div
+    ~a:[ class_ "box" ]
+    [
+      elt "pre" process_tree;
+      view_sent_operations run_state.sent_operations;
+      view_send_interrupt model run_state.opsyms;
+    ]

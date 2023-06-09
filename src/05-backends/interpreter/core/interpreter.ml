@@ -509,14 +509,15 @@ let load_top_let load_state x expr =
 let load_top_do load_state comp =
   { load_state with computations = load_state.computations @ [ comp ] }
 
-type operation =
+type sent_operation =
   | Interrupt of Ast.opsym * Ast.expression
   | Signal of Ast.opsym * Ast.expression
 
 type run_state = {
   environment : environment;
   process : Ast.process;
-  signals : operation list;
+  opsyms : Ast.opsym list;
+  sent_operations : sent_operation list;
 }
 
 type step_label = ProcessReduction of process_reduction | Return | TopSignal
@@ -529,11 +530,19 @@ let make_process = function
         (fun proc comp -> Ast.Parallel (proc, Ast.Run comp))
         (Ast.Run comp) comps
 
+let incoming_operation state op expr =
+  {
+    state with
+    process = Ast.InterruptProc (op, expr, state.process);
+    sent_operations = Interrupt (op, expr) :: state.sent_operations;
+  }
+
 let run (load_state : load_state) =
   {
     environment = load_state.environment;
     process = make_process load_state.computations;
-    signals = [];
+    sent_operations = [];
+    opsyms = [];
   }
 
 let steps state =
@@ -554,7 +563,7 @@ let steps state =
             {
               state with
               process = proc;
-              signals = Signal (op, expr) :: state.signals;
+              sent_operations = Signal (op, expr) :: state.sent_operations;
             });
       }
       :: steps

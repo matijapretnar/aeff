@@ -237,15 +237,17 @@ module View (Backend : WebBackend.S) = struct
       (view_edit_source :: view_undo_last_step :: view_random_steps steps
      :: List.mapi view_step steps)
 
-  let run_view (run_model : Model.run_model) =
+  let run_view (run_model : Model.run_model) : Model.msg vdom =
     let steps = Backend.steps run_model.run_state in
     let selected_step =
       Option.map (List.nth steps) run_model.selected_step_index
     in
     view_contents
       [
-        Backend.view_run_state run_model.backend_model run_model.run_state
-          (Option.map (fun step -> step.Backend.label) selected_step);
+        Vdom.map
+          (fun msg -> Model.RunMsg (Model.BackendMsg msg))
+          (Backend.view_run_state run_model.backend_model run_model.run_state
+             (Option.map (fun step -> step.Backend.label) selected_step));
       ]
       ([ view_steps run_model steps ]
       @ [
