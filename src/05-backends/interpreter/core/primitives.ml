@@ -67,7 +67,7 @@ let rec comparable_expression = function
   | Lambda _ -> false
   | RecLambda _ -> false
   | Fulfill e -> comparable_expression e
-  | Reference r -> comparable_expression !r
+  | Reference _ -> true
   | Boxed e -> comparable_expression e
 
 let comparison f =
@@ -102,13 +102,13 @@ let primitive_function = function
   | Primitives.ToString ->
       fun expr ->
         Ast.Return (Ast.Const (Const.String (Ast.string_of_expression expr)))
-  | Primitives.RefAlloc -> fun v -> Ast.Return (Ast.Reference (ref v))
+  | Primitives.RefAlloc -> fun expr -> Ast.Return (Ast.Reference (ref expr))
   | Primitives.RefLookup ->
-      fun v ->
-        let r = get_reference v in
+      fun expr ->
+        let r = get_reference expr in
         Ast.Return !r
   | Primitives.RefUpdate ->
-      binary_function (fun v1 v2 ->
-          let r = get_reference v1 in
-          r := v2;
+      binary_function (fun expr1 expr2 ->
+          let r = get_reference expr1 in
+          r := expr2;
           Ast.Return (Ast.Tuple []))

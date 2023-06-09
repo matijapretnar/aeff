@@ -1,0 +1,75 @@
+include Interpreter
+open Vdom
+
+type msg = HighlightRedex of bool
+type model = { highlight_redex : bool }
+
+let init = { highlight_redex = true }
+
+let update_model _model = function
+  | HighlightRedex show -> { highlight_redex = show }
+
+let update_run_state run_state _msg = run_state
+
+let view_model model =
+  div
+    ~a:[ class_ "panel" ]
+    [
+      elt "p" ~a:[ class_ "panel-heading" ] [ text "Options" ];
+      elt "label"
+        ~a:[ class_ "panel-block" ]
+        [
+          input
+            ~a:
+              [
+                type_ "checkbox";
+                onchange_checked (fun show -> HighlightRedex show);
+                bool_prop "checked" model.highlight_redex;
+              ]
+            [];
+          text "Highlight redex";
+        ];
+    ]
+
+let view_computation_redex = function
+  | Interpreter.Match -> "match"
+  | Interpreter.ApplyFun -> "applyFun"
+  | Interpreter.DoReturn -> "doReturn"
+  | Interpreter.PromiseSignal -> "promiseSignal"
+  | Interpreter.InterruptReturn -> "interruptReturn"
+  | Interpreter.InterruptSignal -> "interruptSignal"
+  | Interpreter.InterruptPromise -> "interruptPromise"
+  | Interpreter.InterruptPromise' -> "interruptPromise"
+  | Interpreter.DoSignal -> "doSignal"
+  | Interpreter.AwaitFulfill -> "awaitFulfill"
+  | Interpreter.Unbox -> "unbox"
+  | Interpreter.Spawn -> "spawn"
+
+let rec view_computation_reduction = function
+  | Interpreter.DoCtx red -> view_computation_reduction red
+  | Interpreter.ComputationRedex redex -> view_computation_redex redex
+  | Interpreter.InterruptCtx red -> view_computation_reduction red
+  | Interpreter.SignalCtx red -> view_computation_reduction red
+
+let view_step_label = function
+  | Interpreter.ComputationReduction reduction ->
+      text (view_computation_reduction reduction)
+  | Interpreter.Return -> text "return"
+
+let view_run_state model (run_state : run_state) step_label =
+  match run_state with
+  | { computations = comp :: _; _ } ->
+      let reduction =
+        match step_label with
+        | Some (ComputationReduction red) -> Some red
+        | Some Interpreter.Return -> None
+        | None -> None
+      in
+
+      let computation_tree =
+        RedexSelectorTM.view_computation_with_redexes model.highlight_redex
+          reduction comp
+      in
+      div ~a:[ class_ "box" ] [ elt "pre" computation_tree ]
+  | { computations = []; _ } ->
+      div ~a:[ class_ "box" ] [ elt "pre" [ text "done" ] ]

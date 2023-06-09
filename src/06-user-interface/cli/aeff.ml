@@ -28,7 +28,11 @@ let parse_args_to_config () =
       ]
   in
   Arg.parse options anonymous usage;
-  { filenames = List.rev !filenames; use_stdlib = !use_stdlib }
+  {
+    filenames = List.rev !filenames;
+    use_stdlib = !use_stdlib;
+    fixed_random_seed = !fixed_random_seed;
+  }
 
 let rec run (state : Backend.run_state) =
   Backend.view_run_state state;

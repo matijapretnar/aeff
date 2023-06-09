@@ -1,24 +1,16 @@
 open Utils
 module Ast = Language.Ast
+module Const = Language.Const
 
-type state = {
+type environment = {
   variables : Ast.expression Ast.VariableMap.t;
   builtin_functions : (Ast.expression -> Ast.computation) Ast.VariableMap.t;
 }
 
-let initial_state =
+let initial_environment =
   {
     variables = Ast.VariableMap.empty;
     builtin_functions = Ast.VariableMap.empty;
-  }
-
-let load_primitive state x prim =
-  {
-    state with
-    builtin_functions =
-      Ast.VariableMap.add x
-        (Primitives.primitive_function prim)
-        state.builtin_functions;
   }
 
 exception PatternMismatch
@@ -61,78 +53,78 @@ type process_reduction =
   | RunCtx of computation_reduction
   | ProcessRedex of process_redex
 
-let rec eval_tuple state = function
+let rec eval_tuple env = function
   | Ast.Tuple exprs -> exprs
-  | Ast.Var x -> eval_tuple state (Ast.VariableMap.find x state.variables)
+  | Ast.Var x -> eval_tuple env (Ast.VariableMap.find x env.variables)
   | expr ->
       Error.runtime "Tuple expected but got %t" (Ast.print_expression expr)
 
-let rec eval_variant state = function
+let rec eval_variant env = function
   | Ast.Variant (lbl, expr) -> (lbl, expr)
-  | Ast.Var x -> eval_variant state (Ast.VariableMap.find x state.variables)
+  | Ast.Var x -> eval_variant env (Ast.VariableMap.find x env.variables)
   | expr ->
       Error.runtime "Variant expected but got %t" (Ast.print_expression expr)
 
-let rec eval_const state = function
+let rec eval_const env = function
   | Ast.Const c -> c
-  | Ast.Var x -> eval_const state (Ast.VariableMap.find x state.variables)
+  | Ast.Var x -> eval_const env (Ast.VariableMap.find x env.variables)
   | expr ->
       Error.runtime "Const expected but got %t" (Ast.print_expression expr)
 
-let rec match_pattern_with_expression state pat expr =
+let rec match_pattern_with_expression env pat expr =
   match pat with
   | Ast.PVar x -> Ast.VariableMap.singleton x expr
-  | Ast.PAnnotated (pat, _) -> match_pattern_with_expression state pat expr
+  | Ast.PAnnotated (pat, _) -> match_pattern_with_expression env pat expr
   | Ast.PAs (pat, x) ->
-      let subst = match_pattern_with_expression state pat expr in
+      let subst = match_pattern_with_expression env pat expr in
       Ast.VariableMap.add x expr subst
   | Ast.PTuple pats ->
-      let exprs = eval_tuple state expr in
+      let exprs = eval_tuple env expr in
       List.fold_left2
         (fun subst pat expr ->
-          let subst' = match_pattern_with_expression state pat expr in
+          let subst' = match_pattern_with_expression env pat expr in
           Ast.VariableMap.union (fun _ _ _ -> assert false) subst subst')
         Ast.VariableMap.empty pats exprs
   | Ast.PVariant (label, pat) -> (
-      match (pat, eval_variant state expr) with
+      match (pat, eval_variant env expr) with
       | None, (label', None) when label = label' -> Ast.VariableMap.empty
       | Some pat, (label', Some expr) when label = label' ->
-          match_pattern_with_expression state pat expr
+          match_pattern_with_expression env pat expr
       | _, _ -> raise PatternMismatch)
-  | Ast.PConst c when Language.Const.equal c (eval_const state expr) ->
+  | Ast.PConst c when Const.equal c (eval_const env expr) ->
       Ast.VariableMap.empty
   | Ast.PNonbinding -> Ast.VariableMap.empty
   | _ -> raise PatternMismatch
 
 let rec remove_pattern_bound_variables subst = function
   | Ast.PVar x -> Ast.VariableMap.remove x subst
-  | PAnnotated (pat, _) -> remove_pattern_bound_variables subst pat
-  | PAs (pat, x) ->
+  | Ast.PAnnotated (pat, _) -> remove_pattern_bound_variables subst pat
+  | Ast.PAs (pat, x) ->
       let subst = remove_pattern_bound_variables subst pat in
       Ast.VariableMap.remove x subst
-  | PTuple pats -> List.fold_left remove_pattern_bound_variables subst pats
-  | PVariant (_, None) -> subst
-  | PVariant (_, Some pat) -> remove_pattern_bound_variables subst pat
-  | PConst _ -> subst
-  | PNonbinding -> subst
+  | Ast.PTuple pats -> List.fold_left remove_pattern_bound_variables subst pats
+  | Ast.PVariant (_, None) -> subst
+  | Ast.PVariant (_, Some pat) -> remove_pattern_bound_variables subst pat
+  | Ast.PConst _ -> subst
+  | Ast.PNonbinding -> subst
 
 let rec refresh_pattern = function
   | Ast.PVar x ->
       let x' = Ast.Variable.refresh x in
       (Ast.PVar x', [ (x, x') ])
-  | PAnnotated (pat, _) -> refresh_pattern pat
-  | PAs (pat, x) ->
+  | Ast.PAnnotated (pat, _) -> refresh_pattern pat
+  | Ast.PAs (pat, x) ->
       let pat', vars = refresh_pattern pat in
       let x' = Ast.Variable.refresh x in
-      (PAs (pat', x'), (x, x') :: vars)
-  | PTuple pats ->
+      (Ast.PAs (pat', x'), (x, x') :: vars)
+  | Ast.PTuple pats ->
       let fold pat (pats', vars) =
         let pat', vars' = refresh_pattern pat in
         (pat' :: pats', vars' @ vars)
       in
       let pats', vars = List.fold_right fold pats ([], []) in
-      (PTuple pats', vars)
-  | PVariant (lbl, Some pat) ->
+      (Ast.PTuple pats', vars)
+  | Ast.PVariant (lbl, Some pat) ->
       let pat', vars = refresh_pattern pat in
       (PVariant (lbl, Some pat'), vars)
   | (PVariant (_, None) | PConst _ | PNonbinding) as pat -> (pat, [])
@@ -140,33 +132,33 @@ let rec refresh_pattern = function
 let rec refresh_expression vars = function
   | Ast.Var x as expr -> (
       match List.assoc_opt x vars with None -> expr | Some x' -> Var x')
-  | Const _ as expr -> expr
-  | Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
-  | Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
-  | Variant (label, expr) ->
+  | Ast.Const _ as expr -> expr
+  | Ast.Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
+  | Ast.Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
+  | Ast.Variant (label, expr) ->
       Variant (label, Option.map (refresh_expression vars) expr)
-  | Lambda abs -> Lambda (refresh_abstraction vars abs)
-  | RecLambda (x, abs) ->
+  | Ast.Lambda abs -> Lambda (refresh_abstraction vars abs)
+  | Ast.RecLambda (x, abs) ->
       let x' = Ast.Variable.refresh x in
       RecLambda (x', refresh_abstraction ((x, x') :: vars) abs)
-  | Fulfill expr -> Fulfill (refresh_expression vars expr)
-  | Reference ref -> Reference ref
-  | Boxed expr -> Boxed (refresh_expression vars expr)
+  | Ast.Fulfill expr -> Fulfill (refresh_expression vars expr)
+  | Ast.Reference ref -> Reference ref
+  | Ast.Boxed expr -> Boxed (refresh_expression vars expr)
 
 and refresh_computation vars = function
   | Ast.Return expr -> Ast.Return (refresh_expression vars expr)
-  | Do (comp, abs) ->
-      Do (refresh_computation vars comp, refresh_abstraction vars abs)
-  | Match (expr, cases) ->
-      Match
+  | Ast.Do (comp, abs) ->
+      Ast.Do (refresh_computation vars comp, refresh_abstraction vars abs)
+  | Ast.Match (expr, cases) ->
+      Ast.Match
         (refresh_expression vars expr, List.map (refresh_abstraction vars) cases)
-  | Apply (expr1, expr2) ->
-      Apply (refresh_expression vars expr1, refresh_expression vars expr2)
-  | Operation (Signal (op, expr), comp) ->
-      Operation
+  | Ast.Apply (expr1, expr2) ->
+      Ast.Apply (refresh_expression vars expr1, refresh_expression vars expr2)
+  | Ast.Operation (Signal (op, expr), comp) ->
+      Ast.Operation
         ( Signal (op, refresh_expression vars expr),
           refresh_computation vars comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
+  | Ast.Operation (Promise (k, op, abs, p), comp) ->
       let p' = Ast.Variable.refresh p in
       let k', vars' =
         match k with
@@ -175,18 +167,19 @@ and refresh_computation vars = function
             let k''' = Ast.Variable.refresh k'' in
             (Some k''', (k'', k''') :: vars)
       in
-      Operation
+      Ast.Operation
         ( Promise (k', op, refresh_abstraction vars' abs, p'),
           refresh_computation ((p, p') :: vars) comp )
-  | Operation (Spawn comp1, comp2) ->
-      Operation
+  | Ast.Operation (Spawn comp1, comp2) ->
+      Ast.Operation
         (Spawn (refresh_computation vars comp1), refresh_computation vars comp2)
-  | Interrupt (op, expr, comp) ->
-      Interrupt (op, refresh_expression vars expr, refresh_computation vars comp)
-  | Await (expr, abs) ->
-      Await (refresh_expression vars expr, refresh_abstraction vars abs)
-  | Unbox (expr, abs) ->
-      Unbox (refresh_expression vars expr, refresh_abstraction vars abs)
+  | Ast.Interrupt (op, expr, comp) ->
+      Ast.Interrupt
+        (op, refresh_expression vars expr, refresh_computation vars comp)
+  | Ast.Await (expr, abs) ->
+      Ast.Await (refresh_expression vars expr, refresh_abstraction vars abs)
+  | Ast.Unbox (expr, abs) ->
+      Ast.Unbox (refresh_expression vars expr, refresh_abstraction vars abs)
 
 and refresh_abstraction vars (pat, comp) =
   let pat', vars' = refresh_pattern pat in
@@ -197,47 +190,48 @@ let rec substitute_expression subst = function
       match Ast.VariableMap.find_opt x subst with
       | None -> expr
       | Some expr -> expr)
-  | Const _ as expr -> expr
-  | Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
-  | Tuple exprs -> Tuple (List.map (substitute_expression subst) exprs)
-  | Variant (label, expr) ->
+  | Ast.Const _ as expr -> expr
+  | Ast.Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
+  | Ast.Tuple exprs -> Tuple (List.map (substitute_expression subst) exprs)
+  | Ast.Variant (label, expr) ->
       Variant (label, Option.map (substitute_expression subst) expr)
-  | Lambda abs -> Lambda (substitute_abstraction subst abs)
-  | RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
-  | Fulfill expr -> Fulfill (substitute_expression subst expr)
-  | Reference ref -> Reference ref
-  | Boxed expr -> Boxed (substitute_expression subst expr)
+  | Ast.Lambda abs -> Lambda (substitute_abstraction subst abs)
+  | Ast.RecLambda (x, abs) -> RecLambda (x, substitute_abstraction subst abs)
+  | Ast.Fulfill expr -> Ast.Fulfill (substitute_expression subst expr)
+  | Ast.Reference ref -> Ast.Reference ref
+  | Ast.Boxed expr -> Ast.Boxed (substitute_expression subst expr)
 
 and substitute_computation subst = function
   | Ast.Return expr -> Ast.Return (substitute_expression subst expr)
-  | Do (comp, abs) ->
-      Do (substitute_computation subst comp, substitute_abstraction subst abs)
-  | Match (expr, cases) ->
-      Match
+  | Ast.Do (comp, abs) ->
+      Ast.Do
+        (substitute_computation subst comp, substitute_abstraction subst abs)
+  | Ast.Match (expr, cases) ->
+      Ast.Match
         ( substitute_expression subst expr,
           List.map (substitute_abstraction subst) cases )
-  | Apply (expr1, expr2) ->
-      Apply
+  | Ast.Apply (expr1, expr2) ->
+      Ast.Apply
         (substitute_expression subst expr1, substitute_expression subst expr2)
-  | Operation (Signal (op, expr), comp) ->
+  | Ast.Operation (Signal (op, expr), comp) ->
       Operation
         ( Signal (op, substitute_expression subst expr),
           substitute_computation subst comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
+  | Ast.Operation (Promise (k, op, abs, p), comp) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
       Operation
         ( Promise (k, op, substitute_abstraction subst abs, p),
           substitute_computation subst' comp )
-  | Operation (Spawn comp1, comp2) ->
+  | Ast.Operation (Spawn comp1, comp2) ->
       Operation
         ( Spawn (substitute_computation subst comp1),
           substitute_computation subst comp2 )
-  | Interrupt (op, expr, comp) ->
+  | Ast.Interrupt (op, expr, comp) ->
       Interrupt
         (op, substitute_expression subst expr, substitute_computation subst comp)
-  | Await (expr, abs) ->
+  | Ast.Await (expr, abs) ->
       Await (substitute_expression subst expr, substitute_abstraction subst abs)
-  | Unbox (expr, abs) ->
+  | Ast.Unbox (expr, abs) ->
       Unbox (substitute_expression subst expr, substitute_abstraction subst abs)
 
 and substitute_abstraction subst (pat, comp) =
@@ -248,34 +242,65 @@ let substitute subst comp =
   let subst = Ast.VariableMap.map (refresh_expression []) subst in
   substitute_computation subst comp
 
-let rec eval_function state = function
+let rec eval_function env = function
   | Ast.Lambda (pat, comp) ->
       fun arg ->
-        let subst = match_pattern_with_expression state pat arg in
+        let subst = match_pattern_with_expression env pat arg in
         substitute subst comp
   | Ast.RecLambda (f, (pat, comp)) as expr ->
       fun arg ->
         let subst =
-          match_pattern_with_expression state pat arg
+          match_pattern_with_expression env pat arg
           |> Ast.VariableMap.add f expr
         in
         substitute subst comp
   | Ast.Var x -> (
-      match Ast.VariableMap.find_opt x state.variables with
-      | Some expr -> eval_function state expr
-      | None -> Ast.VariableMap.find x state.builtin_functions)
+      match Ast.VariableMap.find_opt x env.variables with
+      | Some expr -> eval_function env expr
+      | None -> Ast.VariableMap.find x env.builtin_functions)
   | expr ->
       Error.runtime "Function expected but got %t" (Ast.print_expression expr)
 
-let step_in_context step state redCtx ctx term =
-  let terms' = step state term in
-  List.map (fun (red, term') -> (redCtx red, ctx term')) terms'
+let step_in_context step env redCtx ctx term =
+  let terms' = step env term in
+  List.map (fun (red, term') -> (redCtx red, fun () -> ctx (term' ()))) terms'
 
-let rec step_computation state = function
+let rec step_computation env = function
   | Ast.Return _ -> []
+  | Ast.Match (expr, cases) ->
+      let rec find_case = function
+        | (pat, comp) :: cases -> (
+            match match_pattern_with_expression env pat expr with
+            | subst ->
+                [ (ComputationRedex Match, fun () -> substitute subst comp) ]
+            | exception PatternMismatch -> find_case cases)
+        | [] -> []
+      in
+      find_case cases
+  | Ast.Apply (expr1, expr2) ->
+      let f = eval_function env expr1 in
+      [ (ComputationRedex ApplyFun, fun () -> f expr2) ]
+  | Ast.Do (comp1, comp2) -> (
+      let comps1' =
+        step_in_context step_computation env
+          (fun red -> DoCtx red)
+          (fun comp1' -> Ast.Do (comp1', comp2))
+          comp1
+      in
+      match comp1 with
+      | Ast.Return expr ->
+          let pat, comp2' = comp2 in
+          let subst = match_pattern_with_expression env pat expr in
+          (ComputationRedex DoReturn, fun () -> substitute subst comp2')
+          :: comps1'
+      | Ast.Operation (out, comp1') ->
+          ( ComputationRedex DoSignal,
+            fun () -> Operation (out, Ast.Do (comp1', comp2)) )
+          :: comps1'
+      | _ -> comps1')
   | Ast.Operation ((Ast.Promise (k, op, op_comp, p) as out), comp) -> (
       let comps' =
-        step_in_context step_computation state
+        step_in_context step_computation env
           (fun red -> SignalCtx red)
           (fun comp' -> Ast.Operation (out, comp'))
           comp
@@ -284,72 +309,46 @@ let rec step_computation state = function
       | Ast.Operation (Ast.Promise _, _) -> comps'
       | Ast.Operation (out, cont') ->
           ( ComputationRedex PromiseSignal,
-            Ast.Operation
-              (out, Ast.Operation (Ast.Promise (k, op, op_comp, p), cont')) )
+            fun () ->
+              Ast.Operation
+                (out, Ast.Operation (Ast.Promise (k, op, op_comp, p), cont')) )
           :: comps'
       | _ -> comps')
   | Ast.Operation (out, comp) ->
-      step_in_context step_computation state
+      step_in_context step_computation env
         (fun red -> SignalCtx red)
         (fun comp' -> Ast.Operation (out, comp'))
         comp
   | Ast.Interrupt (op, expr, comp) -> (
       let comps' =
-        step_in_context step_computation state
+        step_in_context step_computation env
           (fun red -> InterruptCtx red)
           (fun comp' -> Ast.Interrupt (op, expr, comp'))
           comp
       in
       match comp with
       | Ast.Return expr ->
-          (ComputationRedex InterruptReturn, Ast.Return expr) :: comps'
+          (ComputationRedex InterruptReturn, fun () -> Ast.Return expr)
+          :: comps'
       | Ast.Operation (out, comp) ->
-          (ComputationRedex InterruptSignal, step_in_out state op expr comp out)
+          ( ComputationRedex InterruptSignal,
+            fun () -> step_in_out env op expr comp out )
           :: comps'
       | _ -> comps')
-  | Ast.Match (expr, cases) ->
-      let rec find_case = function
-        | (pat, comp) :: cases -> (
-            match match_pattern_with_expression state pat expr with
-            | subst -> [ (ComputationRedex Match, substitute subst comp) ]
-            | exception PatternMismatch -> find_case cases)
-        | [] -> []
-      in
-      find_case cases
-  | Ast.Apply (expr1, expr2) ->
-      let f = eval_function state expr1 in
-      [ (ComputationRedex ApplyFun, f expr2) ]
-  | Ast.Do (comp1, comp2) -> (
-      let comps1' =
-        step_in_context step_computation state
-          (fun red -> DoCtx red)
-          (fun comp1' -> Ast.Do (comp1', comp2))
-          comp1
-      in
-      match comp1 with
-      | Ast.Return expr ->
-          let pat, comp2' = comp2 in
-          let subst = match_pattern_with_expression state pat expr in
-          (ComputationRedex DoReturn, substitute subst comp2') :: comps1'
-      | Ast.Operation (out, comp1') ->
-          ( ComputationRedex DoSignal,
-            Ast.Operation (out, Ast.Do (comp1', comp2)) )
-          :: comps1'
-      | _ -> comps1')
   | Ast.Await (expr, (pat, comp)) -> (
       match expr with
       | Ast.Fulfill expr ->
-          let subst = match_pattern_with_expression state pat expr in
-          [ (ComputationRedex AwaitFulfill, substitute subst comp) ]
+          let subst = match_pattern_with_expression env pat expr in
+          [ (ComputationRedex AwaitFulfill, fun () -> substitute subst comp) ]
       | _ -> [])
   | Ast.Unbox (expr, (pat, comp)) -> (
       match expr with
       | Ast.Boxed expr ->
-          let subst = match_pattern_with_expression state pat expr in
-          [ (ComputationRedex Unbox, substitute subst comp) ]
+          let subst = match_pattern_with_expression env pat expr in
+          [ (ComputationRedex Unbox, fun () -> substitute subst comp) ]
       | Ast.Var x ->
-          let expr' = Ast.VariableMap.find x state.variables in
-          [ (ComputationRedex Unbox, Ast.Unbox (expr', (pat, comp))) ]
+          let expr' = Ast.VariableMap.find x env.variables in
+          [ (ComputationRedex Unbox, fun () -> Ast.Unbox (expr', (pat, comp))) ]
       | _ ->
           Error.runtime "Expected boxed expresion but got %t instead."
             (Ast.print_expression expr))
@@ -389,15 +388,19 @@ let rec step_process state = function
   | Ast.Run comp -> (
       let comps' =
         step_computation state comp
-        |> List.map (fun (red, comp') -> (RunCtx red, Ast.Run comp'))
+        |> List.map (fun (red, comp') ->
+               (RunCtx red, fun () -> Ast.Run (comp' ())))
       in
       match comp with
       | Ast.Operation (Ast.Signal (op, expr), comp') ->
-          (ProcessRedex RunSignal, Ast.SignalProc (op, expr, Ast.Run comp'))
+          ( ProcessRedex RunSignal,
+            fun () -> Ast.SignalProc (op, expr, Ast.Run comp') )
           :: comps'
       | Ast.Operation (Ast.Spawn comp1, comp2) ->
-          (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp1, Ast.Run comp2))
-          :: (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp2, Ast.Run comp1))
+          ( ProcessRedex RunSpawn,
+            fun () -> Ast.Parallel (Ast.Run comp1, Ast.Run comp2) )
+          :: ( ProcessRedex RunSpawn,
+               fun () -> Ast.Parallel (Ast.Run comp2, Ast.Run comp1) )
           :: comps'
       | _ -> comps')
   | Ast.Parallel (proc1, proc2) ->
@@ -411,11 +414,12 @@ let rec step_process state = function
         match proc1 with
         | Ast.SignalProc (op, expr, proc1') ->
             ( ProcessRedex ParallelSignal1,
-              Ast.SignalProc
-                ( op,
-                  expr,
-                  Ast.Parallel (proc1', Ast.InterruptProc (op, expr, proc2)) )
-            )
+              fun () ->
+                Ast.SignalProc
+                  ( op,
+                    expr,
+                    Ast.Parallel (proc1', Ast.InterruptProc (op, expr, proc2))
+                  ) )
             :: procs'
         | _ -> procs'
       and proc2_first =
@@ -428,11 +432,12 @@ let rec step_process state = function
         match proc2 with
         | Ast.SignalProc (op, expr, proc2') ->
             ( ProcessRedex ParallelSignal2,
-              Ast.SignalProc
-                ( op,
-                  expr,
-                  Ast.Parallel (Ast.InterruptProc (op, expr, proc1), proc2') )
-            )
+              fun () ->
+                Ast.SignalProc
+                  ( op,
+                    expr,
+                    Ast.Parallel (Ast.InterruptProc (op, expr, proc1), proc2')
+                  ) )
             :: procs'
         | _ -> procs'
       in
@@ -446,17 +451,21 @@ let rec step_process state = function
       in
       match proc with
       | Ast.Run comp ->
-          (ProcessRedex InterruptRun, Ast.Run (Ast.Interrupt (op, expr, comp)))
+          ( ProcessRedex InterruptRun,
+            fun () -> Ast.Run (Ast.Interrupt (op, expr, comp)) )
           :: procs'
       | Ast.Parallel (proc1, proc2) ->
           ( ProcessRedex InterruptParallel,
-            Ast.Parallel
-              ( Ast.InterruptProc (op, expr, proc1),
-                Ast.InterruptProc (op, expr, proc2) ) )
+            fun () ->
+              Ast.Parallel
+                ( Ast.InterruptProc (op, expr, proc1),
+                  Ast.InterruptProc (op, expr, proc2) ) )
           :: procs'
       | Ast.SignalProc (op', expr', proc') ->
           ( ProcessRedex InterruptSignal,
-            Ast.SignalProc (op', expr', Ast.InterruptProc (op, expr, proc')) )
+            fun () ->
+              Ast.SignalProc (op', expr', Ast.InterruptProc (op, expr, proc'))
+          )
           :: procs'
       | _ -> procs')
   | Ast.SignalProc (op, expr, proc) ->
@@ -465,26 +474,63 @@ let rec step_process state = function
         (fun proc' -> Ast.SignalProc (op, expr, proc'))
         proc
 
-let incoming_operation proc op expr = Ast.InterruptProc (op, expr, proc)
+type load_state = {
+  environment : environment;
+  computations : Ast.computation list;
+}
 
-let eval_top_let state x expr =
-  { state with variables = Ast.VariableMap.add x expr state.variables }
+let initial_load_state =
+  { environment = initial_environment; computations = [] }
 
-let add_external_function x def state =
+let load_primitive load_state x prim =
   {
-    state with
-    builtin_functions = Ast.VariableMap.add x def state.builtin_functions;
+    load_state with
+    environment =
+      {
+        load_state.environment with
+        builtin_functions =
+          Ast.VariableMap.add x
+            (Primitives.primitive_function prim)
+            load_state.environment.builtin_functions;
+      };
   }
 
-type top_step =
-  | TopSignal of Ast.opsym * Ast.expression * Ast.process
-  | Step of Ast.process
+let load_ty_def load_state _ = load_state
 
-let top_steps state proc =
-  let steps =
-    step_process state proc |> List.map (fun (red, proc) -> (red, Step proc))
-  in
-  match proc with
-  | Ast.SignalProc (op, expr, proc) ->
-      (ProcessRedex TopSignal, TopSignal (op, expr, proc)) :: steps
-  | _ -> steps
+let load_top_let load_state x expr =
+  {
+    load_state with
+    environment =
+      {
+        load_state.environment with
+        variables = Ast.VariableMap.add x expr load_state.environment.variables;
+      };
+  }
+
+let load_top_do load_state comp =
+  { load_state with computations = load_state.computations @ [ comp ] }
+
+type run_state = load_state
+type step_label = ComputationReduction of computation_reduction | Return
+type step = { label : step_label; next_state : unit -> run_state }
+
+let run load_state = load_state
+
+let steps = function
+  | { computations = []; _ } -> []
+  | { computations = Ast.Return _ :: comps; environment } ->
+      [
+        {
+          label = Return;
+          next_state = (fun () -> { computations = comps; environment });
+        };
+      ]
+  | { computations = comp :: comps; environment } ->
+      List.map
+        (fun (red, comp') ->
+          {
+            label = ComputationReduction red;
+            next_state =
+              (fun () -> { computations = comp' () :: comps; environment });
+          })
+        (step_computation environment comp)
