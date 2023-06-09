@@ -43,7 +43,6 @@ type process_redex =
   | InterruptRun
   | InterruptParallel
   | InterruptSignal
-  | TopSignal
 
 type process_reduction =
   | LeftCtx of process_reduction
@@ -510,27 +509,53 @@ let load_top_let load_state x expr =
 let load_top_do load_state comp =
   { load_state with computations = load_state.computations @ [ comp ] }
 
-type run_state = load_state
-type step_label = ComputationReduction of computation_reduction | Return
+type operation =
+  | Interrupt of Ast.opsym * Ast.expression
+  | Signal of Ast.opsym * Ast.expression
+
+type run_state = {
+  environment : environment;
+  process : Ast.process;
+  signals : operation list;
+}
+
+type step_label = ProcessReduction of process_reduction | Return | TopSignal
 type step = { label : step_label; next_state : unit -> run_state }
 
-let run load_state = load_state
+let make_process = function
+  | [] -> Ast.Run (Ast.Return (Ast.Tuple []))
+  | comp :: comps ->
+      List.fold_left
+        (fun proc comp -> Ast.Parallel (proc, Ast.Run comp))
+        (Ast.Run comp) comps
 
-let steps = function
-  | { computations = []; _ } -> []
-  | { computations = Ast.Return _ :: comps; environment } ->
-      [
-        {
-          label = Return;
-          next_state = (fun () -> { computations = comps; environment });
-        };
-      ]
-  | { computations = comp :: comps; environment } ->
-      List.map
-        (fun (red, comp') ->
-          {
-            label = ComputationReduction red;
-            next_state =
-              (fun () -> { computations = comp' () :: comps; environment });
-          })
-        (step_computation environment comp)
+let run (load_state : load_state) =
+  {
+    environment = load_state.environment;
+    process = make_process load_state.computations;
+    signals = [];
+  }
+
+let steps state =
+  let steps =
+    step_process state.environment state.process
+    |> List.map (fun (red, proc) ->
+           {
+             label = ProcessReduction red;
+             next_state = (fun () -> { state with process = proc () });
+           })
+  in
+  match state.process with
+  | Ast.SignalProc (op, expr, proc) ->
+      {
+        label = TopSignal;
+        next_state =
+          (fun () ->
+            {
+              state with
+              process = proc;
+              signals = Signal (op, expr) :: state.signals;
+            });
+      }
+      :: steps
+  | _ -> steps

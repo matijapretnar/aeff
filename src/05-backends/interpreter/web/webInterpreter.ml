@@ -51,25 +51,40 @@ let rec view_computation_reduction = function
   | Interpreter.InterruptCtx red -> view_computation_reduction red
   | Interpreter.SignalCtx red -> view_computation_reduction red
 
+let view_process_redex = function
+  | Interpreter.RunSignal -> "runSignal"
+  | Interpreter.RunSpawn -> "runSpawn"
+  | Interpreter.ParallelSignal1 -> "parallelSignal1"
+  | Interpreter.ParallelSignal2 -> "parallelSignal2"
+  | Interpreter.InterruptRun -> "interruptRun"
+  | Interpreter.InterruptParallel -> "interruptParallel"
+  | Interpreter.InterruptSignal -> "interruptSignal"
+
+let rec view_process_reduction = function
+  | Interpreter.LeftCtx red -> view_process_reduction red
+  | Interpreter.RightCtx red -> view_process_reduction red
+  | Interpreter.InterruptProcCtx red -> view_process_reduction red
+  | Interpreter.SignalProcCtx red -> view_process_reduction red
+  | Interpreter.RunCtx red -> view_computation_reduction red
+  | Interpreter.ProcessRedex redex -> view_process_redex redex
+
 let view_step_label = function
-  | Interpreter.ComputationReduction reduction ->
-      text (view_computation_reduction reduction)
+  | Interpreter.ProcessReduction reduction ->
+      text (view_process_reduction reduction)
   | Interpreter.Return -> text "return"
+  | Interpreter.TopSignal -> text "topSignal"
 
 let view_run_state model (run_state : run_state) step_label =
-  match run_state with
-  | { computations = comp :: _; _ } ->
-      let reduction =
-        match step_label with
-        | Some (ComputationReduction red) -> Some red
-        | Some Interpreter.Return -> None
-        | None -> None
-      in
+  let reduction =
+    match step_label with
+    | Some (ProcessReduction red) -> Some red
+    | Some Interpreter.Return -> None
+    | Some Interpreter.TopSignal -> None
+    | None -> None
+  in
 
-      let computation_tree =
-        RedexSelectorTM.view_computation_with_redexes model.highlight_redex
-          reduction comp
-      in
-      div ~a:[ class_ "box" ] [ elt "pre" computation_tree ]
-  | { computations = []; _ } ->
-      div ~a:[ class_ "box" ] [ elt "pre" [ text "done" ] ]
+  let process_tree =
+    RedexSelectorTM.view_process_with_redexes model.highlight_redex reduction
+      run_state.process
+  in
+  div ~a:[ class_ "box" ] [ elt "pre" process_tree ]

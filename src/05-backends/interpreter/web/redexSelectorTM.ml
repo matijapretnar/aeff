@@ -7,7 +7,7 @@ let print_mark ppf = Format.pp_print_as ppf 0 tag_marker
 let print_computation_redex ?max_level red c ppf =
   let print ?at_level = Print.print ?max_level ?at_level ppf in
   match (red, c) with
-  | Interpreter.DoReturn, Ast.Do (c1, (pat, c2)) ->
+  | (Interpreter.DoReturn | Interpreter.DoSignal), Ast.Do (c1, (pat, c2)) ->
       print "@[<hov>%tlet@[<hov>@ %t =@ %t@]%t in@ %t@]" print_mark
         (Ast.print_pattern pat) (Ast.print_computation c1) print_mark
         (Ast.print_computation c2)
@@ -27,7 +27,53 @@ let rec print_computation_reduction ?max_level red c ppf =
       print "@[<hov>let@[<hov>@ %t =@ %t@] in@ %t@]" (Ast.print_pattern pat)
         (print_computation_reduction red c1)
         (Ast.print_computation c2)
-  | ComputationRedex redex, c -> print_computation_redex ?max_level redex c ppf
+  | Interpreter.InterruptCtx red, Ast.Interrupt (op, e, c) ->
+      print "↓%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op) (Ast.print_expression e)
+        (print_computation_reduction red c)
+  | Interpreter.SignalCtx red, Ast.Operation (Ast.Signal (op, e), c) ->
+      print "↑%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op) (Ast.print_expression e)
+        (print_computation_reduction red c)
+  | ( Interpreter.SignalCtx red,
+      Ast.Operation (Ast.Promise (None, op, (p1, c1), p2), c2) ) ->
+      print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
+        (Ast.OpSym.print op) (Ast.print_pattern p1) (Ast.print_computation c1)
+        (Ast.Variable.print p2)
+        (print_computation_reduction red c2)
+  | ( Interpreter.SignalCtx red,
+      Ast.Operation (Ast.Promise (Some k, op, (p1, c1), p2), c2) ) ->
+      print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
+        (Ast.OpSym.print op) (Ast.print_pattern p1) (Ast.Variable.print k)
+        (Ast.print_computation c1) (Ast.Variable.print p2)
+        (print_computation_reduction red c2)
+  | _, _ -> assert false
+
+let print_process_redex ?max_level _redex proc ppf =
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
+  print "%t%t%t" print_mark (Ast.print_process ?max_level proc) print_mark
+
+let rec print_process_reduction ?max_level red proc ppf =
+  let print ?at_level = Print.print ?max_level ?at_level ppf in
+  match (red, proc) with
+  | Interpreter.RunCtx red, Ast.Run comp ->
+      print ~at_level:1 "run %t"
+        (print_computation_reduction ~max_level:0 red comp)
+  | Interpreter.LeftCtx red, Ast.Parallel (proc1, proc2) ->
+      print "@[<hv>%t@ || @ %t@]"
+        (print_process_reduction red proc1)
+        (Ast.print_process proc2)
+  | Interpreter.RightCtx red, Ast.Parallel (proc1, proc2) ->
+      print "@[<hv>%t@ || @ %t@]" (Ast.print_process proc1)
+        (print_process_reduction red proc2)
+  | Interpreter.InterruptProcCtx red, Ast.InterruptProc (op, expr, proc) ->
+      print "↓%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op)
+        (Ast.print_expression expr)
+        (print_process_reduction red proc)
+  | Interpreter.SignalProcCtx red, Ast.SignalProc (op, expr, proc) ->
+      print "↑%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op)
+        (Ast.print_expression expr)
+        (print_process_reduction red proc)
+  | Interpreter.ProcessRedex redex, proc ->
+      print_process_redex ?max_level redex proc ppf
   | _, _ -> assert false
 
 let split_string sep str =
@@ -44,10 +90,10 @@ let split_string sep str =
     subs := String.sub str !sub_start (str_len - !sub_start) :: !subs;
   List.rev !subs
 
-let view_computation_with_redexes highlight_redex red comp =
+let view_process_with_redexes highlight_redex red proc =
   (match red with
-  | None -> Ast.print_computation comp Format.str_formatter
-  | Some red -> print_computation_reduction red comp Format.str_formatter);
+  | None -> Ast.print_process proc Format.str_formatter
+  | Some red -> print_process_reduction red proc Format.str_formatter);
   match split_string tag_marker (Format.flush_str_formatter ()) with
   | [ code ] -> [ Vdom.text code ]
   | [ pre; redex; post ] ->
