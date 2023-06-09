@@ -48,13 +48,9 @@ let find_symbol ~loc map name =
   | Some symbol -> symbol
 
 let lookup_ty_name ~loc state = find_symbol ~loc state.ty_names
-
 let lookup_ty_param ~loc state = find_symbol ~loc state.ty_params
-
 let lookup_variable ~loc state = find_symbol ~loc state.variables
-
 let lookup_operation ~loc state = find_symbol ~loc state.operations
-
 let lookup_label ~loc state = find_symbol ~loc state.labels
 
 let rec desugar_ty state { Sugared.it = plain_ty; at = loc } =
@@ -255,7 +251,7 @@ and desugar_plain_computation ~loc state =
           in
           ( [],
             Untyped.Operation (Promise (Some k'', op', (p', c'''), p''), cont'')
-          ) )
+          ))
   | Sugared.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in

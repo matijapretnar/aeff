@@ -22,7 +22,7 @@ let initial_state =
     local_var = [ Ast.VariableMap.empty ];
     operations = Ast.OpSymMap.empty;
     type_definitions =
-      ( Ast.TyNameMap.empty
+      (Ast.TyNameMap.empty
       |> Ast.TyNameMap.add Ast.bool_ty_name
            ([], Ast.TyInline (Ast.TyConst Const.BooleanTy))
       |> Ast.TyNameMap.add Ast.int_ty_name
@@ -50,7 +50,7 @@ let initial_state =
                        Ast.TyParam a;
                        Ast.TyApply (Ast.list_ty_name, [ Ast.TyParam a ]);
                      ]) );
-            ] ) );
+            ] ));
   }
 
 (* Previous versions would fail those two cases
@@ -150,7 +150,7 @@ let infer_variant state lbl =
     | (ty_name, (params, Ast.TySum variants)) :: ty_defs -> (
         match List.assoc_opt lbl variants with
         | None -> find ty_defs
-        | Some ty -> (ty_name, params, ty) )
+        | Some ty -> (ty_name, params, ty))
   in
   let ty_name, params, ty =
     find (Ast.TyNameMap.bindings state.type_definitions)
@@ -189,7 +189,7 @@ let rec infer_pattern state = function
           let ty, vars, eqs = infer_pattern state pat in
           (ty_out, vars, (ty_in, ty) :: eqs)
       | None, Some _ | Some _, None ->
-          Error.typing "Variant optional argument mismatch" )
+          Error.typing "Variant optional argument mismatch")
 
 let infer_variable state x : Ast.ty * Ast.ty list =
   match Ast.VariableMap.find_opt x state.global_var with
@@ -209,10 +209,10 @@ let infer_variable state x : Ast.ty * Ast.ty list =
                 | h :: t -> (
                     match Ast.VariableMap.find_opt x h with
                     | Some ty -> ty
-                    | None -> find_movable t )
+                    | None -> find_movable t)
               in
               let ty = find_movable tail in
-              (ty, [ ty ]) ) )
+              (ty, [ ty ])))
 
 let combine constraints1 constraints2 =
   {
@@ -264,7 +264,7 @@ let rec infer_expression state = function
           let ty, constr = infer_expression state expr in
           (ty_out, add_eqs constr [ (ty_in, ty) ])
       | None, Some _ | Some _, None ->
-          Error.typing "Variant optional argument mismatch" )
+          Error.typing "Variant optional argument mismatch")
   | Ast.Boxed expr ->
       let state' =
         { state with local_var = Ast.VariableMap.empty :: state.local_var }

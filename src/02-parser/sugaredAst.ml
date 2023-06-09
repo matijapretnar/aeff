@@ -3,23 +3,15 @@ open Utils
 type ty_name = string
 
 let bool_ty_name = "bool"
-
 let int_ty_name = "int"
-
 let unit_ty_name = "unit"
-
 let string_ty_name = "string"
-
 let float_ty_name = "float"
-
 let list_ty_name = "list"
-
 let empty_ty_name = "empty"
-
 let ref_ty_name = "ref"
 
 type 'a annotated = { it : 'a; at : Location.t }
-
 type ty_param = string
 
 type ty = plain_ty annotated
@@ -35,13 +27,10 @@ and plain_ty =
   | TyBoxed of ty  (** [[ty]] *)
 
 type variable = string
-
 type label = string
-
 type operation = string
 
 let nil_label = Language.Ast.nil_label_string
-
 let cons_label = Language.Ast.cons_label_string
 
 type pattern = plain_pattern annotated
@@ -81,7 +70,6 @@ and plain_term =
   | Spawn of term  (** [spawn t] *)
 
 and abstraction = pattern * term
-
 and guarded_abstraction = pattern * term option * term
 
 type ty_def =

@@ -98,7 +98,7 @@ let rec match_pattern_with_expression state pat expr =
       | None, (label', None) when label = label' -> Ast.VariableMap.empty
       | Some pat, (label', Some expr) when label = label' ->
           match_pattern_with_expression state pat expr
-      | _, _ -> raise PatternMismatch )
+      | _, _ -> raise PatternMismatch)
   | Ast.PConst c when Language.Const.equal c (eval_const state expr) ->
       Ast.VariableMap.empty
   | Ast.PNonbinding -> Ast.VariableMap.empty
@@ -139,7 +139,7 @@ let rec refresh_pattern = function
 
 let rec refresh_expression vars = function
   | Ast.Var x as expr -> (
-      match List.assoc_opt x vars with None -> expr | Some x' -> Var x' )
+      match List.assoc_opt x vars with None -> expr | Some x' -> Var x')
   | Const _ as expr -> expr
   | Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
   | Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
@@ -196,7 +196,7 @@ let rec substitute_expression subst = function
   | Ast.Var x as expr -> (
       match Ast.VariableMap.find_opt x subst with
       | None -> expr
-      | Some expr -> expr )
+      | Some expr -> expr)
   | Const _ as expr -> expr
   | Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
   | Tuple exprs -> Tuple (List.map (substitute_expression subst) exprs)
@@ -263,7 +263,7 @@ let rec eval_function state = function
   | Ast.Var x -> (
       match Ast.VariableMap.find_opt x state.variables with
       | Some expr -> eval_function state expr
-      | None -> Ast.VariableMap.find x state.builtin_functions )
+      | None -> Ast.VariableMap.find x state.builtin_functions)
   | expr ->
       Error.runtime "Function expected but got %t" (Ast.print_expression expr)
 
@@ -287,7 +287,7 @@ let rec step_computation state = function
             Ast.Operation
               (out, Ast.Operation (Ast.Promise (k, op, op_comp, p), cont')) )
           :: comps'
-      | _ -> comps' )
+      | _ -> comps')
   | Ast.Operation (out, comp) ->
       step_in_context step_computation state
         (fun red -> SignalCtx red)
@@ -306,13 +306,13 @@ let rec step_computation state = function
       | Ast.Operation (out, comp) ->
           (ComputationRedex InterruptSignal, step_in_out state op expr comp out)
           :: comps'
-      | _ -> comps' )
+      | _ -> comps')
   | Ast.Match (expr, cases) ->
       let rec find_case = function
         | (pat, comp) :: cases -> (
             match match_pattern_with_expression state pat expr with
             | subst -> [ (ComputationRedex Match, substitute subst comp) ]
-            | exception PatternMismatch -> find_case cases )
+            | exception PatternMismatch -> find_case cases)
         | [] -> []
       in
       find_case cases
@@ -335,13 +335,13 @@ let rec step_computation state = function
           ( ComputationRedex DoSignal,
             Ast.Operation (out, Ast.Do (comp1', comp2)) )
           :: comps1'
-      | _ -> comps1' )
+      | _ -> comps1')
   | Ast.Await (expr, (pat, comp)) -> (
       match expr with
       | Ast.Fulfill expr ->
           let subst = match_pattern_with_expression state pat expr in
           [ (ComputationRedex AwaitFulfill, substitute subst comp) ]
-      | _ -> [] )
+      | _ -> [])
   | Ast.Unbox (expr, (pat, comp)) -> (
       match expr with
       | Ast.Boxed expr ->
@@ -352,7 +352,7 @@ let rec step_computation state = function
           [ (ComputationRedex Unbox, Ast.Unbox (expr', (pat, comp))) ]
       | _ ->
           Error.runtime "Expected boxed expresion but got %t instead."
-            (Ast.print_expression expr) )
+            (Ast.print_expression expr))
 
 and step_in_out state op expr cont = function
   | Ast.Signal (op', expr') ->
@@ -399,7 +399,7 @@ let rec step_process state = function
           (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp1, Ast.Run comp2))
           :: (ProcessRedex RunSpawn, Ast.Parallel (Ast.Run comp2, Ast.Run comp1))
           :: comps'
-      | _ -> comps' )
+      | _ -> comps')
   | Ast.Parallel (proc1, proc2) ->
       let proc1_first =
         let procs' =
@@ -458,7 +458,7 @@ let rec step_process state = function
           ( ProcessRedex InterruptSignal,
             Ast.SignalProc (op', expr', Ast.InterruptProc (op, expr, proc')) )
           :: procs'
-      | _ -> procs' )
+      | _ -> procs')
   | Ast.SignalProc (op, expr, proc) ->
       step_in_context step_process state
         (fun red -> SignalProcCtx red)
