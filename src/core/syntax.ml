@@ -3,19 +3,12 @@ open Utils
 type ty_name = string
 
 let bool_ty_name = "bool"
-
 let int_ty_name = "int"
-
 let unit_ty_name = "unit"
-
 let string_ty_name = "string"
-
 let float_ty_name = "float"
-
 let list_ty_name = "list"
-
 let empty_ty_name = "empty"
-
 let ref_ty_name = "ref"
 
 type ty_param = string
@@ -33,13 +26,10 @@ and plain_ty =
   | TyBoxed of ty  (** [[ty]] *)
 
 type variable = string
-
 type label = string
-
 type operation = string
 
 let nil_label = "$0nil"
-
 let cons_label = "$1cons"
 
 type pattern = plain_pattern Location.located
@@ -79,7 +69,6 @@ and plain_term =
   | Spawn of term  (** [spawn t] *)
 
 and abstraction = pattern * term
-
 and guarded_abstraction = pattern * term option * term
 
 type ty_def =

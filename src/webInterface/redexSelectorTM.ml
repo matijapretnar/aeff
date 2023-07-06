@@ -3,7 +3,6 @@ module Ast = Core.Ast
 module Interpreter = Core.Interpreter
 
 let tag_marker = "###"
-
 let print_mark ppf = Format.pp_print_as ppf 0 tag_marker
 
 let print_computation_redex ?max_level red c ppf =
@@ -30,12 +29,10 @@ let rec print_computation_reduction ?max_level red c ppf =
         (print_computation_reduction red c1)
         (Ast.print_computation c2)
   | Interpreter.InterruptCtx red, Ast.Interrupt (op, e, c) ->
-      print "↓%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op)
-        (Ast.print_expression e)
+      print "↓%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op) (Ast.print_expression e)
         (print_computation_reduction red c)
   | Interpreter.SignalCtx red, Ast.Operation (Ast.Signal (op, e), c) ->
-      print "↑%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op)
-        (Ast.print_expression e)
+      print "↑%t(@[<hv>%t,@ %t@])" (Ast.OpSym.print op) (Ast.print_expression e)
         (print_computation_reduction red c)
   | ( Interpreter.SignalCtx red,
       Ast.Operation (Ast.Promise (None, op, (p1, c1), p2), c2) ) ->
@@ -89,7 +86,7 @@ let split_string sep str =
     if String.sub str !sub_end sep_len = sep then (
       subs := String.sub str !sub_start (!sub_end - !sub_start) :: !subs;
       sub_start := !sub_end + sep_len;
-      sub_end := !sub_start )
+      sub_end := !sub_start)
     else incr sub_end
   done;
   if !sub_start <= str_len then
@@ -97,9 +94,9 @@ let split_string sep str =
   List.rev !subs
 
 let view_process_with_redexes red proc =
-  ( match red with
+  (match red with
   | None -> Ast.print_process proc Format.str_formatter
-  | Some red -> print_process_reduction red proc Format.str_formatter );
+  | Some red -> print_process_reduction red proc Format.str_formatter);
   match split_string tag_marker (Format.flush_str_formatter ()) with
   | [ code ] -> [ Vdom.text code ]
   | [ pre; redex; post ] ->

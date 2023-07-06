@@ -1,5 +1,4 @@
 open Utils
-
 module TyName = Symbol.Make ()
 
 type ty_name = TyName.t
@@ -7,19 +6,12 @@ type ty_name = TyName.t
 module TyNameMap = Map.Make (TyName)
 
 let bool_ty_name = TyName.fresh "bool"
-
 let int_ty_name = TyName.fresh "int"
-
 let unit_ty_name = TyName.fresh "unit"
-
 let string_ty_name = TyName.fresh "string"
-
 let float_ty_name = TyName.fresh "float"
-
 let list_ty_name = TyName.fresh "list"
-
 let empty_ty_name = TyName.fresh "empty"
-
 let ref_ty_name = TyName.fresh "ref"
 
 module TyParam = Symbol.Make ()
@@ -91,7 +83,7 @@ let print_ty_scheme (_params, ty) ppf =
 let rec substitute_ty subst = function
   | TyConst _ as ty -> ty
   | TyParam a as ty -> (
-      match TyParamMap.find_opt a subst with None -> ty | Some ty' -> ty' )
+      match TyParamMap.find_opt a subst with None -> ty | Some ty' -> ty')
   | TyApply (ty_name, tys) ->
       TyApply (ty_name, List.map (substitute_ty subst) tys)
   | TyTuple tys -> TyTuple (List.map (substitute_ty subst) tys)
@@ -118,19 +110,14 @@ let rec free_vars = function
   | TyBoxed ty -> free_vars ty
 
 module Variable = Symbol.Make ()
-
 module Label = Symbol.Make ()
-
 module OpSym = Symbol.Make ()
 
 type variable = Variable.t
-
 type label = Label.t
-
 type opsym = OpSym.t
 
 let nil_label = Label.fresh Syntax.nil_label
-
 let cons_label = Label.fresh Syntax.cons_label
 
 type pattern =
@@ -209,7 +196,7 @@ let rec refresh_pattern = function
 
 let rec refresh_expression vars = function
   | Var x as expr -> (
-      match List.assoc_opt x vars with None -> expr | Some x' -> Var x' )
+      match List.assoc_opt x vars with None -> expr | Some x' -> Var x')
   | Const _ as expr -> expr
   | Annotated (expr, ty) -> Annotated (refresh_expression vars expr, ty)
   | Tuple exprs -> Tuple (List.map (refresh_expression vars) exprs)
@@ -264,7 +251,7 @@ and refresh_abstraction vars (pat, comp) =
 
 let rec substitute_expression subst = function
   | Var x as expr -> (
-      match VariableMap.find_opt x subst with None -> expr | Some expr -> expr )
+      match VariableMap.find_opt x subst with None -> expr | Some expr -> expr)
   | Const _ as expr -> expr
   | Annotated (expr, ty) -> Annotated (substitute_expression subst expr, ty)
   | Tuple exprs -> Tuple (List.map (substitute_expression subst) exprs)
@@ -398,8 +385,8 @@ and print_computation ?max_level c ppf =
       print "Spawn (%t);%t\n" (print_computation comp1)
         (print_computation comp2)
   | Await (e, (p, c)) ->
-      print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]"
-        (print_expression e) (print_pattern p) (print_computation c)
+      print "@[<hov>await @[<hov>%t until@ ⟨%t⟩@] in@ %t@]" (print_expression e)
+        (print_pattern p) (print_computation c)
   | Unbox (e, (p, c)) ->
       print "Unbox %t as [%t] in %t" (print_expression e) (print_pattern p)
         (print_computation c)

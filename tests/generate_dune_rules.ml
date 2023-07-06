@@ -2,7 +2,6 @@
 (* Taken from https://github.com/mirage/alcotest/blob/master/test/e2e/gen_dune_rules.ml *)
 
 let src_suffix = ".aeff"
-
 let test_script = "regression_test"
 
 type config = { allowed_exit_code : int; args : string }

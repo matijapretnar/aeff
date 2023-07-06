@@ -128,15 +128,15 @@ let update model = function
             loaded_code =
               Ok { code with snapshot = snapshot'; history = history' };
           }
-      | _ -> model )
+      | _ -> model)
   | ChangeSource input -> { model with unparsed_code = input }
   | LoadSource ->
       {
         model with
         loaded_code =
           parse_source
-            ( (if model.use_stdlib then Loader.stdlib_source else "")
-            ^ "\n\n\n" ^ model.unparsed_code );
+            ((if model.use_stdlib then Loader.stdlib_source else "")
+            ^ "\n\n\n" ^ model.unparsed_code);
       }
   | EditSource -> { model with loaded_code = Error "" }
   | ChangeRandomStepSize random_step_size -> { model with random_step_size }
@@ -147,8 +147,8 @@ let update model = function
       | Some op, Ok code ->
           let model = { model with unparsed_interrupt_payload = input } in
           { model with parsed_interrupt_payload = parse_payload code op input }
-      | _, _ -> model )
+      | _, _ -> model)
   | SendInterrupt -> (
       match (model.interrupt_operation, model.parsed_interrupt_payload) with
       | Some op, Ok expr -> apply_to_code_if_loaded (interrupt op expr) model
-      | _, _ -> model )
+      | _, _ -> model)

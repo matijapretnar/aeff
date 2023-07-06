@@ -5,8 +5,7 @@ module Loader = Core.Loader
 
 let make_top_step = function
   | Interpreter.TopSignal (op, expr, proc) ->
-      Format.printf "↑ %t %t@." (Ast.OpSym.print op)
-        (Ast.print_expression expr);
+      Format.printf "↑ %t %t@." (Ast.OpSym.print op) (Ast.print_expression expr);
       proc
   | Interpreter.Step proc -> proc
 
