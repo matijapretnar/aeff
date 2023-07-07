@@ -125,7 +125,7 @@ let rec step_computation state = function
   | Ast.Return _ -> []
   | Ast.Operation
       ( (Ast.InterruptHandler
-           { operation = op; resumption = k; handler = op_comp; promise = p } as
+           { operation = op; resumption = r; handler = op_comp; promise = p } as
         out),
         comp ) -> (
       let comps' =
@@ -144,7 +144,7 @@ let rec step_computation state = function
                   ( Ast.InterruptHandler
                       {
                         operation = op;
-                        resumption = k;
+                        resumption = r;
                         handler = op_comp;
                         promise = p;
                       },
@@ -223,7 +223,7 @@ and step_in_out state op expr cont = function
   | Ast.InterruptHandler
       {
         operation = op';
-        resumption = k;
+        resumption = r;
         handler = arg_pat, op_comp;
         promise = p;
       }
@@ -234,32 +234,27 @@ and step_in_out state op expr cont = function
       let p' = Ast.Variable.fresh "p'" in
 
       let comp'' =
-        match k with
-        | None -> comp'
-        | Some k' ->
-            let f =
-              Ast.Lambda
-                ( Ast.PTuple [],
-                  Ast.Operation
-                    ( Ast.InterruptHandler
-                        {
-                          operation = op';
-                          resumption = k;
-                          handler = (arg_pat, op_comp);
-                          promise = p';
-                        },
-                      Ast.Return (Ast.Var p') ) )
-            in
-            substitute
-              (match_pattern_with_expression state (Ast.PVar k') f)
-              comp'
+        let f =
+          Ast.Lambda
+            ( Ast.PTuple [],
+              Ast.Operation
+                ( Ast.InterruptHandler
+                    {
+                      operation = op';
+                      resumption = r;
+                      handler = (arg_pat, op_comp);
+                      promise = p';
+                    },
+                  Ast.Return (Ast.Var p') ) )
+        in
+        substitute (match_pattern_with_expression state (Ast.PVar r) f) comp'
       in
       Ast.Do (comp'', (Ast.PVar p, Ast.Interrupt (op, expr, cont)))
   | Ast.InterruptHandler
-      { operation = op'; resumption = k; handler = op_comp; promise = p } ->
+      { operation = op'; resumption = r; handler = op_comp; promise = p } ->
       Ast.Operation
         ( Ast.InterruptHandler
-            { operation = op'; resumption = k; handler = op_comp; promise = p },
+            { operation = op'; resumption = r; handler = op_comp; promise = p },
           Ast.Interrupt (op, expr, cont) )
   | Ast.Spawn comp ->
       Ast.Operation (Ast.Spawn comp, Ast.Interrupt (op, expr, cont))

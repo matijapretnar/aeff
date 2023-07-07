@@ -302,16 +302,12 @@ and infer_computation state = function
       (ty2, List.fold_left fold constr cases)
   | Ast.Operation
       ( InterruptHandler
-          { operation = op; resumption = k; handler = abs; promise = p },
+          { operation = op; resumption = r; handler = abs; promise = p },
         comp ) ->
-      let ty_k = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
+      let ty_r = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
       let ty1 = Ast.OpSymMap.find op state.operations in
 
-      let state' =
-        match k with
-        | None -> state
-        | Some k' -> extend_variables state [ (k', ty_k) ]
-      in
+      let state' = extend_variables state [ (r, ty_r) ] in
       let ty1', ty2, constr1 = infer_abstraction state' abs in
 
       let state'' = extend_variables state [ (p, ty_p) ] in
@@ -320,7 +316,7 @@ and infer_computation state = function
         combine
           (add_eqs constr1
              [
-               (ty_k, Ast.TyArrow (Ast.TyTuple [], ty2));
+               (ty_r, Ast.TyArrow (Ast.TyTuple [], ty2));
                (ty1, ty1');
                (ty2, ty_p);
              ])

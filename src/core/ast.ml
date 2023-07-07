@@ -155,7 +155,7 @@ and operation =
   | Signal of opsym * expression
   | InterruptHandler of {
       operation : opsym;
-      resumption : variable option;
+      resumption : variable;
       handler : abstraction;
       promise : variable;
     }
@@ -230,21 +230,16 @@ and refresh_computation vars = function
           refresh_computation vars comp )
   | Operation
       ( InterruptHandler
-          { operation = op; resumption = k; handler = abs; promise = p },
+          { operation = op; resumption = r; handler = abs; promise = p },
         comp ) ->
       let p' = Variable.refresh p in
-      let k', vars' =
-        match k with
-        | None -> (None, vars)
-        | Some k'' ->
-            let k''' = Variable.refresh k'' in
-            (Some k''', (k'', k''') :: vars)
-      in
+      let r' = Variable.refresh r in
+      let vars' = (r, r') :: vars in
       Operation
         ( InterruptHandler
             {
               operation = op;
-              resumption = k';
+              resumption = r';
               handler = refresh_abstraction vars' abs;
               promise = p';
             },
@@ -398,22 +393,10 @@ and print_computation ?max_level c ppf =
         (print_computation c)
   | Operation
       ( InterruptHandler
-          { operation = op; resumption = None; handler = p1, c1; promise = p2 },
-        c2 ) ->
-      print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
-        (OpSym.print op) (print_pattern p1) (print_computation c1)
-        (Variable.print p2) (print_computation c2)
-  | Operation
-      ( InterruptHandler
-          {
-            operation = op;
-            resumption = Some k;
-            handler = p1, c1;
-            promise = p2;
-          },
+          { operation = op; resumption = r; handler = p1, c1; promise = p2 },
         c2 ) ->
       print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
-        (OpSym.print op) (print_pattern p1) (Variable.print k)
+        (OpSym.print op) (print_pattern p1) (Variable.print r)
         (print_computation c1) (Variable.print p2) (print_computation c2)
   | Operation (Spawn comp1, comp2) ->
       print "Spawn (%t);%t\n" (print_computation comp1)

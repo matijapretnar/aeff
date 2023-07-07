@@ -216,23 +216,23 @@
   ↑ call (240, 2)
   ↑ result (28800, 2)
   The process has terminated in the configuration:
-  run promise (dummy empty ↦ return ⟨empty⟩)
+  run promise (dummy empty r ↦ return ⟨empty⟩)
       as p in
-      promise (dummy empty ↦ return ⟨empty⟩)
+      promise (dummy empty r ↦ return ⟨empty⟩)
       as p in
-      promise (cancel callNo' k ↦
+      promise (cancel callNo' r ↦
                let b = (=) (2, callNo') in
                match b with (true ↦ let dummyPromise =
-                                         promise (dummy empty ↦
+                                         promise (dummy empty r ↦
                                                   return ⟨empty⟩)
                                          as p in
                                          return p in
                                       (rec loop ...) ();
                                       awaitValue dummyPromise;
                                       let b = (rec awaitCancel ...) 2 in
-                                      b (rec loop ...) | false ↦ k ()))
+                                      b (rec loop ...) | false ↦ r ()))
       as p in
-      promise (call (x, callNo) ↦
+      promise (call (x, callNo) r ↦
                let b = awaitCancel callNo in b (rec loop ...);
                let y =
                   (fun x ↦ let b = let b = (*) (6, x) in (*) (5, b) in
@@ -244,7 +244,7 @@
                  await p until ⟨value⟩ in return value;
                  let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
               ↓cancel(2,
-                        promise (call (x, callNo) ↦
+                        promise (call (x, callNo) r ↦
                                  let b = awaitCancel callNo in b (rec loop ...);
                                  let y =
                                     (fun x ↦ let b =
@@ -260,13 +260,13 @@
                                    let b = (rec awaitCancel ...) 0 in
                                    b (rec loop ...) in
                                 ↓cancel(0,
-                                          promise (cancel callNo' k ↦
+                                          promise (cancel callNo' r ↦
                                                    let b = (=) (1, callNo') in
                                                    match b with (true ↦ 
                                                                  let
                                                                     dummyPromise =
                                                                     promise (
-                                                                    dummy empty ↦
+                                                                    dummy empty r ↦
                                                                     return
                                                                     ⟨empty⟩)
                                                                     as p in
@@ -281,9 +281,9 @@
                                                                  b
                                                                  (rec loop ...) | 
                                                                  false ↦ 
-                                                                 k ()))
+                                                                 r ()))
                                           as p in
-                                          promise (call (x, callNo) ↦
+                                          promise (call (x, callNo) r ↦
                                                    let b = awaitCancel callNo in
                                                    b (rec loop ...);
                                                    let y =
@@ -300,18 +300,18 @@
                                           as p in
                                           return p))))
   || 
-  run promise (call (x, callNo) ↦
+  run promise (call (x, callNo) r ↦
                let b = (!) { contents = [] } in
                (:=) ({ contents = [] }, (x, callNo)::b);
                (rec reInvokerCall ...) ())
       as p in
-      promise (result (y, callNo) ↦
+      promise (result (y, callNo) r ↦
                let b =
                   let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
                   let b = (!) { contents = [] } in b b in
                (:=) ({ contents = [] }, b); (rec reInvokerResult ...) ())
       as p in
-      promise (cancel callNo ↦
+      promise (cancel callNo r ↦
                let b =
                   let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
                   let b = (!) { contents = [] } in b b in
@@ -484,7 +484,7 @@
   The process has terminated in the configuration:
   run (return ())
   || 
-  run promise (nextItem () ↦
+  run promise (nextItem () r ↦
                let cachedSize =
                   let b =
                      (!)
@@ -503,7 +503,7 @@
                                                        true);
                                                       ↑request(offset,
                                                                  return ());
-                                                      promise (response newBatch ↦
+                                                      promise (response newBatch r ↦
                                                                let b =
                                                                   let b =
                                                                      (!)
@@ -541,11 +541,11 @@
       as p in
       return p
   || 
-  run promise (batchSizeRequest () ↦
+  run promise (batchSizeRequest () r ↦
                ↑batchSizeResponse(42, return ());
                (rec waitForBatchSize ...) ())
       as p in
-      promise (request offset ↦
+      promise (request offset r ↦
                let payload =
                   let b = map (fun x ↦ (*) (10, x)) in
                   let b =
@@ -643,7 +643,7 @@
   ↑ opReq (LookupReq 1, 6)
   ↑ opRes (LookupRes 14, 6)
   The process has terminated in the configuration:
-  run promise (opReq (reqPayload, callNo) ↦
+  run promise (opReq (reqPayload, callNo) r ↦
                let (heap', resPayload) =
                   match reqPayload with (LookupReq l ↦ let v =
                                                             let b =
@@ -771,14 +771,14 @@
   ↑ lookupReq (1, 6)
   ↑ lookupRes (14, 6)
   The process has terminated in the configuration:
-  run promise (lookupReq (l, callId) ↦
+  run promise (lookupReq (l, callId) r ↦
                let v =
                   let b =
                      let b = (!) { contents = (1, 14)::(0, 10)::empty } in
                      lookupHeap b in b l in
                ↑lookupRes((v, callId), return ()); (rec awaitLookup ...) ())
       as p in
-      promise (updateReq (l, v, callId) ↦
+      promise (updateReq (l, v, callId) r ↦
                let heap' =
                   let b =
                      let b =
@@ -788,7 +788,7 @@
                (:=) ({ contents = (1, 14)::(0, 10)::empty }, heap');
                (rec awaitUpdate ...) ())
       as p in
-      promise (allocReq (v, callId) ↦
+      promise (allocReq (v, callId) r ↦
                let (heap', l) =
                   let b =
                      let b = (!) { contents = (1, 14)::(0, 10)::empty } in
@@ -862,35 +862,35 @@
   operation go : int
   val waitForStop : int → ⟨α⟩
   The process has terminated in the configuration:
-  run promise (stop threadID' k ↦
+  run promise (stop threadID' r ↦
                let b = (=) (2, threadID') in
                match b with (true ↦ let p =
-                                         promise (go threadID' k ↦
+                                         promise (go threadID' r ↦
                                                   let b = (=) (2, threadID') in
                                                   match b with (true ↦ return ⟨()⟩ | 
                                                                 false ↦ 
-                                                                k ()))
+                                                                r ()))
                                          as p in
                                          return p in
                                       await p until ⟨_⟩ in
                                       (rec waitForStop ...) 2 | false ↦ 
-                             k ()))
+                             r ()))
       as p in
       return 50
   || 
-  run promise (stop threadID' k ↦
+  run promise (stop threadID' r ↦
                let b = (=) (1, threadID') in
                match b with (true ↦ let p =
-                                         promise (go threadID' k ↦
+                                         promise (go threadID' r ↦
                                                   let b = (=) (1, threadID') in
                                                   match b with (true ↦ return ⟨()⟩ | 
                                                                 false ↦ 
-                                                                k ()))
+                                                                r ()))
                                          as p in
                                          return p in
                                       await p until ⟨_⟩ in
                                       (rec waitForStop ...) 1 | false ↦ 
-                             k ()))
+                             r ()))
       as p in
       return 5
   ======================================================================
@@ -1026,7 +1026,7 @@
   ↑ call (3, 1)
   ↑ result (360, 1)
   The process has terminated in the configuration:
-  run promise (call (x, callNo) ↦
+  run promise (call (x, callNo) r ↦
                let y =
                   (fun x ↦ let b = let b = (*) (6, x) in (*) (5, b) in
                              (*) (4, b))
@@ -1108,7 +1108,7 @@
   The process has terminated in the configuration:
   run (return (1, 6, 1, 0))
   || 
-  run promise (randomReq callNo ↦
+  run promise (randomReq callNo r ↦
                let seed' =
                   let b = let b = (+) (603, 89) in (*) (567, b) in
                   (mod) (b, 1234) in

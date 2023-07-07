@@ -195,14 +195,14 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.InterruptHandler { operation = op; resumption = k; handler = p, guard, c }
-    -> (
-      let k', state' =
-        match k with
-        | None -> (None, state)
-        | Some k' ->
-            let k'' = Ast.Variable.fresh k' in
-            (Some k'', add_fresh_variables state [ (k', k'') ])
+  | S.InterruptHandler
+      { operation = op; resumption = r_opt; handler = p, guard, c } ->
+      let r', state' =
+        match r_opt with
+        | None -> (Ast.Variable.fresh "r", state)
+        | Some r ->
+            let r' = Ast.Variable.fresh r in
+            (r', add_fresh_variables state [ (r, r') ])
       in
 
       let op' = lookup_operation ~loc state op in
@@ -214,40 +214,27 @@ and desugar_plain_computation ~loc state =
       let p'' = Ast.Variable.fresh "p" in
       let cont'' = Ast.Return (Ast.Var p'') in
 
-      match guard with
-      | None ->
-          ( [],
-            Ast.Operation
-              ( InterruptHandler
-                  {
-                    operation = op';
-                    resumption = k';
-                    handler = (p', c');
-                    promise = p'';
-                  },
-                cont'' ) )
-      | Some g ->
-          let binds, g' = desugar_expression state'' g in
+      let c''' =
+        match guard with
+        | None -> c'
+        | Some g ->
+            let binds, g' = desugar_expression state'' g in
 
-          let k'' =
-            match k' with None -> Ast.Variable.fresh "k" | Some k''' -> k'''
-          in
-          let c'' =
-            if_then_else g' c' (Ast.Apply (Ast.Var k'', Ast.Tuple []))
-          in
-          let c''' =
+            let c'' =
+              if_then_else g' c' (Ast.Apply (Ast.Var r', Ast.Tuple []))
+            in
             List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds c''
-          in
-          ( [],
-            Ast.Operation
-              ( InterruptHandler
-                  {
-                    operation = op';
-                    resumption = Some k'';
-                    handler = (p', c''');
-                    promise = p'';
-                  },
-                cont'' ) ))
+      in
+      ( [],
+        Ast.Operation
+          ( InterruptHandler
+              {
+                operation = op';
+                resumption = r';
+                handler = (p', c''');
+                promise = p'';
+              },
+            cont'' ) )
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in
