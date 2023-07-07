@@ -195,13 +195,8 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.InterruptHandler
-      {
-        operation = op;
-        resumption = k;
-        handler = p, guard, c;
-        continuation = abs;
-      } -> (
+  | S.InterruptHandler { operation = op; resumption = k; handler = p, guard, c }
+    -> (
       let k', state' =
         match k with
         | None -> (None, state)
@@ -216,7 +211,8 @@ and desugar_plain_computation ~loc state =
       let state'' = add_fresh_variables state' vars in
       let c' = desugar_computation state'' c in
 
-      let p'', cont'' = desugar_promise_abstraction ~loc state abs in
+      let p'' = Ast.Variable.fresh "p" in
+      let cont'' = Ast.Return (Ast.Var p'') in
 
       match guard with
       | None ->
@@ -279,21 +275,6 @@ and desugar_abstraction state (pat, term) =
   let state' = add_fresh_variables state vars in
   let comp = desugar_computation state' term in
   (pat', comp)
-
-and desugar_guarded_abstraction state (pat, term1, term2) =
-  let vars, pat' = desugar_pattern state pat in
-  let state' = add_fresh_variables state vars in
-  let comp1 = desugar_computation state' term1
-  and comp2 = desugar_computation state' term2 in
-  (pat', comp1, comp2)
-
-and desugar_promise_abstraction ~loc state abs2 =
-  match desugar_abstraction state abs2 with
-  | Ast.PVar p, comp' -> (p, comp')
-  | Ast.PNonbinding, comp' ->
-      let p = Ast.Variable.fresh "_" in
-      (p, comp')
-  | _ -> Error.syntax ~loc "Variable or underscore expected"
 
 and desugar_let_rec_def state (f, { it = exp; at = loc }) =
   let f' = Ast.Variable.fresh f in

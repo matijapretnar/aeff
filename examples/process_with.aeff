@@ -2,14 +2,14 @@ operation listInterrupt : int list
 operation productSignal : int
 
 let process_with p comp cont =
-  promise (listInterrupt _ ->
+  let q = promise (listInterrupt _ ->
     await p until <<x>> in
     let y = comp x in
-    return <<y>>) as q in
+    return <<y>>) in
   cont q
 
 run
-  promise (listInterrupt is -> return <<is>>) as p in
+  let p = promise (listInterrupt is -> return <<is>>) in
   process_with p (filter (fun i -> i > 0)) (fun q ->
   process_with q (fold_left (fun j j' -> j * j') 1) (fun r -> 
   process_with r (fun k -> send productSignal k) (fun _ ->
@@ -18,3 +18,4 @@ run
 
 run
   send listInterrupt [-3;-2;-1;0;1;2;3]
+

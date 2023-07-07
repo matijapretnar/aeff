@@ -2,8 +2,7 @@ operation question : [|unit -> int|]
 operation answer : int
 
 let get_answer f =
-  promise (answer x -> <<x>>)
-  as result in
+  let result = promise (answer x -> <<x>>) in
   send question f;
   result
 
@@ -21,5 +20,4 @@ run
     let y = f' () in
     send answer y;
     return <<()>>
-  ) as p in
-  p
+  )

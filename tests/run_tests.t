@@ -204,28 +204,29 @@
                  (int → unit)
   val awaitCancel : int → (unit → α) → ⟨β⟩
   val remote : (int → int) → ⟨α⟩
-  val remoteCallReInvoker : unit → ⟨unit⟩
+  val remoteCallReInvoker : unit → ⟨α⟩
   ↑ call (1, 0)
   ↑ call (2, 1)
   ↑ result (120, 0)
+  ↑ result (240, 1)
   ↑ cancel 0
   ↑ call (3, 2)
   ↑ result (360, 2)
-  ↑ call (2, 1)
-  ↑ result (240, 1)
   ↑ cancel 2
   ↑ call (240, 2)
   ↑ result (28800, 2)
   The process has terminated in the configuration:
   run promise (dummy empty ↦ return ⟨empty⟩)
-      as dummyPromise in
+      as p in
       promise (dummy empty ↦ return ⟨empty⟩)
-      as dummyPromise in
+      as p in
       promise (cancel callNo' k ↦
                let b = (=) (2, callNo') in
-               match b with (true ↦ promise (dummy empty ↦
-                                               return ⟨empty⟩)
-                                      as dummyPromise in
+               match b with (true ↦ let dummyPromise =
+                                         promise (dummy empty ↦
+                                                  return ⟨empty⟩)
+                                         as p in
+                                         return p in
                                       (rec loop ...) ();
                                       awaitValue dummyPromise;
                                       let b = (rec awaitCancel ...) 2 in
@@ -240,23 +241,9 @@
       as p in
       ↓call((240, 2),
               let p =
-                 await dummyPromise until ⟨value⟩ in return value;
+                 await p until ⟨value⟩ in return value;
                  let b = (rec awaitCancel ...) 2 in b (rec loop ...) in
               ↓cancel(2,
-                        promise (cancel callNo' k ↦
-                                 let b = (=) (1, callNo') in
-                                 match b with (true ↦ promise (dummy empty ↦
-                                                                 return
-                                                                 ⟨empty⟩)
-                                                        as dummyPromise in
-                                                        (rec loop ...) ();
-                                                        awaitValue dummyPromise;
-                                                        let b =
-                                                           (rec awaitCancel ...)
-                                                           1 in
-                                                        b (rec loop ...) | 
-                                               false ↦ k ()))
-                        as p in
                         promise (call (x, callNo) ↦
                                  let b = awaitCancel callNo in b (rec loop ...);
                                  let y =
@@ -267,59 +254,63 @@
                                  ↑result((y, callNo), return ());
                                  (rec loop ...) ())
                         as p in
-                        ↓call((2, 1),
-                                ↓call((3, 2),
-                                        let p =
-                                           await dummyPromise until ⟨value⟩ in
-                                           return value;
-                                           let b = (rec awaitCancel ...) 0 in
-                                           b (rec loop ...) in
-                                        ↓cancel(0,
-                                                  promise (cancel callNo' k ↦
-                                                           let b =
-                                                              (=) (1, callNo') in
-                                                           match b with (
-                                                           true ↦ promise (
+                        ↓call((3, 2),
+                                let p =
+                                   await p until ⟨value⟩ in return value;
+                                   let b = (rec awaitCancel ...) 0 in
+                                   b (rec loop ...) in
+                                ↓cancel(0,
+                                          promise (cancel callNo' k ↦
+                                                   let b = (=) (1, callNo') in
+                                                   match b with (true ↦ 
+                                                                 let
+                                                                    dummyPromise =
+                                                                    promise (
                                                                     dummy empty ↦
                                                                     return
                                                                     ⟨empty⟩)
-                                                                    as dummyPromise in
-                                                                    (rec loop ...)
-                                                                    ();
-                                                                    awaitValue
-                                                                    dummyPromise;
-                                                                    let
-                                                                     b =
+                                                                    as p in
+                                                                    return p in
+                                                                 (rec loop ...)
+                                                                 ();
+                                                                 awaitValue
+                                                                 dummyPromise;
+                                                                 let b =
                                                                     (rec awaitCancel ...)
                                                                     1 in
-                                                                    b
-                                                                    (rec loop ...) | 
-                                                           false ↦ k ()))
-                                                  as p in
-                                                  let p =
-                                                     let y =
-                                                        let b =
-                                                           let b = (*) (6, 2) in
-                                                           (*) (5, b) in
-                                                        (*) (4, b) in
-                                                     ↑result((y, 1),
-                                                               return ());
-                                                     (rec loop ...) () in
-                                                  ↓call((2, 1),
-                                                          ↓call((1, 0),
-                                                                  return p)))))))
+                                                                 b
+                                                                 (rec loop ...) | 
+                                                                 false ↦ 
+                                                                 k ()))
+                                          as p in
+                                          promise (call (x, callNo) ↦
+                                                   let b = awaitCancel callNo in
+                                                   b (rec loop ...);
+                                                   let y =
+                                                      (fun x ↦ let b =
+                                                                    let
+                                                                     b =
+                                                                    (*) (6, x) in
+                                                                    (*) (5, b) in
+                                                                 (*) (4, b))
+                                                      x in
+                                                   ↑result((y, callNo),
+                                                             return ());
+                                                   (rec loop ...) ())
+                                          as p in
+                                          return p))))
   || 
   run promise (call (x, callNo) ↦
                let b = (!) { contents = [] } in
                (:=) ({ contents = [] }, (x, callNo)::b);
                (rec reInvokerCall ...) ())
-      as _ in
+      as p in
       promise (result (y, callNo) ↦
                let b =
                   let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
                   let b = (!) { contents = [] } in b b in
                (:=) ({ contents = [] }, b); (rec reInvokerResult ...) ())
-      as _ in
+      as p in
       promise (cancel callNo ↦
                let b =
                   let b = filter (fun (_, callNo') ↦ (<>) (callNo, callNo')) in
@@ -327,8 +318,8 @@
                (:=) ({ contents = [] }, b);
                let b = let b = (!) { contents = [] } in reverse b in
                (rec reInvokerWrapper ...) b; (rec reInvokerCancel ...) ())
-      as _ in
-      return ⟨()⟩
+      as p in
+      return p
   || 
   run (return 360)
   ======================================================================
@@ -423,28 +414,15 @@
   ↑ display "please wait a bit and try again"
   ↑ nextItem ()
   ↑ display "please wait a bit and try again"
-  ↑ nextItem ()
   ↑ response 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[]
-  ↑ request 1
-  ↑ nextItem ()
-  ↑ nextItem ()
-  ↑ display "please wait a bit and try again"
-  ↑ nextItem ()
-  ↑ nextItem ()
-  ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ display "10"
   ↑ nextItem ()
   ↑ nextItem ()
-  ↑ response 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[]
-  ↑ nextItem ()
   ↑ nextItem ()
   ↑ display "20"
-  ↑ nextItem ()
-  ↑ nextItem ()
-  ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
@@ -452,21 +430,31 @@
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
-  ↑ nextItem ()
-  ↑ nextItem ()
-  ↑ nextItem ()
   ↑ display "40"
-  ↑ nextItem ()
-  ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ nextItem ()
   ↑ display "50"
   ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
   ↑ display "60"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
   ↑ display "70"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
   ↑ display "80"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
   ↑ display "90"
+  ↑ nextItem ()
   ↑ display "100"
   ↑ display "110"
   ↑ display "120"
@@ -480,14 +468,19 @@
   ↑ display "200"
   ↑ display "210"
   ↑ display "220"
+  ↑ request 43
   ↑ display "230"
   ↑ display "240"
+  ↑ response 430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[]
+  ↑ request 43
   ↑ display "250"
+  ↑ response 430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[]
   ↑ display "260"
   ↑ display "270"
   ↑ display "280"
   ↑ display "290"
   ↑ display "300"
+  ↑ display "310"
   The process has terminated in the configuration:
   run (return ())
   || 
@@ -495,11 +488,11 @@
                let cachedSize =
                   let b =
                      (!)
-                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[] } in
                   length b in
                let b =
                   let b =
-                     let b = (!) { contents = 30 } in
+                     let b = (!) { contents = 31 } in
                      let b = let b = (/) (42, 2) in (-) (cachedSize, b) in
                      (>) (b, b) in
                   match b with (true ↦ let b = (!) { contents = false } in
@@ -514,34 +507,34 @@
                                                                let b =
                                                                   let b =
                                                                      (!)
-                                                                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                                                                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[] } in
                                                                   (@)
                                                                   (b, newBatch) in
                                                                (:=)
-                                                               ({ contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] }, 
+                                                               ({ contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[] }, 
                                                                 b);
                                                                (:=)
                                                                ({ contents = false }, 
                                                                 false);
                                                                return ⟨()⟩)
-                                                      as _ in
-                                                      return ())
+                                                      as p in
+                                                      return p; return ())
                                       b | false ↦ return ());
-               let b = let b = (!) { contents = 30 } in (<) (b, cachedSize) in
+               let b = let b = (!) { contents = 31 } in (<) (b, cachedSize) in
                match b with (true ↦ let b =
                                          let b =
                                             let b =
                                                let b =
                                                   (!)
-                                                  { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                                                  { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::430::440::450::460::470::480::490::500::510::520::530::540::550::560::570::580::590::600::610::620::630::640::650::660::670::680::690::700::710::720::730::740::750::760::770::780::790::800::810::820::830::840::[] } in
                                                nth b in
-                                            let b = (!) { contents = 30 } in
+                                            let b = (!) { contents = 31 } in
                                             b b in toString b in
                                       ↑display(b, return ());
                                       let b =
-                                         let b = (!) { contents = 30 } in
+                                         let b = (!) { contents = 31 } in
                                          (+) (b, 1) in
-                                      (:=) ({ contents = 30 }, b) | 
+                                      (:=) ({ contents = 31 }, b) | 
                              false ↦ ↑display("please wait a bit and try again",
                                                   return ()));
                (rec clientLoop ...) 42)
@@ -871,12 +864,14 @@
   The process has terminated in the configuration:
   run promise (stop threadID' k ↦
                let b = (=) (2, threadID') in
-               match b with (true ↦ promise (go threadID' k ↦
-                                               let b = (=) (2, threadID') in
-                                               match b with (true ↦ return ⟨()⟩ | 
-                                                             false ↦ 
-                                                             k ()))
-                                      as p in
+               match b with (true ↦ let p =
+                                         promise (go threadID' k ↦
+                                                  let b = (=) (2, threadID') in
+                                                  match b with (true ↦ return ⟨()⟩ | 
+                                                                false ↦ 
+                                                                k ()))
+                                         as p in
+                                         return p in
                                       await p until ⟨_⟩ in
                                       (rec waitForStop ...) 2 | false ↦ 
                              k ()))
@@ -885,12 +880,14 @@
   || 
   run promise (stop threadID' k ↦
                let b = (=) (1, threadID') in
-               match b with (true ↦ promise (go threadID' k ↦
-                                               let b = (=) (1, threadID') in
-                                               match b with (true ↦ return ⟨()⟩ | 
-                                                             false ↦ 
-                                                             k ()))
-                                      as p in
+               match b with (true ↦ let p =
+                                         promise (go threadID' k ↦
+                                                  let b = (=) (1, threadID') in
+                                                  match b with (true ↦ return ⟨()⟩ | 
+                                                                false ↦ 
+                                                                k ()))
+                                         as p in
+                                         return p in
                                       await p until ⟨_⟩ in
                                       (rec waitForStop ...) 1 | false ↦ 
                              k ()))
@@ -1251,9 +1248,9 @@
   ↑ result (4, 8)
   ↑ result (5, 10)
   The process has terminated in the configuration:
-  run (return ()) ||  run (return ()) ||  run (return (2::4::6::8::10::[]))
-  || 
   run (return ())
+  || 
+  run (return ()) ||  run (return (2::4::6::8::10::[])) ||  run (return ())
   || 
   run (return ())
   || 

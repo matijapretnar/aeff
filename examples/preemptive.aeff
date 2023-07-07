@@ -3,13 +3,12 @@ operation go : int
 
 let rec waitForStop threadID =
   promise (stop threadID' when threadID = threadID' ->
-    promise (go threadID' when threadID = threadID' ->
+    let p = promise (go threadID' when threadID = threadID' ->
       <<()>>
-    ) as p in
+    ) in
     await p until <<_>> in
     waitForStop threadID
-  ) as p in
-  p
+  )
 
 run
   waitForStop 1; 1 + 1 + 1 + 1 + 1

@@ -8,21 +8,21 @@ let callWith callCounter =
         let callNo = !callCounter in
         send call (x, callNo);
         callCounter := callNo + 1;
-        promise (result (y, callNo') when callNo = callNo' ->
+        let p = promise (result (y, callNo') when callNo = callNo' ->
             return <<y>>
-        ) as p in
+        ) in
         let valueThunk () = awaitValue p in
         let cancelThunk () = send cancel callNo in
         let changeMind x = cancelThunk (); send call (x, callNo) in
         return (valueThunk, cancelThunk, changeMind)
 
 let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' when callNo = callNo' ->
-        promise (dummy empty -> return <<empty>>) as dummyPromise in
+    promise (cancel callNo' when callNo = callNo'->
+        let dummyPromise = promise (dummy empty -> return <<empty>>) in
         runBeforeStall ();
         awaitValue dummyPromise;
         awaitCancel callNo runBeforeStall
-    ) as p in return p
+    )
 
 let remote f =
     let rec loop () =
@@ -31,7 +31,7 @@ let remote f =
             let y = f x in
             send result (y, callNo);
             loop ()
-        ) as p in return p
+        )
     in
     loop ()
 
@@ -41,13 +41,13 @@ let remoteCallReInvoker () =
         promise (call (x,callNo) ->
             callsToReInvoke := (x, callNo) :: !callsToReInvoke;
             reInvokerCall ()
-        ) as _ in return <<()>>
+        )
     in
     let rec reInvokerResult () =
         promise (result (y, callNo) ->
             callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
             reInvokerResult ()
-        ) as _ in return <<()>>
+        )
     in
     let rec reInvokerCancel () =
         let rec reInvokerWrapper calls =
@@ -59,7 +59,7 @@ let remoteCallReInvoker () =
             callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
             reInvokerWrapper (reverse !callsToReInvoke);
             reInvokerCancel ()
-        ) as _ in return <<()>>
+        )
     in
     reInvokerCall ();
     reInvokerResult ();

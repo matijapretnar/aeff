@@ -63,8 +63,7 @@ and plain_term =
       operation : operation;
       resumption : variable option;
       handler : guarded_abstraction;
-      continuation : abstraction;
-    }  (** [with op (p1 k -> t1) as p2 in t2] *)
+    }  (** [with op (p1 k -> t1) as p2] *)
   | Await of term * abstraction  (** [await t1 until <<p>> in t2] *)
   | Fulfill of term  (** [<<t>>] *)
   | Send of operation * term  (** [send op t] *)
