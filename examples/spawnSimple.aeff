@@ -3,5 +3,6 @@ operation std_out : string
 run spawn (
     send std_out "Hello world";
     let a = 15 in
-    a * a
+    a * a;
+    ()
 ); 39 + 3

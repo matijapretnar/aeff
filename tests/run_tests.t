@@ -1,4 +1,4 @@
-  $ for f in *.aeff
+  $ for f in *.aeff examples/*.aeff
   > do
   >   echo "======================================================================"
   >   echo $f
@@ -7,7 +7,74 @@
   >   :  # this command is here to suppress potential non-zero exit codes in the output
   > done
   ======================================================================
-  async.aeff
+  theGoodTheBadAndTheUgly.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val fold_left : (α → β → α) → α → β list → α
+  val fold_right : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  val awaitValue : ⟨α⟩ → α
+  type mobile_list
+  operation the_good : (unit → int) mobile_list
+  type left1
+  type right1
+  operation and_the_ugly : int left1
+  type foo
+  operation bar1 : (⟨int⟩, int) foo
+  The process has terminated in the configuration:
+  run (return ())
+  ======================================================================
+  examples/async.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -72,7 +139,7 @@
   The process has terminated in the configuration:
   run (return ⟨()⟩) ||  run (return 42)
   ======================================================================
-  cancellableCall.aeff
+  examples/cancellableCall.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -265,7 +332,238 @@
   || 
   run (return 360)
   ======================================================================
-  heapPure.aeff
+  examples/feed.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val fold_left : (α → β → α) → α → β list → α
+  val fold_right : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  val awaitValue : ⟨α⟩ → α
+  operation request : int
+  operation response : int list
+  operation nextItem : unit
+  operation display : string
+  operation batchSizeRequest : unit
+  operation batchSizeResponse : int
+  val client : unit → ⟨α⟩
+  val server : int → ⟨α⟩
+  val user : int → unit
+  ↑ nextItem ()
+  ↑ batchSizeRequest ()
+  ↑ batchSizeResponse 42
+  ↑ request 1
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ response 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[]
+  ↑ request 1
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "please wait a bit and try again"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "10"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ response 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[]
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "20"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "30"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "40"
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ nextItem ()
+  ↑ display "50"
+  ↑ nextItem ()
+  ↑ display "60"
+  ↑ display "70"
+  ↑ display "80"
+  ↑ display "90"
+  ↑ display "100"
+  ↑ display "110"
+  ↑ display "120"
+  ↑ display "130"
+  ↑ display "140"
+  ↑ display "150"
+  ↑ display "160"
+  ↑ display "170"
+  ↑ display "180"
+  ↑ display "190"
+  ↑ display "200"
+  ↑ display "210"
+  ↑ display "220"
+  ↑ display "230"
+  ↑ display "240"
+  ↑ display "250"
+  ↑ display "260"
+  ↑ display "270"
+  ↑ display "280"
+  ↑ display "290"
+  ↑ display "300"
+  The process has terminated in the configuration:
+  run (return ())
+  || 
+  run promise (nextItem () ↦
+               let cachedSize =
+                  let b =
+                     (!)
+                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                  length b in
+               let b =
+                  let b =
+                     let b = (!) { contents = 30 } in
+                     let b = let b = (/) (42, 2) in (-) (cachedSize, b) in
+                     (>) (b, b) in
+                  match b with (true ↦ let b = (!) { contents = false } in
+                                         not b | false ↦ return false) in
+               match b with (true ↦ let b = (+) (cachedSize, 1) in
+                                      (fun offset ↦ (:=)
+                                                      ({ contents = false }, 
+                                                       true);
+                                                      ↑request(offset,
+                                                                 return ());
+                                                      promise (response newBatch ↦
+                                                               let b =
+                                                                  let b =
+                                                                     (!)
+                                                                     { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                                                                  (@)
+                                                                  (b, newBatch) in
+                                                               (:=)
+                                                               ({ contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] }, 
+                                                                b);
+                                                               (:=)
+                                                               ({ contents = false }, 
+                                                                false);
+                                                               return ⟨()⟩)
+                                                      as _ in
+                                                      return ())
+                                      b | false ↦ return ());
+               let b = let b = (!) { contents = 30 } in (<) (b, cachedSize) in
+               match b with (true ↦ let b =
+                                         let b =
+                                            let b =
+                                               let b =
+                                                  (!)
+                                                  { contents = 10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::10::20::30::40::50::60::70::80::90::100::110::120::130::140::150::160::170::180::190::200::210::220::230::240::250::260::270::280::290::300::310::320::330::340::350::360::370::380::390::400::410::420::[] } in
+                                               nth b in
+                                            let b = (!) { contents = 30 } in
+                                            b b in toString b in
+                                      ↑display(b, return ());
+                                      let b =
+                                         let b = (!) { contents = 30 } in
+                                         (+) (b, 1) in
+                                      (:=) ({ contents = 30 }, b) | 
+                             false ↦ ↑display("please wait a bit and try again",
+                                                  return ()));
+               (rec clientLoop ...) 42)
+      as p in
+      return p
+  || 
+  run promise (batchSizeRequest () ↦
+               ↑batchSizeResponse(42, return ());
+               (rec waitForBatchSize ...) ())
+      as p in
+      promise (request offset ↦
+               let payload =
+                  let b = map (fun x ↦ (*) (10, x)) in
+                  let b =
+                     let b = range offset in
+                     let b = let b = (-) (42, 1) in (+) (offset, b) in b b in
+                  b b in
+               ↑response(payload, return ()); (rec waitForRequest ...) ())
+      as p in
+      return p
+  ======================================================================
+  examples/heapPure.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -391,7 +689,7 @@
   || 
   run (return (10, 14))
   ======================================================================
-  heapRef.aeff
+  examples/heapRef.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -510,7 +808,7 @@
   || 
   run (return (10, 14))
   ======================================================================
-  preemptive.aeff
+  examples/preemptive.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -599,7 +897,7 @@
       as p in
       return 5
   ======================================================================
-  process_with.aeff
+  examples/process_with.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -664,7 +962,7 @@
   The process has terminated in the configuration:
   run (return ()) ||  run (return ⟨6⟩)
   ======================================================================
-  remoteCall.aeff
+  examples/remoteCall.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -741,7 +1039,7 @@
   || 
   run (return 187200)
   ======================================================================
-  runner.aeff
+  examples/runner.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -821,7 +1119,7 @@
       as p in
       return p
   ======================================================================
-  select.aeff
+  examples/select.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -886,7 +1184,7 @@
   The process has terminated in the configuration:
   run (return 625) ||  run (return ()) ||  run (return ())
   ======================================================================
-  spawnProcess.aeff
+  examples/spawnProcess.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -961,7 +1259,7 @@
   || 
   run (return ())
   ======================================================================
-  theGoodTheBadAndTheUgly.aeff
+  examples/spawnSimple.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1018,12 +1316,72 @@
   val snd : α × β → β
   val return : α → α
   val awaitValue : ⟨α⟩ → α
-  type mobile_list
-  operation the_good : (unit → int) mobile_list
-  type left1
-  type right1
-  operation and_the_ugly : int left1
-  type foo
-  operation bar1 : (⟨int⟩, int) foo
+  operation std_out : string
+  ↑ std_out "Hello world"
+  The process has terminated in the configuration:
+  run (return 42) ||  run (return ())
+  ======================================================================
+  examples/ticktock.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val fold_left : (α → β → α) → α → β list → α
+  val fold_right : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  val awaitValue : ⟨α⟩ → α
+  operation tick : int
+  operation tock : int
+  val ticktock : unit → unit
+  ↑ tick 1
+  ↑ tock 2
   The process has terminated in the configuration:
   run (return ())

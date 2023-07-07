@@ -65,15 +65,18 @@ let server batchSize =
     waitForRequest ()
 
 
-let rec user () =
-    let rec wait n = 
-      if n = 0 then return () else wait (n - 1)
-    in
-    send nextItem ();
-    wait 10;
-    user ()
+let rec user n =
+    if n > 0 then
+        let rec wait n = 
+        if n = 0 then return () else wait (n - 1)
+        in
+        send nextItem ();
+        wait 10;
+        user (n - 1)
+    else
+        ()
 
 
 run (server 42)
 run (client ())
-run (user ())
+run (user 42)
