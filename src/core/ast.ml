@@ -153,7 +153,12 @@ and computation =
 
 and operation =
   | Signal of opsym * expression
-  | Promise of variable option * opsym * abstraction * variable
+  | InterruptHandler of {
+      operation : opsym;
+      resumption : variable option;
+      handler : abstraction;
+      promise : variable;
+    }
   | Spawn of computation
 
 and abstraction = pattern * computation
@@ -223,7 +228,10 @@ and refresh_computation vars = function
       Operation
         ( Signal (op, refresh_expression vars expr),
           refresh_computation vars comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
+  | Operation
+      ( InterruptHandler
+          { operation = op; resumption = k; handler = abs; promise = p },
+        comp ) ->
       let p' = Variable.refresh p in
       let k', vars' =
         match k with
@@ -233,7 +241,13 @@ and refresh_computation vars = function
             (Some k''', (k'', k''') :: vars)
       in
       Operation
-        ( Promise (k', op, refresh_abstraction vars' abs, p'),
+        ( InterruptHandler
+            {
+              operation = op;
+              resumption = k';
+              handler = refresh_abstraction vars' abs;
+              promise = p';
+            },
           refresh_computation ((p, p') :: vars) comp )
   | Operation (Spawn comp1, comp2) ->
       Operation
@@ -278,10 +292,19 @@ and substitute_computation subst = function
       Operation
         ( Signal (op, substitute_expression subst expr),
           substitute_computation subst comp )
-  | Operation (Promise (k, op, abs, p), comp) ->
+  | Operation
+      ( InterruptHandler
+          { operation = op; resumption = k; handler = abs; promise = p },
+        comp ) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
       Operation
-        ( Promise (k, op, substitute_abstraction subst abs, p),
+        ( InterruptHandler
+            {
+              operation = op;
+              resumption = k;
+              handler = substitute_abstraction subst abs;
+              promise = p;
+            },
           substitute_computation subst' comp )
   | Operation (Spawn comp1, comp2) ->
       Operation
@@ -373,11 +396,22 @@ and print_computation ?max_level c ppf =
   | Operation (Signal (op, e), c) ->
       print "↑%t(@[<hv>%t,@ %t@])" (OpSym.print op) (print_expression e)
         (print_computation c)
-  | Operation (Promise (None, op, (p1, c1), p2), c2) ->
+  | Operation
+      ( InterruptHandler
+          { operation = op; resumption = None; handler = p1, c1; promise = p2 },
+        c2 ) ->
       print "@[<hv>promise (@[<hov>%t %t ↦@ %t@])@ as %t in@ %t@]"
         (OpSym.print op) (print_pattern p1) (print_computation c1)
         (Variable.print p2) (print_computation c2)
-  | Operation (Promise (Some k, op, (p1, c1), p2), c2) ->
+  | Operation
+      ( InterruptHandler
+          {
+            operation = op;
+            resumption = Some k;
+            handler = p1, c1;
+            promise = p2;
+          },
+        c2 ) ->
       print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
         (OpSym.print op) (print_pattern p1) (Variable.print k)
         (print_computation c1) (Variable.print p2) (print_computation c2)

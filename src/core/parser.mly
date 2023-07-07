@@ -88,7 +88,7 @@ plain_term:
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
   | PROMISE LPAREN op = operation p1 = pattern k = option(ident) g = guard ARROW t1 = term RPAREN AS p2 = pattern IN t2 = term
-    { Promise (k, op, (p1, g, t1), (p2, t2)) }
+    { InterruptHandler { operation = op; resumption = k; handler = (p1, g, t1); continuation = (p2, t2)} }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term

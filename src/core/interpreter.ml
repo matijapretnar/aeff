@@ -123,7 +123,11 @@ let step_in_context step state redCtx ctx term =
 
 let rec step_computation state = function
   | Ast.Return _ -> []
-  | Ast.Operation ((Ast.Promise (k, op, op_comp, p) as out), comp) -> (
+  | Ast.Operation
+      ( (Ast.InterruptHandler
+           { operation = op; resumption = k; handler = op_comp; promise = p } as
+        out),
+        comp ) -> (
       let comps' =
         step_in_context step_computation state
           (fun red -> SignalCtx red)
@@ -131,11 +135,20 @@ let rec step_computation state = function
           comp
       in
       match comp with
-      | Ast.Operation (Ast.Promise _, _) -> comps'
+      | Ast.Operation (Ast.InterruptHandler _, _) -> comps'
       | Ast.Operation (out, cont') ->
           ( ComputationRedex PromiseSignal,
             Ast.Operation
-              (out, Ast.Operation (Ast.Promise (k, op, op_comp, p), cont')) )
+              ( out,
+                Ast.Operation
+                  ( Ast.InterruptHandler
+                      {
+                        operation = op;
+                        resumption = k;
+                        handler = op_comp;
+                        promise = p;
+                      },
+                    cont' ) ) )
           :: comps'
       | _ -> comps')
   | Ast.Operation (out, comp) ->
@@ -207,7 +220,14 @@ let rec step_computation state = function
 and step_in_out state op expr cont = function
   | Ast.Signal (op', expr') ->
       Ast.Operation (Ast.Signal (op', expr'), Ast.Interrupt (op, expr, cont))
-  | Ast.Promise (k, op', (arg_pat, op_comp), p) when op = op' ->
+  | Ast.InterruptHandler
+      {
+        operation = op';
+        resumption = k;
+        handler = arg_pat, op_comp;
+        promise = p;
+      }
+    when op = op' ->
       let subst = match_pattern_with_expression state arg_pat expr in
       let comp' = substitute subst op_comp in
 
@@ -221,7 +241,13 @@ and step_in_out state op expr cont = function
               Ast.Lambda
                 ( Ast.PTuple [],
                   Ast.Operation
-                    ( Ast.Promise (k, op', (arg_pat, op_comp), p'),
+                    ( Ast.InterruptHandler
+                        {
+                          operation = op';
+                          resumption = k;
+                          handler = (arg_pat, op_comp);
+                          promise = p';
+                        },
                       Ast.Return (Ast.Var p') ) )
             in
             substitute
@@ -229,9 +255,12 @@ and step_in_out state op expr cont = function
               comp'
       in
       Ast.Do (comp'', (Ast.PVar p, Ast.Interrupt (op, expr, cont)))
-  | Ast.Promise (k, op', op_comp, p) ->
+  | Ast.InterruptHandler
+      { operation = op'; resumption = k; handler = op_comp; promise = p } ->
       Ast.Operation
-        (Ast.Promise (k, op', op_comp, p), Ast.Interrupt (op, expr, cont))
+        ( Ast.InterruptHandler
+            { operation = op'; resumption = k; handler = op_comp; promise = p },
+          Ast.Interrupt (op, expr, cont) )
   | Ast.Spawn comp ->
       Ast.Operation (Ast.Spawn comp, Ast.Interrupt (op, expr, cont))
 

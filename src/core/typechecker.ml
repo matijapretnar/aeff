@@ -300,7 +300,10 @@ and infer_computation state = function
         combine (add_eqs constr' [ (ty1, ty1'); (ty2, ty2') ]) constr
       in
       (ty2, List.fold_left fold constr cases)
-  | Ast.Operation (Promise (k, op, abs, p), comp) ->
+  | Ast.Operation
+      ( InterruptHandler
+          { operation = op; resumption = k; handler = abs; promise = p },
+        comp ) ->
       let ty_k = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
       let ty1 = Ast.OpSymMap.find op state.operations in
 

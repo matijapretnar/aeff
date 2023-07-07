@@ -146,7 +146,8 @@ and desugar_plain_expression ~loc state = function
       let binds, e = desugar_expression state term in
       (binds, Ast.Boxed e)
   | ( S.Apply _ | S.Match _ | S.Let _ | S.LetRec _ | S.Conditional _
-    | S.Promise _ | S.Await _ | S.Send _ | S.Unbox _ | Spawn _ ) as term ->
+    | S.InterruptHandler _ | S.Await _ | S.Send _ | S.Unbox _ | Spawn _ ) as
+    term ->
       let x = Ast.Variable.fresh "b" in
       let comp = desugar_computation state (Location.add_loc ~loc term) in
       let hoist = (Ast.PVar x, comp) in
@@ -194,7 +195,13 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.Promise (k, op, (p, guard, c), abs) -> (
+  | S.InterruptHandler
+      {
+        operation = op;
+        resumption = k;
+        handler = p, guard, c;
+        continuation = abs;
+      } -> (
       let k', state' =
         match k with
         | None -> (None, state)
@@ -212,7 +219,17 @@ and desugar_plain_computation ~loc state =
       let p'', cont'' = desugar_promise_abstraction ~loc state abs in
 
       match guard with
-      | None -> ([], Ast.Operation (Promise (k', op', (p', c'), p''), cont''))
+      | None ->
+          ( [],
+            Ast.Operation
+              ( InterruptHandler
+                  {
+                    operation = op';
+                    resumption = k';
+                    handler = (p', c');
+                    promise = p'';
+                  },
+                cont'' ) )
       | Some g ->
           let binds, g' = desugar_expression state'' g in
 
@@ -225,8 +242,16 @@ and desugar_plain_computation ~loc state =
           let c''' =
             List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds c''
           in
-          ([], Ast.Operation (Promise (Some k'', op', (p', c'''), p''), cont''))
-      )
+          ( [],
+            Ast.Operation
+              ( InterruptHandler
+                  {
+                    operation = op';
+                    resumption = Some k'';
+                    handler = (p', c''');
+                    promise = p'';
+                  },
+                cont'' ) ))
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in
