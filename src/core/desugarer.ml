@@ -195,12 +195,11 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.InterruptHandler
-      { operation = op; resumption = r_opt; handler = p, guard, c } ->
+  | S.InterruptHandler { operation = op; kind; handler = p, guard, c } ->
       let r', state' =
-        match r_opt with
-        | None -> (Ast.Variable.fresh "r", state)
-        | Some r ->
+        match kind with
+        | Plain -> (Ast.Variable.fresh "r", state)
+        | Reinstallable r ->
             let r' = Ast.Variable.fresh r in
             (r', add_fresh_variables state [ (r, r') ])
       in

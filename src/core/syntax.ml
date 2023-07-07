@@ -61,7 +61,7 @@ and plain_term =
   | Apply of term * term  (** [t1 t2] *)
   | InterruptHandler of {
       operation : operation;
-      resumption : variable option;
+      kind : handler_kind;
       handler : guarded_abstraction;
     }  (** [with op (p1 k -> t1) as p2] *)
   | Await of term * abstraction  (** [await t1 until <<p>> in t2] *)
@@ -73,6 +73,7 @@ and plain_term =
 
 and abstraction = pattern * term
 and guarded_abstraction = pattern * term option * term
+and handler_kind = Plain | Reinstallable of variable
 
 type ty_def =
   | TySum of (label * ty option) list

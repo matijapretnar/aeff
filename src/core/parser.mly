@@ -87,8 +87,10 @@ plain_term:
     { let (p, t1) = def in Let (p, t1, t2) }
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
-  | PROMISE LPAREN op = operation p1 = pattern k = option(ident) g = guard ARROW t1 = term RPAREN
-    { InterruptHandler { operation = op; resumption = k; handler = (p1, g, t1)} }
+  | PROMISE LPAREN op = operation p1 = pattern g = guard ARROW t1 = term RPAREN
+    { InterruptHandler { operation = op; kind = Plain; handler = (p1, g, t1)} }
+  | PROMISE LPAREN op = operation p1 = pattern r = ident g = guard ARROW t1 = term RPAREN
+    { InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)} }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term
