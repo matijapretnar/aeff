@@ -1,4 +1,4 @@
-  $ for f in *.aeff examples/*.aeff
+  $ for f in *.aeff ../examples/*.aeff
   > do
   >   echo "======================================================================"
   >   echo $f
@@ -74,7 +74,7 @@
   The process has terminated in the configuration:
   run (return ())
   ======================================================================
-  examples/async.aeff
+  ../examples/async.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -139,7 +139,7 @@
   The process has terminated in the configuration:
   run (return ⟨()⟩) ||  run (return 42)
   ======================================================================
-  examples/cancellableCall.aeff
+  ../examples/cancellableCall.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -323,7 +323,7 @@
   || 
   run (return 360)
   ======================================================================
-  examples/feed.aeff
+  ../examples/feed.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -556,7 +556,7 @@
       @ () as p in
       return p
   ======================================================================
-  examples/heapPure.aeff
+  ../examples/heapPure.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -682,7 +682,7 @@
   || 
   run (return (10, 14))
   ======================================================================
-  examples/heapRef.aeff
+  ../examples/heapRef.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -801,7 +801,7 @@
   || 
   run (return (10, 14))
   ======================================================================
-  examples/preemptive.aeff
+  ../examples/preemptive.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -894,7 +894,7 @@
       @ () as p in
       return 5
   ======================================================================
-  examples/processWith.aeff
+  ../examples/processWith.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -959,7 +959,7 @@
   The process has terminated in the configuration:
   run (return ()) ||  run (return ⟨6⟩)
   ======================================================================
-  examples/remoteCall.aeff
+  ../examples/remoteCall.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1036,7 +1036,7 @@
   || 
   run (return 187200)
   ======================================================================
-  examples/runner.aeff
+  ../examples/runner.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1116,7 +1116,7 @@
       @ () as p in
       return p
   ======================================================================
-  examples/select.aeff
+  ../examples/select.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1181,7 +1181,7 @@
   The process has terminated in the configuration:
   run (return 625) ||  run (return ()) ||  run (return ())
   ======================================================================
-  examples/spawnProcess.aeff
+  ../examples/spawnProcess.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1256,7 +1256,7 @@
   || 
   run (return ())
   ======================================================================
-  examples/spawnSimple.aeff
+  ../examples/spawnSimple.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -1318,7 +1318,7 @@
   The process has terminated in the configuration:
   run (return 42) ||  run (return ())
   ======================================================================
-  examples/ticktock.aeff
+  ../examples/ticktock.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
