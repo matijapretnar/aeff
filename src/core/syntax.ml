@@ -73,7 +73,11 @@ and plain_term =
 
 and abstraction = pattern * term
 and guarded_abstraction = pattern * term option * term
-and handler_kind = Plain | Reinstallable of variable
+
+and handler_kind =
+  | Plain
+  | Reinstallable of variable
+  | Stateful of variable * variable * term
 
 type ty_def =
   | TySum of (label * ty option) list

@@ -155,13 +155,20 @@ and operation =
   | Signal of opsym * expression
   | InterruptHandler of {
       operation : opsym;
-      resumption : variable;
-      handler : abstraction;
+      handler : handler_abstraction;
+      state_value : expression;
       promise : variable;
     }
   | Spawn of computation
 
 and abstraction = pattern * computation
+
+and handler_abstraction = {
+  payload_pattern : pattern;
+  resumption_pattern : pattern;
+  state_pattern : pattern;
+  body : computation;
+}
 
 module VariableMap = Map.Make (Variable)
 module OpSymMap = Map.Make (OpSym)
@@ -230,17 +237,15 @@ and refresh_computation vars = function
           refresh_computation vars comp )
   | Operation
       ( InterruptHandler
-          { operation = op; resumption = r; handler = abs; promise = p },
+          { operation = op; handler; state_value = s; promise = p },
         comp ) ->
       let p' = Variable.refresh p in
-      let r' = Variable.refresh r in
-      let vars' = (r, r') :: vars in
       Operation
         ( InterruptHandler
             {
               operation = op;
-              resumption = r';
-              handler = refresh_abstraction vars' abs;
+              handler = refresh_handler_abstraction vars handler;
+              state_value = refresh_expression vars s;
               promise = p';
             },
           refresh_computation ((p, p') :: vars) comp )
@@ -257,6 +262,19 @@ and refresh_computation vars = function
 and refresh_abstraction vars (pat, comp) =
   let pat', vars' = refresh_pattern pat in
   (pat', refresh_computation (vars @ vars') comp)
+
+and refresh_handler_abstraction vars
+    { payload_pattern; resumption_pattern; state_pattern; body } =
+  let payload_pattern', vars1 = refresh_pattern payload_pattern in
+  let resumption_pattern', vars2 = refresh_pattern resumption_pattern in
+  let state_pattern', vars3 = refresh_pattern state_pattern in
+  let body' = refresh_computation (vars1 @ vars2 @ vars3 @ vars) body in
+  {
+    payload_pattern = payload_pattern';
+    resumption_pattern = resumption_pattern';
+    state_pattern = state_pattern';
+    body = body';
+  }
 
 let rec substitute_expression subst = function
   | Var x as expr -> (
@@ -289,15 +307,15 @@ and substitute_computation subst = function
           substitute_computation subst comp )
   | Operation
       ( InterruptHandler
-          { operation = op; resumption = k; handler = abs; promise = p },
+          { operation = op; handler; state_value = s; promise = p },
         comp ) ->
       let subst' = remove_pattern_bound_variables subst (PVar p) in
       Operation
         ( InterruptHandler
             {
               operation = op;
-              resumption = k;
-              handler = substitute_abstraction subst abs;
+              handler = substitute_handler_abstraction subst handler;
+              state_value = substitute_expression subst s;
               promise = p;
             },
           substitute_computation subst' comp )
@@ -316,6 +334,18 @@ and substitute_computation subst = function
 and substitute_abstraction subst (pat, comp) =
   let subst' = remove_pattern_bound_variables subst pat in
   (pat, substitute_computation subst' comp)
+
+and substitute_handler_abstraction subst
+    { payload_pattern; resumption_pattern; state_pattern; body } =
+  let subst' = remove_pattern_bound_variables subst payload_pattern in
+  let subst'' = remove_pattern_bound_variables subst' resumption_pattern in
+  let subst''' = remove_pattern_bound_variables subst'' state_pattern in
+  {
+    payload_pattern;
+    resumption_pattern;
+    state_pattern;
+    body = substitute_computation subst''' body;
+  }
 
 type process =
   | Run of computation
@@ -393,11 +423,23 @@ and print_computation ?max_level c ppf =
         (print_computation c)
   | Operation
       ( InterruptHandler
-          { operation = op; resumption = r; handler = p1, c1; promise = p2 },
+          {
+            operation = op;
+            handler =
+              {
+                payload_pattern = p1;
+                resumption_pattern = r;
+                state_pattern = s;
+                body = c1;
+              };
+            state_value = v;
+            promise = p2;
+          },
         c2 ) ->
-      print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
-        (OpSym.print op) (print_pattern p1) (Variable.print r)
-        (print_computation c1) (Variable.print p2) (print_computation c2)
+      print "@[<hv>promise (@[<hov>%t %t %t %t ↦@ %t@])@ %@ %t as %t in@ %t@]"
+        (OpSym.print op) (print_pattern p1) (print_pattern r) (print_pattern s)
+        (print_computation c1) (print_expression v) (Variable.print p2)
+        (print_computation c2)
   | Operation (Spawn comp1, comp2) ->
       print "Spawn (%t);%t\n" (print_computation comp1)
         (print_computation comp2)

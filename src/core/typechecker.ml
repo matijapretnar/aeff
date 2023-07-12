@@ -302,25 +302,55 @@ and infer_computation state = function
       (ty2, List.fold_left fold constr cases)
   | Ast.Operation
       ( InterruptHandler
-          { operation = op; resumption = r; handler = abs; promise = p },
+          {
+            operation;
+            handler =
+              { payload_pattern; resumption_pattern; state_pattern; body };
+            state_value;
+            promise;
+          },
         comp ) ->
-      let ty_r = fresh_ty () and ty_p = Ast.TyPromise (fresh_ty ()) in
-      let ty1 = Ast.OpSymMap.find op state.operations in
+      let ty_payload, vars_payload, eqs_payload =
+        infer_pattern state payload_pattern
+      in
+      let ty_resumption, vars_resumption, eqs_resumption =
+        infer_pattern state resumption_pattern
+      in
+      let ty_state, vars_state, eqs_state = infer_pattern state state_pattern in
+      let ty_promise = Ast.TyPromise (fresh_ty ()) in
 
-      let state' = extend_variables state [ (r, ty_r) ] in
-      let ty1', ty2, constr1 = infer_abstraction state' abs in
+      let ty_payload' = Ast.OpSymMap.find operation state.operations in
+      let ty_resumption' = Ast.TyArrow (ty_state, ty_promise) in
+      let ty_state', constr_state_value = infer_expression state state_value in
+      let ty_promise', constr_body =
+        let state' =
+          extend_variables state (vars_payload @ vars_resumption @ vars_state)
+        in
+        infer_computation state' body
+      in
 
-      let state'' = extend_variables state [ (p, ty_p) ] in
-      let ty, constr2 = infer_computation state'' comp in
-      ( ty,
+      let ty_cont, constr_cont =
+        let state'' = extend_variables state [ (promise, ty_promise) ] in
+        infer_computation state'' comp
+      in
+
+      let eqs =
+        [
+          (ty_payload, ty_payload');
+          (ty_resumption, ty_resumption');
+          (ty_state, ty_state');
+          (ty_promise, ty_promise');
+        ]
+        @ eqs_payload @ eqs_resumption @ eqs_state
+      in
+
+      let constr =
         combine
-          (add_eqs constr1
-             [
-               (ty_r, Ast.TyArrow (Ast.TyTuple [], ty2));
-               (ty1, ty1');
-               (ty2, ty_p);
-             ])
-          constr2 )
+          (add_eqs constr_state_value eqs)
+          (combine constr_body constr_cont)
+      in
+
+      (ty_cont, constr)
   | Ast.Unbox (expr, abs) ->
       let ty, constr1 = infer_expression state expr in
       let ty' = fresh_ty () in

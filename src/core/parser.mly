@@ -27,6 +27,7 @@
 %token AMPER AMPERAMPER
 %token LAND LOR LXOR
 %token <string> PREFIXOP INFIXOP0 INFIXOP1 INFIXOP2 INFIXOP3 INFIXOP4
+%token AT
 %token EOF
 
 %nonassoc ARROW IN
@@ -91,6 +92,8 @@ plain_term:
     { InterruptHandler { operation = op; kind = Plain; handler = (p1, g, t1)} }
   | PROMISE LPAREN op = operation p1 = pattern r = ident g = guard ARROW t1 = term RPAREN
     { InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)} }
+  | PROMISE LPAREN op = operation p1 = pattern r = ident s = ident g = guard ARROW t1 = term RPAREN AT t2 = term
+    { InterruptHandler { operation = op; kind = Stateful (r, s, t2) ; handler = (p1, g, t1)} }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term
@@ -330,6 +333,8 @@ binop:
     { op }
   | op = INFIXOP1
     { op }
+  | AT
+    { "@" }
   | op = INFIXOP2
     { op }
   | PLUS

@@ -36,12 +36,24 @@ let rec print_computation_reduction ?max_level red c ppf =
         (print_computation_reduction red c)
   | ( Interpreter.SignalCtx red,
       Ast.Operation
-        ( Ast.InterruptHandler
-            { operation = op; resumption = r; handler = p1, c1; promise = p2 },
+        ( InterruptHandler
+            {
+              operation = op;
+              handler =
+                {
+                  payload_pattern = p1;
+                  resumption_pattern = r;
+                  state_pattern = s;
+                  body = c1;
+                };
+              state_value = v;
+              promise = p2;
+            },
           c2 ) ) ->
-      print "@[<hv>promise (@[<hov>%t %t %t ↦@ %t@])@ as %t in@ %t@]"
-        (Ast.OpSym.print op) (Ast.print_pattern p1) (Ast.Variable.print r)
-        (Ast.print_computation c1) (Ast.Variable.print p2)
+      print "@[<hv>promise (@[<hov>%t %t %t %t ↦@ %t@])@ %@ %t as %t in@ %t@]"
+        (Ast.OpSym.print op) (Ast.print_pattern p1) (Ast.print_pattern r)
+        (Ast.print_pattern s) (Ast.print_computation c1)
+        (Ast.print_expression v) (Ast.Variable.print p2)
         (print_computation_reduction red c2)
   | Interpreter.ComputationRedex redex, c ->
       print_computation_redex ?max_level redex c ppf

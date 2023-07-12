@@ -195,45 +195,74 @@ and desugar_plain_computation ~loc state =
       let state', f, comp1 = desugar_let_rec_def state (x, term1) in
       let c = desugar_computation state' term2 in
       ([], Ast.Do (Ast.Return comp1, (Ast.PVar f, c)))
-  | S.InterruptHandler { operation = op; kind; handler = p, guard, c } ->
-      let r', state' =
-        match kind with
-        | Plain -> (Ast.Variable.fresh "r", state)
-        | Reinstallable r ->
+  | S.InterruptHandler
+      { operation; kind; handler = payload_pattern, opt_guard, body } ->
+      let vars, payload_pattern' = desugar_pattern state payload_pattern in
+      let resumption_var', state_var', vars' =
+        match (kind, opt_guard) with
+        | Plain, None -> (None, None, vars)
+        | Plain, Some _ -> (Some (Ast.Variable.fresh "r"), None, vars)
+        | Reinstallable r, _ ->
             let r' = Ast.Variable.fresh r in
-            (r', add_fresh_variables state [ (r, r') ])
+            (Some r', None, (r, r') :: vars)
+        | Stateful (r, s, _), _ ->
+            let r' = Ast.Variable.fresh r and s' = Ast.Variable.fresh r in
+            (Some r', Some s', (r, r') :: (s, s') :: vars)
       in
-
-      let op' = lookup_operation ~loc state op in
-
-      let vars, p' = desugar_pattern state p in
-      let state'' = add_fresh_variables state' vars in
-      let c' = desugar_computation state'' c in
-
-      let p'' = Ast.Variable.fresh "p" in
-      let cont'' = Ast.Return (Ast.Var p'') in
-
-      let c''' =
-        match guard with
-        | None -> c'
-        | Some g ->
-            let binds, g' = desugar_expression state'' g in
-
-            let c'' =
-              if_then_else g' c' (Ast.Apply (Ast.Var r', Ast.Tuple []))
+      let resumption_pattern' =
+        match resumption_var' with
+        | None -> Ast.PNonbinding
+        | Some r -> Ast.PVar r
+      and state_pattern' =
+        match state_var' with None -> Ast.PNonbinding | Some s -> Ast.PVar s
+      in
+      let body' =
+        let state' = add_fresh_variables state vars' in
+        let unguarded_body' = desugar_computation state' body in
+        match opt_guard with
+        | None -> unguarded_body'
+        | Some guard ->
+            let binds, guard' = desugar_expression state' guard in
+            let r =
+              match resumption_var' with Some r -> r | None -> assert false
             in
-            List.fold_right (fun (p, c1) c2 -> Ast.Do (c1, (p, c2))) binds c''
+
+            let body'' =
+              if_then_else guard' unguarded_body'
+                (Ast.Apply (Ast.Var r, Ast.Tuple []))
+            in
+            List.fold_right
+              (fun (p, c1) c2 -> Ast.Do (c1, (p, c2)))
+              binds body''
       in
-      ( [],
+
+      let operation' = lookup_operation ~loc state operation in
+      let handler' =
+        Ast.
+          {
+            payload_pattern = payload_pattern';
+            resumption_pattern = resumption_pattern';
+            state_pattern = state_pattern';
+            body = body';
+          }
+      in
+      let binds, state_value' =
+        match kind with
+        | Plain | Reinstallable _ -> ([], Ast.Tuple [])
+        | Stateful (_, _, state_value) -> desugar_expression state state_value
+      in
+      let promise' = Ast.Variable.fresh "p" in
+      let cont' = Ast.Return (Ast.Var promise') in
+      ( binds,
         Ast.Operation
           ( InterruptHandler
               {
-                operation = op';
-                resumption = r';
-                handler = (p', c''');
-                promise = p'';
+                operation = operation';
+                handler = handler';
+                state_value = state_value';
+                promise = promise';
               },
-            cont'' ) )
+            cont' ) )
   | S.Await (t, abs) ->
       let binds, e = desugar_expression state t in
       let abs' = desugar_abstraction state abs in
