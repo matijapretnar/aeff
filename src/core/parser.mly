@@ -92,7 +92,7 @@ plain_term:
     { InterruptHandler { operation = op; kind = Plain; handler = (p1, g, t1)} }
   | PROMISE LPAREN op = operation p1 = pattern r = ident g = guard ARROW t1 = term RPAREN
     { InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)} }
-  | PROMISE LPAREN op = operation p1 = pattern r = ident s = ident g = guard ARROW t1 = term RPAREN AT t2 = term
+  | PROMISE LPAREN op = operation p1 = pattern r = ident s = ident g = guard ARROW t1 = term RPAREN AT t2 = simple_term
     { InterruptHandler { operation = op; kind = Stateful (r, s, t2) ; handler = (p1, g, t1)} }
   | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
     { Await (t1, (p, t2)) }
