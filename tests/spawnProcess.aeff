@@ -4,13 +4,13 @@ operation result : int * int
 let boxedFunc = [|fun a -> a+a|]
 
 let parallelMap f seznam = 
-    map awaitValue (
+    map (fun p -> await p) (
         map (fun e -> 
                 let result = promise (result (x,r) when x = e ->
                     <<r>>
                 ) in
                 spawn(
-                    unbox f as [|f'|] in
+                    let f' = unbox f in
                     send result (e, (f' e))
                 );
                 result

@@ -109,6 +109,10 @@ let add_operation state op =
   let op' = Ast.OpSym.fresh op in
   (op', { state with operations = StringMap.add op op' state.operations })
 
+let trivial_abstraction x =
+  let x' = Ast.Variable.fresh x in
+  (Ast.PVar x', Ast.Return (Ast.Var x'))
+
 let rec desugar_expression state { it = term; Location.at = loc } =
   let binds, expr = desugar_plain_expression ~loc state term in
   (binds, expr)
@@ -263,18 +267,16 @@ and desugar_plain_computation ~loc state =
                 promise = promise';
               },
             cont' ) )
-  | S.Await (t, abs) ->
+  | S.Await t ->
       let binds, e = desugar_expression state t in
-      let abs' = desugar_abstraction state abs in
-      (binds, Ast.Await (e, abs'))
+      (binds, Ast.Await (e, trivial_abstraction "x"))
   | S.Send (op, t) ->
       let op' = lookup_operation ~loc state op in
       let binds, e = desugar_expression state t in
       (binds, Ast.Operation (Ast.Signal (op', e), Ast.Return (Ast.Tuple [])))
-  | S.Unbox (t, abs) ->
+  | S.Unbox t ->
       let binds, e = desugar_expression state t in
-      let abs' = desugar_abstraction state abs in
-      (binds, Ast.Unbox (e, abs'))
+      (binds, Ast.Unbox (e, trivial_abstraction "x"))
   | S.Spawn term ->
       let c = desugar_computation state term in
       ([], Ast.Operation (Ast.Spawn c, Ast.Return (Ast.Tuple [])))

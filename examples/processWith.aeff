@@ -3,7 +3,7 @@ operation productSignal : int
 
 let processWith p comp cont =
   let q = promise (listInterrupt _ ->
-    await p until <<x>> in
+    let x = await p in
     let y = comp x in
     return <<y>>) in
   cont q

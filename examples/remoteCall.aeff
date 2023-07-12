@@ -4,7 +4,7 @@ operation result : int * int
 let naiveCallWith x =
     send call x;
     let p = promise (result y -> return <<y>>) in
-    fun () -> return awaitValue p
+    fun () -> return await p
 
 let callWith callCounter =
     fun x ->
@@ -14,7 +14,7 @@ let callWith callCounter =
         let p = promise (result (y, callNo') when callNo = callNo' ->
             return <<y>>
         ) in
-        let valueThunk () = awaitValue p in
+        let valueThunk () = await p in
         return valueThunk
 
 let remote f =

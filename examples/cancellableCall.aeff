@@ -11,7 +11,7 @@ let callWith callCounter =
         let p = promise (result (y, callNo') when callNo = callNo' ->
             return <<y>>
         ) in
-        let valueThunk () = awaitValue p in
+        let valueThunk () = await p in
         let cancelThunk () = send cancel callNo in
         let changeMind x = cancelThunk (); send call (x, callNo) in
         return (valueThunk, cancelThunk, changeMind)
@@ -20,7 +20,7 @@ let rec awaitCancel callNo runBeforeStall =
     promise (cancel callNo' when callNo = callNo'->
         let dummyPromise = promise (dummy empty -> return <<empty>>) in
         runBeforeStall ();
-        awaitValue dummyPromise;
+        await dummyPromise;
         awaitCancel callNo runBeforeStall
     )
 

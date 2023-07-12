@@ -57,7 +57,7 @@ let lookup callCounter l =
     callCounter := callNo + 1;
     let p = promise (lookupRes (v, callNo') when callNo = callNo' ->
         return <<v>>
-    ) in awaitValue p
+    ) in await p
 
 let update callCounter l v =
     let callNo = !callCounter in
@@ -65,7 +65,7 @@ let update callCounter l v =
     callCounter := callNo + 1;
     let p = promise (updateRes (callNo') when callNo = callNo' ->
         return <<()>>
-    ) in awaitValue p
+    ) in await p
 
 let alloc callCounter v =
     let callNo = !callCounter in
@@ -73,7 +73,7 @@ let alloc callCounter v =
     callCounter := callNo + 1;
     let p = promise (allocRes (l, callNo') when callNo = callNo' ->
         return <<l>>
-    ) in awaitValue p
+    ) in await p
 
 run
     let callCounter = ref 0 in

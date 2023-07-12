@@ -11,12 +11,12 @@ run
   let y = 1 + 1 in
   let z = y + y in
   let w = y + z in
-  let u = (w + 1) * (awaitValue r) in
+  let u = (w + 1) * (await r) in
   u
 
 run
   promise (question f ->
-    unbox f as [|f'|] in
+    let f' = unbox f in
     let y = f' () in
     send answer y;
     return <<()>>

@@ -115,6 +115,3 @@ let fst (x, _) = x
 let snd (_, y) = y
   
 let return x = x
-
-let awaitValue p =
-    await p until <<value>> in return value

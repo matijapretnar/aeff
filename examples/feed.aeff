@@ -39,7 +39,7 @@ let client () =
             clientLoop batchSize)
     in
 
-    await batchSizePromise until <<batchSize>> in
+    let batchSize = await batchSizePromise in
     clientLoop batchSize
 
 let server batchSize =

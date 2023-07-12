@@ -18,7 +18,7 @@ let randomDigit callCounter =
     let p = promise (randomRes (callNo', seed) when callNo = callNo' ->
         return <<seed mod 10>>
     ) in
-    awaitValue p
+    await p
 
 run
     lcgRunner 1234 567 89 1

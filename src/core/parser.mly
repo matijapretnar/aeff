@@ -17,7 +17,7 @@
 %token <Syntax.ty_param> PARAM
 %token TYPE ARROW OF
 %token MATCH WITH FUNCTION WHEN
-%token AWAIT UNTIL PROMISE SEND UNBOX LBOXED RBOXED
+%token AWAIT PROMISE SEND UNBOX LBOXED RBOXED
 %token RUN LET REC AND IN OPERATION SPAWN
 %token FUN BAR BARBAR
 %token IF THEN ELSE
@@ -94,16 +94,12 @@ plain_term:
     { InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)} }
   | PROMISE LPAREN op = operation p1 = pattern r = ident s = ident g = guard ARROW t1 = term RPAREN AT t2 = simple_term
     { InterruptHandler { operation = op; kind = Stateful (r, s, t2) ; handler = (p1, g, t1)} }
-  | AWAIT t1 = term UNTIL LPROMISE p = pattern RPROMISE IN t2 = term
-    { Await (t1, (p, t2)) }
   | t1 = term SEMI t2 = term
     { Let ({it= PNonbinding; at= t1.at}, t1, t2) }
   | IF t_cond = comma_term THEN t_true = term ELSE t_false = term
     { Conditional (t_cond, t_true, t_false) }
   | t = plain_comma_term
     { t }
-  | UNBOX t1 = term AS LBOXED p = pattern RBOXED IN t2 = term
-    { Unbox (t1, (p, t2)) }
 
 comma_term: mark_position(plain_comma_term) { $1 }
 plain_comma_term:
@@ -160,6 +156,10 @@ plain_prefix_term:
     }
   | SPAWN t = simple_term
     { Spawn t }
+  | AWAIT t = simple_term
+    { Await t }
+  | UNBOX t = simple_term
+    { Unbox t }
   | t = plain_simple_term
     { t }
 

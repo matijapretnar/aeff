@@ -50,7 +50,7 @@ let callWith callCounter x =
     callCounter := callNo + 1;
     let p = promise (opRes (y, callNo') when callNo = callNo' ->
         return <<y>>
-    ) in awaitValue p
+    ) in await p
 
 let lookup callCounter l =
     match callWith callCounter (LookupReq l) with LookupRes v -> return v

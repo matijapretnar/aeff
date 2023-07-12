@@ -8,7 +8,7 @@ let select f g k =
   let p1 = promise (op1 x ->
     if !i = 0
     then (let q1 = f x in
-          await q1 until <<y1>> in
+          let y1 = await q1 in
           v1 := Some y1;
           i := 1;
           return <<()>>)
@@ -16,7 +16,7 @@ let select f g k =
   let p2 = promise (op2 x ->
     if !i = 0
     then (let q2 = g x in
-          await q2 until <<y2>> in
+          let y2 = await q2 in
           v2 := Some y2;
           i := 2;
           return <<()>>)
@@ -39,4 +39,4 @@ run
   select
     (fun x -> return <<x + 24>>)
     (fun x -> return <<x + 42>>)
-    (fun p -> await p until <<x>> in return x * x)
+    (fun p -> let x = await p in return x * x)

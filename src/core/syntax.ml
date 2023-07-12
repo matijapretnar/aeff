@@ -64,11 +64,11 @@ and plain_term =
       kind : handler_kind;
       handler : guarded_abstraction;
     }  (** [with op (p1 k -> t1) as p2] *)
-  | Await of term * abstraction  (** [await t1 until <<p>> in t2] *)
+  | Await of term  (** [await t] *)
   | Fulfill of term  (** [<<t>>] *)
   | Send of operation * term  (** [send op t] *)
   | Boxed of term  (** [[t]] *)
-  | Unbox of term * abstraction  (** [unbox t1 as [x] in t2] *)
+  | Unbox of term  (** [unbox t] *)
   | Spawn of term  (** [spawn t] *)
 
 and abstraction = pattern * term
