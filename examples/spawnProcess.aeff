@@ -1,9 +1,9 @@
 operation task :   int * [|int -> int|]
 operation result : int * int
 
-let boxed_func = [|fun a -> a+a|]
+let boxedFunc = [|fun a -> a+a|]
 
-let parallel_map f seznam = 
+let parallelMap f seznam = 
     map awaitValue (
         map (fun e -> 
                 let result = promise (result (x,r) when x = e ->
@@ -19,4 +19,4 @@ let parallel_map f seznam =
     )
 
 
-run parallel_map boxed_func [1;2;3;4;5]
+run parallelMap boxedFunc [1;2;3;4;5]

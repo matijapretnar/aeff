@@ -1,7 +1,7 @@
-operation std_out : string
+operation stdOut : string
 
 run spawn (
-    send std_out "Hello world";
+    send stdOut "Hello world";
     let a = 15 in
     a * a;
     ()

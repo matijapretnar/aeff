@@ -15,11 +15,11 @@ let rec range m n =
     m :: range (m + 1) n
 
 let reverse lst =
-  let rec reverse_acc acc = function
+  let rec aux acc = function
     | [] -> acc
-    | x :: xs -> reverse_acc (x :: acc) xs
+    | x :: xs -> aux (x :: acc) xs
   in
-  reverse_acc [] lst
+  aux [] lst
 
 let rec map f = function
   | [] -> []
@@ -37,17 +37,17 @@ let tl = function
 let take f k =
   let r = range 0 k in map f r
 
-let rec fold_left f acc = function
+let rec foldLeft f acc = function
   | [] -> acc
   | y :: ys ->
     let acc' = f acc y in
-    fold_left f acc' ys
+    foldLeft f acc' ys
 
-let rec fold_right f xs acc =
+let rec foldRight f xs acc =
   match xs with
     | [] -> acc
     | x :: xs ->
-      let acc' = fold_right f xs acc in
+      let acc' = foldRight f xs acc in
       f x acc'
     
     let rec iter f = function

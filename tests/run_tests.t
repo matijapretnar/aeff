@@ -35,8 +35,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -64,11 +64,11 @@
   val snd : α × β → β
   val return : α → α
   val awaitValue : ⟨α⟩ → α
-  type mobile_list
-  operation the_good : (unit → int) mobile_list
+  type mobileList
+  operation theGood : (unit → int) mobileList
   type left1
   type right1
-  operation and_the_ugly : int left1
+  operation andTheUgly : int left1
   type foo
   operation bar1 : (⟨int⟩, int) foo
   The process has terminated in the configuration:
@@ -102,8 +102,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -133,7 +133,7 @@
   val awaitValue : ⟨α⟩ → α
   operation question : [(unit → int)]
   operation answer : int
-  val get_answer : [(unit → int)] → ⟨int⟩
+  val getAnswer : [(unit → int)] → ⟨int⟩
   ↑ question [fun () ↦ (+) (3, 3)]
   ↑ answer 6
   The process has terminated in the configuration:
@@ -167,8 +167,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -351,8 +351,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -584,8 +584,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -710,8 +710,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -829,8 +829,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -894,7 +894,7 @@
       @ () as p in
       return 5
   ======================================================================
-  examples/process_with.aeff
+  examples/processWith.aeff
   ======================================================================
   val (=) : α × α → bool
   val (<) : α × α → bool
@@ -922,8 +922,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -953,7 +953,7 @@
   val awaitValue : ⟨α⟩ → α
   operation listInterrupt : int list
   operation productSignal : int
-  val process_with : ⟨α⟩ → (α → β) → (⟨β⟩ → γ) → γ
+  val processWith : ⟨α⟩ → (α → β) → (⟨β⟩ → γ) → γ
   ↑ listInterrupt -3::-2::-1::0::1::2::3::[]
   ↑ productSignal 6
   The process has terminated in the configuration:
@@ -987,8 +987,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -1064,8 +1064,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -1144,8 +1144,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -1209,8 +1209,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -1240,8 +1240,8 @@
   val awaitValue : ⟨α⟩ → α
   operation task : int × [(int → int)]
   operation result : int × int
-  val boxed_func : [(int → int)]
-  val parallel_map : [(int → int)] → int list → int list
+  val boxedFunc : [(int → int)]
+  val parallelMap : [(int → int)] → int list → int list
   ↑ result (1, 2)
   ↑ result (2, 4)
   ↑ result (3, 6)
@@ -1284,8 +1284,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool
@@ -1313,8 +1313,8 @@
   val snd : α × β → β
   val return : α → α
   val awaitValue : ⟨α⟩ → α
-  operation std_out : string
-  ↑ std_out "Hello world"
+  operation stdOut : string
+  ↑ stdOut "Hello world"
   The process has terminated in the configuration:
   run (return 42) ||  run (return ())
   ======================================================================
@@ -1346,8 +1346,8 @@
   val hd : α list → α
   val tl : α list → α list
   val take : (int → α) → int → α list
-  val fold_left : (α → β → α) → α → β list → α
-  val fold_right : (α → β → β) → α list → β → β
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
   val iter : (α → β) → α list → unit
   val forall : (α → bool) → α list → bool
   val exists : (α → bool) → α list → bool

@@ -1,13 +1,13 @@
-type 'm mobile_list = 
+type 'm mobileList = 
   | Empty 
-  | Something of [|'m|] * 'm mobile_list
-operation the_good : (unit -> int) mobile_list
+  | Something of [|'m|] * 'm mobileList
+operation theGood : (unit -> int) mobileList
 
 (*
-type 'm immobile_list = 
+type 'm immobileList = 
   | Empty 
-  | Something of <<'m>> * 'm immobile_list
-operation the_bad : (unit -> int) immobile_list
+  | Something of <<'m>> * 'm immobileList
+operation theBad : (unit -> int) immobileList
 *)
 
 
@@ -17,7 +17,7 @@ type 'm left1 =
 and 'm right1 = 
   | Three of [|'m|]
   | Four of [|'m|] * <<'m>> left1
-operation and_the_ugly : int left1
+operation andTheUgly : int left1
 
 (*
 type 'm left2 = 
@@ -26,7 +26,7 @@ type 'm left2 =
 and 'm right2 = 
   | Three of 'm
   | Four of [|'m|] * <<'m>> left2
-operation bad_and_ugly : int left2
+operation badAndUgly : int left2
 *)
 
 
