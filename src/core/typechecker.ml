@@ -361,10 +361,9 @@ and infer_computation state = function
       let state' =
         { state with local_var = Ast.VariableMap.empty :: state.local_var }
       in
-      let ty1, constraints1 = infer_computation state' comp1 in
+      let _ty1, constraints1 = infer_computation state' comp1 in
       let ty2, constraints2 = infer_computation state comp2 in
-      ( ty2,
-        add_eqs (combine constraints1 constraints2) [ (ty1, Ast.TyTuple []) ] )
+      (ty2, combine constraints1 constraints2)
 
 and infer_abstraction state (pat, comp) =
   let ty, vars, eqs = infer_pattern state pat in
