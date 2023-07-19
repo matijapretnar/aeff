@@ -18,12 +18,6 @@
    (echo "let examples = [")
    ;; We need to repeat the following three lines for each included example.
    ;; The first line gives the name of the example and the second gives its source.
-   (echo "({|Asynchronous computation|}, {|")
-   (cat ../../examples/async.aeff)
-   (echo "|});")
-   (echo "({|Cancellable calls|}, {|")
-   (cat ../../examples/cancellableCall.aeff)
-   (echo "|});")
    (echo "({|Client feed|}, {|")
    (cat ../../examples/feed.aeff)
    (echo "|});")
@@ -41,6 +35,9 @@
    (echo "|});")
    (echo "({|Remote call|}, {|")
    (cat ../../examples/remoteCall.aeff)
+   (echo "|});")
+   (echo "({|Cancellable calls|}, {|")
+   (cat ../../examples/cancellableCall.aeff)
    (echo "|});")
    (echo "({|Runners|}, {|")
    (cat ../../examples/runner.aeff)

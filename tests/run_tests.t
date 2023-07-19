@@ -7,6 +7,70 @@
   >   :  # this command is here to suppress potential non-zero exit codes in the output
   > done
   ======================================================================
+  async.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  operation question : [(unit → int)]
+  operation answer : int
+  val getAnswer : [(unit → int)] → ⟨int⟩
+  ↑ question [fun () ↦ (+) (3, 3)]
+  ↑ answer 6
+  The process has terminated in the configuration:
+  run (return ⟨()⟩) ||  run (return 42)
+  ======================================================================
   spawnProcess.aeff
   ======================================================================
   val (=) : α × α → bool
@@ -207,70 +271,6 @@
   operation bar1 : (⟨int⟩, int) foo
   The process has terminated in the configuration:
   run (return ())
-  ======================================================================
-  ../examples/async.aeff
-  ======================================================================
-  val (=) : α × α → bool
-  val (<) : α × α → bool
-  val (>) : α × α → bool
-  val (<=) : α × α → bool
-  val (>=) : α × α → bool
-  val (<>) : α × α → bool
-  val (~-) : int → int
-  val (+) : int × int → int
-  val (*) : int × int → int
-  val (-) : int × int → int
-  val (mod) : int × int → int
-  val (/) : int × int → int
-  val ref : α → α ref
-  val (!) : α ref → α
-  val (:=) : α ref × α → unit
-  val toString : α → string
-  val absurd : α → β
-  val not : bool → bool
-  type option
-  val assoc : α → (α × β) list → β option
-  val range : int → int → int list
-  val reverse : α list → α list
-  val map : (α → β) → α list → β list
-  val hd : α list → α
-  val tl : α list → α list
-  val take : (int → α) → int → α list
-  val foldLeft : (α → β → α) → α → β list → α
-  val foldRight : (α → β → β) → α list → β → β
-  val iter : (α → β) → α list → unit
-  val forall : (α → bool) → α list → bool
-  val exists : (α → bool) → α list → bool
-  val mem : α → α list → bool
-  val filter : (α → bool) → α list → α list
-  val complement : α list → α list → α list
-  val intersection : α list → α list → α list
-  val zip : α list → β list → (α × β) list
-  val unzip : (α × β) list → α list × β list
-  val (@) : α list × α list → α list
-  val length : α list → int
-  val nth : α list → int → α
-  val abs : int → int
-  val min : α → α → α
-  val max : α → α → α
-  val gcd : int → int → int
-  val lcm : int → int → int
-  val odd : int → bool
-  val even : int → bool
-  val id : α → α
-  val compose : (α → β) → (γ → α) → γ → β
-  val (|>) : α → (α → β) → β
-  val ignore : α → unit
-  val fst : α × β → α
-  val snd : α × β → β
-  val return : α → α
-  operation question : [(unit → int)]
-  operation answer : int
-  val getAnswer : [(unit → int)] → ⟨int⟩
-  ↑ question [fun () ↦ (+) (3, 3)]
-  ↑ answer 6
-  The process has terminated in the configuration:
-  run (return ⟨()⟩) ||  run (return 42)
   ======================================================================
   ../examples/cancellableCall.aeff
   ======================================================================
