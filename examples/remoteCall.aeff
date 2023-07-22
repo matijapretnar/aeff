@@ -18,14 +18,11 @@ let callWith callCounter =
         return valueThunk
 
 let remote f =
-    let rec loop () =
-        promise (call (x, callNo) ->
-            let y = f x in
-            send result (y, callNo);
-            loop ()
-        )
-    in
-    loop ()
+    promise (call (x, callNo) r ->
+        let y = f x in
+        send result (y, callNo);
+        r ()
+    )
 
 run
     let callCounter = ref 0 in

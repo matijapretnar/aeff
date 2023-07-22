@@ -24,27 +24,27 @@ let allocHeap heap v =
 
 let heapRunner () =
     let heap = ref empty in
-    let rec awaitLookup () =
-        promise (lookupReq (l, callId) ->
+    let awaitLookup () =
+        promise (lookupReq (l, callId) r ->
             let v = lookupHeap !heap l in
             send lookupRes (v, callId);
-            awaitLookup ()
+            r ()
         )
     in
-    let rec awaitUpdate () =
-        promise (updateReq (l, v, callId) ->
+    let awaitUpdate () =
+        promise (updateReq (l, v, callId) r ->
             let heap' = updateHeap !heap l v in
             send updateRes callId;
             heap := heap';
-            awaitUpdate ()
+            r ()
         )
     in
-    let rec awaitAlloc () =
-        promise (allocReq (v, callId) ->
+    let awaitAlloc () =
+        promise (allocReq (v, callId) r ->
             let heap', l = allocHeap !heap v in
             send allocRes (l, callId);
             heap := heap';
-            awaitAlloc ()
+            r ()
         )
     in
     awaitLookup ();

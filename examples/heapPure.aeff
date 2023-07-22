@@ -26,8 +26,8 @@ let allocHeap heap v =
   let l = length heap in
   (l, v) :: heap, l
 
-let rec heapRunner heap =
-    promise (opReq (reqPayload, callNo) ->
+let heapRunner initialHeap =
+    promise (opReq (reqPayload, callNo) r heap ->
         let heap', resPayload =
             match reqPayload with
             | LookupReq l ->
@@ -41,8 +41,8 @@ let rec heapRunner heap =
                 return (heap', AllocRes l)
         in
         send opRes (resPayload, callNo);
-        heapRunner heap'
-    )
+        r heap'
+    ) at initialHeap
 
 let callWith callCounter x =
     let callNo = !callCounter in

@@ -4,6 +4,7 @@
 
   let reserved = Desugarer.StringMap.of_seq @@ List.to_seq [
     ("and", AND);
+    ("at", AT);
     ("await", AWAIT);
     ("as", AS);
     ("asr", ASR);
@@ -126,7 +127,6 @@ rule token = parse
   | ":="                { INFIXOP0(":=") }
   | infixop0            { INFIXOP0(Lexing.lexeme lexbuf) }
   | infixop1            { INFIXOP1(Lexing.lexeme lexbuf) }
-  | '@'                 { AT }
   | infixop2            { INFIXOP2(Lexing.lexeme lexbuf) }
   (* infixop4 comes before infixop3 because ** would otherwise match infixop3 *)
   | infixop4            { INFIXOP4(Lexing.lexeme lexbuf) }

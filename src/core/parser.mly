@@ -76,6 +76,20 @@ payload:
 
 (* Main syntax tree *)
 
+optparams:
+  |
+    { (None, None) }
+  | r = ident
+    { (Some r, None) }
+  | r = ident s = ident
+    { (Some r, Some s) }
+
+optstate:
+  |
+    { None }
+  | AT t = simple_term
+    { Some t}
+
 term: mark_position(plain_term) { $1 }
 plain_term:
   | MATCH t = term WITH cases = cases0(case) (* END *)
@@ -88,12 +102,13 @@ plain_term:
     { let (p, t1) = def in Let (p, t1, t2) }
   | LET REC def = let_rec_def IN t2 = term
     { let (f, t1) = def in LetRec (f, t1, t2) }
-  | PROMISE LPAREN op = operation p1 = pattern g = guard ARROW t1 = term RPAREN
-    { InterruptHandler { operation = op; kind = Plain; handler = (p1, g, t1)} }
-  | PROMISE LPAREN op = operation p1 = pattern r = ident g = guard ARROW t1 = term RPAREN
-    { InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)} }
-  | PROMISE LPAREN op = operation p1 = pattern r = ident s = ident g = guard ARROW t1 = term RPAREN AT t2 = simple_term
-    { InterruptHandler { operation = op; kind = Stateful (r, s, t2) ; handler = (p1, g, t1)} }
+  | PROMISE LPAREN op = operation p1 = pattern rs = optparams g = guard ARROW t1 = term RPAREN st = optstate
+    { match rs, st with
+      | (None, None), None -> InterruptHandler { operation = op; kind = Plain; handler = (p1, g, t1)}
+      | (Some r, None), None -> InterruptHandler { operation = op; kind = Reinstallable r; handler = (p1, g, t1)}
+      | (Some r, Some s), Some t2 -> InterruptHandler { operation = op; kind = Stateful (r, s, t2) ; handler = (p1, g, t1)}
+      | _, _ -> failwith "Incorrect handler syntax"
+    }
   | t1 = term SEMI t2 = term
     { Let ({it= PNonbinding; at= t1.at}, t1, t2) }
   | IF t_cond = comma_term THEN t_true = term ELSE t_false = term
@@ -333,8 +348,6 @@ binop:
     { op }
   | op = INFIXOP1
     { op }
-  | AT
-    { "@" }
   | op = INFIXOP2
     { op }
   | PLUS

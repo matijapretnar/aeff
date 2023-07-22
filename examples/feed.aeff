@@ -24,8 +24,8 @@ let client () =
         ()
     in
 
-    let rec clientLoop batchSize =
-        promise (nextItem () ->
+    let clientLoop batchSize =
+        promise (nextItem () r ->
             let cachedSize = length !cachedData in
             (if (!currentItem > cachedSize - batchSize / 2) && (not !requestInProgress) then
                  requestNewData (cachedSize + 1)
@@ -36,23 +36,23 @@ let client () =
                  currentItem := !currentItem + 1
              else  
                  send display "please wait a bit and try again");
-            clientLoop batchSize)
+            r ())
     in
 
     let batchSize = await batchSizePromise in
     clientLoop batchSize
 
 let server batchSize =
-    let rec waitForBatchSize () =
-        promise (batchSizeRequest () ->
+    let waitForBatchSize () =
+        promise (batchSizeRequest () r ->
             send batchSizeResponse batchSize;
-            waitForBatchSize ())
+            r ())
     in
-    let rec waitForRequest () =
-        promise (request offset ->
+    let waitForRequest () =
+        promise (request offset r ->
             let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
             send response payload;
-            waitForRequest ())
+            r ())
     in
     waitForBatchSize ();
     waitForRequest ()
