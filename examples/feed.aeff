@@ -9,7 +9,6 @@ operation batchSizeResponse : int
 let client () =
     let cachedData = ref [] in
     let requestInProgress = ref false in
-    let currentItem = ref 0 in
 
     send batchSizeRequest ();
     let batchSizePromise = promise (batchSizeResponse batchSize -> return <<batchSize>>) in
@@ -25,37 +24,29 @@ let client () =
     in
 
     let clientLoop batchSize =
-        promise (nextItem () r ->
+        promise (nextItem () r currentItem ->
             let cachedSize = length !cachedData in
-            (if (!currentItem > cachedSize - batchSize / 2) && (not !requestInProgress) then
-                 requestNewData (cachedSize + 1)
-             else
-                 return ());
-            (if (!currentItem) < cachedSize then
-                 send display (toString (nth !cachedData !currentItem));
-                 currentItem := !currentItem + 1
+            if (currentItem > cachedSize - batchSize / 2) && (not !requestInProgress) then
+                 requestNewData (cachedSize + 1);
+                 r currentItem
+             else if (currentItem) < cachedSize then
+                 send display (toString (nth !cachedData currentItem));
+                 r (currentItem + 1)
              else  
-                 send display "please wait a bit and try again");
-            r ())
+                 (send display "please wait a bit and try again"; r currentItem)) at 0
     in
 
     let batchSize = await batchSizePromise in
     clientLoop batchSize
 
 let server batchSize =
-    let waitForBatchSize () =
-        promise (batchSizeRequest () r ->
-            send batchSizeResponse batchSize;
-            r ())
-    in
-    let waitForRequest () =
-        promise (request offset r ->
-            let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
-            send response payload;
-            r ())
-    in
-    waitForBatchSize ();
-    waitForRequest ()
+    promise (batchSizeRequest () r ->
+        send batchSizeResponse batchSize;
+        r ());
+    promise (request offset r ->
+        let payload = map (fun x -> 10 * x) (range offset (offset + batchSize - 1)) in
+        send response payload;
+        r ())
 
 
 let rec user n =
