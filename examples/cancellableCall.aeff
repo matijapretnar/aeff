@@ -16,54 +16,19 @@ let callWith callCounter =
         let changeMind x = cancelThunk (); send call (x, callNo) in
         return (valueThunk, cancelThunk, changeMind)
 
-let rec awaitCancel callNo runBeforeStall =
-    promise (cancel callNo' when callNo = callNo'->
-        let dummyPromise = promise (dummy empty -> return <<empty>>) in
-        runBeforeStall ();
-        await dummyPromise;
-        awaitCancel callNo runBeforeStall
-    )
-
 let remote f =
-    let rec loop () =
-        promise (call (x, callNo) ->
-            awaitCancel callNo loop;
-            let y = f x in
-            send result (y, callNo);
-            loop ()
-        )
-    in
-    loop ()
-
-let remoteCallReInvoker () =
-    let callsToReInvoke = ref [] in
-    let rec reInvokerCall () =
-        promise (call (x,callNo) ->
-            callsToReInvoke := (x, callNo) :: !callsToReInvoke;
-            reInvokerCall ()
-        )
-    in
-    let rec reInvokerResult () =
-        promise (result (y, callNo) ->
-            callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
-            reInvokerResult ()
-        )
-    in
-    let rec reInvokerCancel () =
-        let rec reInvokerWrapper calls =
-            match calls with
-            | [] -> return ()
-            | (x, callNo) :: calls -> send call (x, callNo); reInvokerWrapper calls
-        in
-        promise (cancel callNo ->
-            callsToReInvoke := filter (fun (_, callNo') -> callNo <> callNo') !callsToReInvoke;
-            reInvokerWrapper (reverse !callsToReInvoke);
-            reInvokerCancel ()
-        )
-    in
-    reInvokerCall ();
-    reInvokerResult ();
-    reInvokerCancel ()
+    promise (call (x, callNo) r ->
+        spawn (
+            promise (cancel callNo' dummyR when callNo = callNo' ->
+                let dummyPromise = promise (dummy empty -> return <<empty>>) in
+                await dummyPromise;
+                dummyR ()
+            );
+            let y = (unbox f) x in
+            send result (y, callNo)
+        );
+        r ()
+    )
 
 run
     let callCounter = ref 0 in
@@ -75,7 +40,4 @@ run
     result3 ()
 
 run
-    remoteCallReInvoker ()
-
-run
-    remote (fun x -> 4 * (5 * (6 * x)))
+    remote [| fun x -> 4 * (5 * (6 * x)) |]
