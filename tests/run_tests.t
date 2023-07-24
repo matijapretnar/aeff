@@ -528,6 +528,133 @@
   || 
   run (return 360)
   ======================================================================
+  ../examples/cancellableCallFunPayload.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  operation call : [(unit → unit)]
+  operation result : int × int
+  operation cancel : int
+  operation dummy : empty
+  val waitForCancel : int → ⟨unit⟩
+  val remoteCall : int ref → [(unit → int)] → (unit → int) × 
+                   (unit → unit)
+  val remote : unit → ⟨α⟩
+  ↑ call [fun _ ↦ waitForCancel 0;
+                      let g =
+                         Unbox [fun _ ↦ let b = (*) (2, 3) in (*) (1, b)] as [x] in return x in
+                      let res = g () in ↑result((res, 0), return ())]
+  ↑ result (6, 0)
+  ↑ call [fun _ ↦ waitForCancel 1;
+                      let g =
+                         Unbox [fun _ ↦ let b = (*) (5, 6) in (*) (4, b)] as [x] in return x in
+                      let res = g () in ↑result((res, 1), return ())]
+  ↑ cancel 1
+  ↑ result (120, 1)
+  ↑ call [fun _ ↦ waitForCancel 2;
+                      let g =
+                         Unbox [fun _ ↦ let b = (*) (8, 9) in (*) (7, b)] as [x] in return x in
+                      let res = g () in ↑result((res, 2), return ())]
+  ↑ result (504, 2)
+  The process has terminated in the configuration:
+  run promise (dummy empty _ _ ↦ return ⟨()⟩)
+      @ () as p in
+      ↓result((504, 2),
+                ↓call([fun _ ↦ waitForCancel 2;
+                                   let g =
+                                      Unbox [fun _ ↦ let b = (*) (8, 9) in
+                                                       (*) (7, b)] as [x] in return x in
+                                   let res = g () in
+                                   ↑result((res, 2), return ())],
+                        let p =
+                           await p until ⟨x⟩ in return x; return ⟨()⟩ in
+                        ↓cancel(1, return ())))
+  || 
+  run promise (call boxedTask r _ ↦
+               Spawn (let b = Unbox boxedTask as [x] in return x in b ());return ()
+  ;
+               r ())
+      @ () as p' in
+      return p'
+  || 
+  run promise (cancel callNo' r _ ↦
+               let b = (=) (2, callNo') in
+               match b with (true ↦ let p =
+                                         promise (dummy empty _ _ ↦
+                                                  return ⟨()⟩)
+                                         @ () as p in
+                                         return p in
+                                      await p until ⟨x⟩ in return x;
+                                      return ⟨()⟩ | false ↦ r ()))
+      @ () as p in
+      return ()
+  || 
+  run promise (cancel callNo' r _ ↦
+               let b = (=) (0, callNo') in
+               match b with (true ↦ let p =
+                                         promise (dummy empty _ _ ↦
+                                                  return ⟨()⟩)
+                                         @ () as p in
+                                         return p in
+                                      await p until ⟨x⟩ in return x;
+                                      return ⟨()⟩ | false ↦ r ()))
+      @ () as p' in
+      return ()
+  || 
+  run (return 510)
+  ======================================================================
   ../examples/feed.aeff
   ======================================================================
   val (=) : α × α → bool
@@ -1221,6 +1348,88 @@
       return p'
   || 
   run (return 187200)
+  ======================================================================
+  ../examples/remoteCallFunPayload.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  operation call : [(unit → unit)]
+  operation result : int × int
+  val remoteCall : int ref → [(unit → int)] → unit → int
+  val remote : unit → ⟨α⟩
+  ↑ call [fun _ ↦ let g =
+                         Unbox [fun _ ↦ let b = (*) (2, 3) in (*) (1, b)] as [x] in return x in
+                      let res = g () in ↑result((res, 0), return ())]
+  ↑ result (6, 0)
+  ↑ call [fun _ ↦ let g =
+                         Unbox [fun _ ↦ let b = (*) (5, 6) in (*) (4, b)] as [x] in return x in
+                      let res = g () in ↑result((res, 1), return ())]
+  ↑ result (120, 1)
+  The process has terminated in the configuration:
+  run promise (call boxedTask r _ ↦
+               Spawn (let b = Unbox boxedTask as [x] in return x in b ());return ()
+  ;
+               r ())
+      @ () as p' in
+      return p'
+  || 
+  run (return ())
+  || 
+  run (return ())
+  || 
+  run (return 126)
   ======================================================================
   ../examples/runner.aeff
   ======================================================================

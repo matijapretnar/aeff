@@ -1,0 +1,40 @@
+operation call : [| unit -> unit |]
+operation result : int * int
+operation cancel : int
+operation dummy : empty
+
+let waitForCancel callNo =
+  promise (cancel callNo' when callNo = callNo' ->
+    let p = promise (dummy empty -> return <<()>>) in
+    await p;
+    return <<()>>
+  )
+
+let remoteCall callCounter f =
+  let callNo = !callCounter in callCounter := !callCounter + 1;
+  let task = [| fun _ -> waitForCancel callNo;
+                        let g = unbox f in
+                        let res = g () in
+                        send result (res, callNo) |] in
+  send call task;                     
+  let resultPromise = promise (result (y, callNo') when callNo = callNo' -> return <<y>>) in
+  let valueThunk () = await resultPromise in
+  let cancelThunk () = send cancel callNo in
+  (valueThunk, cancelThunk)
+
+let remote () =
+  promise (call boxedTask r ->
+    spawn ((unbox boxedTask) ());
+    r()
+  )
+
+run
+  let callCounter = ref 0 in
+  let xt, xc = remoteCall callCounter [| fun _ -> 1 * 2 * 3 |] in
+  let yt, yc = remoteCall callCounter [| fun _ -> 4 * 5 * 6 |] in
+  yc();
+  let zt, zc = remoteCall callCounter [| fun _ -> 7 * 8 * 9 |] in
+  return xt () + zt ()
+
+run
+  remote ()

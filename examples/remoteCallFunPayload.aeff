@@ -1,0 +1,29 @@
+operation call : [| unit -> unit |]
+operation result : int * int
+        
+let remoteCall callCounter f =
+  let callNo = !callCounter in callCounter := !callCounter + 1;
+  let task = [| fun _ -> let g = unbox f in
+                        let res = g () in
+                        send result (res, callNo) |] in 
+  send call task;                     
+  let resultPromise = promise (result (y, callNo') when callNo = callNo' -> return <<y>>) in
+  let valueThunk () = await resultPromise in
+  valueThunk
+
+let remote () =
+  promise (call boxedTask r ->
+    spawn ((unbox boxedTask) ());
+    r()
+  )
+
+run
+  let callCounter = ref 0 in
+  let xt = remoteCall callCounter [| fun _ -> 1 * 2 * 3 |] in
+  let yt = remoteCall callCounter [| fun _ -> 4 * 5 * 6 |] in
+  return xt () + yt ()
+
+run
+  remote ()
+                   
+
