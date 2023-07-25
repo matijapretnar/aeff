@@ -1,0 +1,18 @@
+operation request : int
+operation response : int
+
+run
+  promise (request x r s ->
+    if s > 0 then
+      send response (x + 42);
+      r (s - 1)
+    else
+      return <<()>>
+  ) at 3
+
+run
+  send request 1;
+  send request 2;
+  send request 3;
+  send request 4;
+  send request 5

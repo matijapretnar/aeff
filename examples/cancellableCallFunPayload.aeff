@@ -1,11 +1,11 @@
 operation call : [| unit -> unit |]
 operation result : int * int
 operation cancel : int
-operation dummy : empty
+operation impossible : empty
 
 let waitForCancel callNo =
   promise (cancel callNo' when callNo = callNo' ->
-    let p = promise (dummy empty -> return <<()>>) in
+    let p = promise (impossible empty -> return <<()>>) in
     await p;
     return <<()>>
   )

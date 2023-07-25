@@ -51,4 +51,7 @@
    (echo "({|Timer|}, {|")
    (cat ../../examples/ticktock.aeff)
    (echo "|});")
+   (echo "({|Handle only first n interrupts|}, {|")
+   (cat ../../examples/handleFirstThreeInterrupts.aeff)
+   (echo "|});")
    (echo "]"))))

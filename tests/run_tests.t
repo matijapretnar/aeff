@@ -395,7 +395,7 @@
   operation call : int × int
   operation result : int × int
   operation cancel : int
-  operation dummy : empty
+  operation impossible : empty
   val callWith : int ref → int → (unit → int) × (unit → unit) × 
                  (int → unit)
   val remote : [(int → int)] → ⟨α⟩
@@ -410,7 +410,7 @@
   ↑ call (240, 2)
   ↑ result (28800, 2)
   The process has terminated in the configuration:
-  run promise (dummy empty _ _ ↦ return ⟨empty⟩)
+  run promise (impossible empty _ _ ↦ return ⟨empty⟩)
       @ () as p in
       ↓result((28800, 2),
                 ↓call((240, 2),
@@ -421,7 +421,7 @@
                                                        await p until ⟨x⟩ in
                                                        return x;
                                                        (fun s' ↦ promise (
-                                                                   cancel callNo' dummyR _ ↦
+                                                                   cancel callNo' impossibleR _ ↦
                                                                    let b =
                                                                       (=)
                                                                       (
@@ -430,77 +430,80 @@
                                                                    match b with (
                                                                    true ↦ 
                                                                    let
-                                                                      dummyPromise =
+                                                                      impossiblePromise =
                                                                       promise (
-                                                                      dummy empty _ _ ↦
+                                                                      impossible empty _ _ ↦
                                                                       return
                                                                       ⟨empty⟩)
                                                                       @ () as p in
                                                                       return p in
                                                                    await 
-                                                                   dummyPromise until
+                                                                   impossiblePromise until
                                                                    ⟨x⟩ in
                                                                    return x;
-                                                                   dummyR () | 
+                                                                   impossibleR
+                                                                   () | 
                                                                    false ↦ 
-                                                                   dummyR ()))
+                                                                   impossibleR
+                                                                   ()))
                                                                    @ s' as p' in
                                                                    return p')
                                                        () in
                                                     ↓cancel(0, return ()))))))
   || 
-  run promise (cancel callNo' dummyR _ ↦
+  run promise (cancel callNo' impossibleR _ ↦
                let b = (=) (1, callNo') in
-               match b with (true ↦ let dummyPromise =
-                                         promise (dummy empty _ _ ↦
+               match b with (true ↦ let impossiblePromise =
+                                         promise (impossible empty _ _ ↦
                                                   return ⟨empty⟩)
                                          @ () as p in
                                          return p in
-                                      await dummyPromise until ⟨x⟩ in
-                                      return x; dummyR () | false ↦ dummyR ()))
+                                      await impossiblePromise until ⟨x⟩ in
+                                      return x; impossibleR () | 
+                             false ↦ impossibleR ()))
       @ () as p' in
       return ()
   || 
-  run promise (dummy empty _ _ ↦ return ⟨empty⟩)
+  run promise (impossible empty _ _ ↦ return ⟨empty⟩)
       @ () as p in
       ↓result((28800, 2),
                 ↓call((240, 2),
                         let p =
                            await p until ⟨x⟩ in return x;
-                           (fun s' ↦ promise (cancel callNo' dummyR _ ↦
+                           (fun s' ↦ promise (cancel callNo' impossibleR _ ↦
                                                 let b = (=) (2, callNo') in
                                                 match b with (true ↦ 
                                                               let
-                                                                 dummyPromise =
+                                                                 impossiblePromise =
                                                                  promise (
-                                                                 dummy empty _ _ ↦
+                                                                 impossible empty _ _ ↦
                                                                  return
                                                                  ⟨empty⟩)
                                                                  @ () as p in
                                                                  return p in
-                                                              await dummyPromise until
+                                                              await impossiblePromise until
                                                                     ⟨x⟩ in
                                                               return x;
-                                                              dummyR () | 
+                                                              impossibleR () | 
                                                               false ↦ 
-                                                              dummyR ()))
+                                                              impossibleR ()))
                                        @ s' as p' in
                                        return p')
                            () in ↓cancel(2, return ())))
   || 
   run promise (call (x, callNo) r _ ↦
-               Spawn (promise (cancel callNo' dummyR _ ↦
+               Spawn (promise (cancel callNo' impossibleR _ ↦
                                let b = (=) (callNo, callNo') in
-                               match b with (true ↦ let dummyPromise =
-                                                         promise (dummy empty _ _ ↦
+                               match b with (true ↦ let impossiblePromise =
+                                                         promise (impossible empty _ _ ↦
                                                                   return
                                                                   ⟨empty⟩)
                                                          @ () as p in
                                                          return p in
-                                                      await dummyPromise until
+                                                      await impossiblePromise until
                                                             ⟨x⟩ in return x;
-                                                      dummyR () | 
-                                             false ↦ dummyR ()))
+                                                      impossibleR () | 
+                                             false ↦ impossibleR ()))
                       @ () as p in
                       return p;
                       let y =
@@ -514,15 +517,16 @@
       @ () as p' in
       return p'
   || 
-  run promise (cancel callNo' dummyR _ ↦
+  run promise (cancel callNo' impossibleR _ ↦
                let b = (=) (2, callNo') in
-               match b with (true ↦ let dummyPromise =
-                                         promise (dummy empty _ _ ↦
+               match b with (true ↦ let impossiblePromise =
+                                         promise (impossible empty _ _ ↦
                                                   return ⟨empty⟩)
                                          @ () as p in
                                          return p in
-                                      await dummyPromise until ⟨x⟩ in
-                                      return x; dummyR () | false ↦ dummyR ()))
+                                      await impossiblePromise until ⟨x⟩ in
+                                      return x; impossibleR () | 
+                             false ↦ impossibleR ()))
       @ () as p in
       return ()
   || 
@@ -587,7 +591,7 @@
   operation call : [(unit → unit)]
   operation result : int × int
   operation cancel : int
-  operation dummy : empty
+  operation impossible : empty
   val waitForCancel : int → ⟨unit⟩
   val remoteCall : int ref → [(unit → int)] → (unit → int) × 
                    (unit → unit)
@@ -609,7 +613,7 @@
                       let res = g () in ↑result((res, 2), return ())]
   ↑ result (504, 2)
   The process has terminated in the configuration:
-  run promise (dummy empty _ _ ↦ return ⟨()⟩)
+  run promise (impossible empty _ _ ↦ return ⟨()⟩)
       @ () as p in
       ↓result((504, 2),
                 ↓call([fun _ ↦ waitForCancel 2;
@@ -632,7 +636,7 @@
   run promise (cancel callNo' r _ ↦
                let b = (=) (2, callNo') in
                match b with (true ↦ let p =
-                                         promise (dummy empty _ _ ↦
+                                         promise (impossible empty _ _ ↦
                                                   return ⟨()⟩)
                                          @ () as p in
                                          return p in
@@ -644,7 +648,7 @@
   run promise (cancel callNo' r _ ↦
                let b = (=) (0, callNo') in
                match b with (true ↦ let p =
-                                         promise (dummy empty _ _ ↦
+                                         promise (impossible empty _ _ ↦
                                                   return ⟨()⟩)
                                          @ () as p in
                                          return p in
@@ -883,6 +887,75 @@
                   b b in ↑response(payload, return ()); r ())
       @ () as p' in
       return p'
+  ======================================================================
+  ../examples/handleFirstThreeInterrupts.aeff
+  ======================================================================
+  val (=) : α × α → bool
+  val (<) : α × α → bool
+  val (>) : α × α → bool
+  val (<=) : α × α → bool
+  val (>=) : α × α → bool
+  val (<>) : α × α → bool
+  val (~-) : int → int
+  val (+) : int × int → int
+  val (*) : int × int → int
+  val (-) : int × int → int
+  val (mod) : int × int → int
+  val (/) : int × int → int
+  val ref : α → α ref
+  val (!) : α ref → α
+  val (:=) : α ref × α → unit
+  val toString : α → string
+  val absurd : α → β
+  val not : bool → bool
+  type option
+  val assoc : α → (α × β) list → β option
+  val range : int → int → int list
+  val reverse : α list → α list
+  val map : (α → β) → α list → β list
+  val hd : α list → α
+  val tl : α list → α list
+  val take : (int → α) → int → α list
+  val foldLeft : (α → β → α) → α → β list → α
+  val foldRight : (α → β → β) → α list → β → β
+  val iter : (α → β) → α list → unit
+  val forall : (α → bool) → α list → bool
+  val exists : (α → bool) → α list → bool
+  val mem : α → α list → bool
+  val filter : (α → bool) → α list → α list
+  val complement : α list → α list → α list
+  val intersection : α list → α list → α list
+  val zip : α list → β list → (α × β) list
+  val unzip : (α × β) list → α list × β list
+  val (@) : α list × α list → α list
+  val length : α list → int
+  val nth : α list → int → α
+  val abs : int → int
+  val min : α → α → α
+  val max : α → α → α
+  val gcd : int → int → int
+  val lcm : int → int → int
+  val odd : int → bool
+  val even : int → bool
+  val id : α → α
+  val compose : (α → β) → (γ → α) → γ → β
+  val (|>) : α → (α → β) → β
+  val ignore : α → unit
+  val fst : α × β → α
+  val snd : α × β → β
+  val return : α → α
+  operation request : int
+  operation response : int
+  ↑ request 1
+  ↑ request 2
+  ↑ request 3
+  ↑ request 4
+  ↑ request 5
+  ↑ response 43
+  ↑ response 44
+  ↑ response 45
+  The process has terminated in the configuration:
+  run (return ()) ||  run (return ⟨()⟩)
   ======================================================================
   ../examples/heapPure.aeff
   ======================================================================

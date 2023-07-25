@@ -1,7 +1,7 @@
 operation call : int * int
 operation result : int * int
 operation cancel : int
-operation dummy : empty
+operation impossible : empty
 
 let callWith callCounter =
     fun x ->
@@ -19,10 +19,10 @@ let callWith callCounter =
 let remote f =
     promise (call (x, callNo) r ->
         spawn (
-            promise (cancel callNo' dummyR when callNo = callNo' ->
-                let dummyPromise = promise (dummy empty -> return <<empty>>) in
-                await dummyPromise;
-                dummyR ()
+            promise (cancel callNo' impossibleR when callNo = callNo' ->
+                let impossiblePromise = promise (impossible empty -> return <<empty>>) in
+                await impossiblePromise;
+                impossibleR ()
             );
             let y = (unbox f) x in
             send result (y, callNo)
